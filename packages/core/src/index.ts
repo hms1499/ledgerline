@@ -10,3 +10,4 @@ export * from "./preflight.js";
 export * from "./errors.js";
 export * from "./verify.js";
 export * from "./completeness.js";
+export * from "./compare.js";

@@ -18,10 +18,13 @@ amount)`, so routing a payment through `Multicall3` leaves the payer perfectly
 visible. Measured:
 
 ```
-tx 0xc7d9255d4c0fc793e261d4ca02f9df1985694a2f31401e15ab7ead6d27440bfe
+tx 0xe29621ec2283fe141ab5934b9a9e1890a6e62021ee28752345c4c3c09e907c2d  (approve, 55,438 gas)
+tx 0xc7d9255d4c0fc793e261d4ca02f9df1985694a2f31401e15ab7ead6d27440bfe  (batch,   58,755 gas)
   Transfer  token 0x3600…  from 0x595558b91dfaa97840f2f00bf6728a74b8e6de17
   payer EOA                     0x595558B91DFAA97840F2F00bF6728A74B8E6de17
 ```
+
+Both hashes are what `/why` is pointed at on testnet.
 
 Identical. Had this gone to mainnet as artifact #3, the side-by-side would have
 shown two transactions whose `Transfer.from` agree, under a caption claiming
@@ -49,25 +52,46 @@ the one the spec named.
 |---|---|---|---|
 | Reference on chain | **per payment** | none | none |
 | `Transfer.from` | payer EOA | payer EOA | the contract |
-| Allowance to a third party | none | **required, and left standing** | none |
+| Allowance to a third party | none | **required first** | none |
 | Custody of funds | never | never | **yes** |
 | Transactions | **1** | 2 | 2 |
 | Gas, 1 USDC payment | ~70k | 114,193 (55,438 + 58,755) | fund + disperse |
 
 The reference is the difference that holds against **every** batcher shape, and
 it is the one the product is actually about. The approval is the second real
-difference and it is underrated: the `Multicall3` route requires granting a
-contract the payer does not control the right to move their tokens, and that
-allowance outlives the payment.
+difference: the `Multicall3` route requires granting a contract the payer does
+not control the right to move their tokens, before any money can move.
 
 Identity preservation is a genuine advantage over custodial batchers, and not
 one over `Multicall3`. Say it that way.
+
+## Correction — the allowance does not automatically outlive the payment
+
+The paragraph above originally ended *"and that allowance outlives the
+payment."* Checked against the chain while building `/why`, that is false for
+the transaction we actually sent:
+
+```
+allowance(0x595558B9…de17, 0xcA11bde0…76CA11)  on testnet USDC  =  0
+```
+
+`naive-batch.ts` approves the exact amount and `transferFrom` consumes all of
+it, so nothing is left standing. An allowance outlives the payment only when
+the tool approves more than it spends — which is what unlimited-approval tools
+do, and it is a property of *how the tool approves*, not of `Multicall3`.
+
+Two things changed as a result. `naive-batch.ts` now reads the remaining
+allowance back rather than printing `standing allowance left: yes`, and the
+`/why` page makes an `allowance()` call when it loads and shows whatever the
+chain returns. The surviving claim is the narrower one: **the ordinary route
+requires an approval to a third-party contract before any money can move; ours
+requires none.**
 
 ## What goes to mainnet
 
 Only the `Multicall3` + `transferFrom` control, via the standard batcher that
 is already deployed. It demonstrates the missing reference, the extra
-transaction and the standing allowance, which are the claims that survive
+transaction and the required allowance, which are the claims that survive
 scrutiny.
 
 The custodial contract stays on testnet. Deploying a fund-taking contract to

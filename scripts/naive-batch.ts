@@ -29,6 +29,9 @@ const erc20 = [
     inputs: [{ name: "from", type: "address" }, { name: "to", type: "address" },
              { name: "amount", type: "uint256" }],
     outputs: [{ type: "bool" }] },
+  { type: "function", name: "allowance", stateMutability: "view",
+    inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }],
+    outputs: [{ type: "uint256" }] },
 ] as const;
 
 const agg = [{
@@ -101,7 +104,24 @@ console.log(`\n  scorecard vs. the referenced run:`);
 console.log(`    reference on chain          : ${memos.length > 0 ? "yes" : "NO"}`);
 console.log(`    Transfer.from is the payer  : ${fromIsPayer ? "yes" : "NO"}`);
 console.log(`    transactions needed         : 2 (approve, then batch)`);
-console.log(`    standing allowance left     : yes, on a contract the payer does not control`);
+
+// Read it rather than assert it. An earlier draft of this script printed
+// "standing allowance left: yes" unconditionally, which the chain contradicts:
+// this approval is for an exact amount and the transfer consumes all of it.
+// Unlimited approvals do leave one standing — that is a property of how the
+// tool approves, not of Multicall3, and the difference matters when the
+// audience is Arc engineers reading the same logs.
+const remaining = await publicClient.readContract({
+  address: net.tokens.USDC, abi: erc20, functionName: "allowance",
+  args: [account.address, MULTICALL3],
+});
+console.log(`    allowance required first    : yes, to a contract the payer does not control`);
+console.log(
+  `    allowance left standing     : ${remaining}` +
+  (remaining === 0n
+    ? "  (exact-amount approval, fully spent)"
+    : "  (outlives the payment, on a contract the payer does not control)"),
+);
 console.log(`\n  Note: transferFrom(from, ...) emits Transfer(from, ...), so this route does`);
 console.log(`  keep the payer visible. Identity is lost only with a custodial batcher that`);
 console.log(`  pays from its own balance. The missing reference is the difference that`);

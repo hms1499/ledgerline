@@ -8,6 +8,18 @@ export interface NetworkView {
   defaultRpc: string;
   explorer: string;
   anchor?: `0x${string}`;
+  /** The two runs `/why` puts side by side. Configured, never hardcoded, so
+   *  the page can be repointed at the mainnet pair without a code change. */
+  demo: DemoRun;
+}
+
+export interface DemoRun {
+  /** A referenced run through Multicall3From → Memo → transfer. */
+  ours?: `0x${string}`;
+  /** The same payment through the standard Multicall3, with no reference. */
+  naive?: `0x${string}`;
+  /** The approval the naive route needs before it can move anything. */
+  naiveApprove?: `0x${string}`;
 }
 
 const MAINNET: NetworkView = {
@@ -16,6 +28,11 @@ const MAINNET: NetworkView = {
   defaultRpc: "https://rpc.mainnet.arc.io",
   explorer: "https://explorer.arc.io",
   anchor: process.env.NEXT_PUBLIC_ANCHOR_MAINNET as `0x${string}` | undefined,
+  demo: {
+    ours: process.env.NEXT_PUBLIC_WHY_OURS_MAINNET as `0x${string}` | undefined,
+    naive: process.env.NEXT_PUBLIC_WHY_NAIVE_MAINNET as `0x${string}` | undefined,
+    naiveApprove: process.env.NEXT_PUBLIC_WHY_APPROVE_MAINNET as `0x${string}` | undefined,
+  },
 };
 
 const TESTNET: NetworkView = {
@@ -24,6 +41,11 @@ const TESTNET: NetworkView = {
   defaultRpc: "https://rpc.testnet.arc.io",
   explorer: "https://explorer.testnet.arc.io",
   anchor: process.env.NEXT_PUBLIC_ANCHOR_TESTNET as `0x${string}` | undefined,
+  demo: {
+    ours: process.env.NEXT_PUBLIC_WHY_OURS_TESTNET as `0x${string}` | undefined,
+    naive: process.env.NEXT_PUBLIC_WHY_NAIVE_TESTNET as `0x${string}` | undefined,
+    naiveApprove: process.env.NEXT_PUBLIC_WHY_APPROVE_TESTNET as `0x${string}` | undefined,
+  },
 };
 
 export function networkFor(name: string | null | undefined): NetworkView {
