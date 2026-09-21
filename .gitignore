@@ -1,0 +1,40 @@
+# ── secrets ─────────────────────────────────────────────
+# Arc pays gas in USDC from a real mainnet wallet. Never commit keys.
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+keystore/
+secrets/
+
+# ── foundry ─────────────────────────────────────────────
+out/
+cache/
+broadcast/
+!broadcast/**/dry-run/
+docs/book/
+
+# ── node / typescript ───────────────────────────────────
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+.pnpm-store/
+
+# ── next.js / vercel ────────────────────────────────────
+.next/
+.vercel/
+next-env.d.ts
+
+# ── os / editor ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# ── local scratch ───────────────────────────────────────
+tmp/
+scratch/
+*.local.json
