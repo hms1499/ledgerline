@@ -474,6 +474,171 @@ as the 10-second explanation.
 
 ---
 
+### 4.5 Screen specification
+
+Detailed here: the **receipt page** and the **reconciliation view**. Both are
+proof artifacts on the never-cut list. The create-run screen is deliberately
+left coarse (§4.5.3) because it is cuttable and not required for submission.
+
+---
+
+#### 4.5.1 Receipt page — `/r/<txHash>?m=<memoId>&s=<runSalt>&p=<proof>`
+
+**Governing rule: this page must never fail opaquely.** Its entire purpose is
+to let a recipient verify a payment without trusting us. A generic "invalid"
+destroys exactly the property it exists to demonstrate. Every failure must name
+the rung that broke and what that means.
+
+##### The verification ladder
+
+Verification is a sequence of independent checks, rendered as visible progress:
+
+```
+✅ Transaction found on Arc mainnet             block 21,945,182 · finalized
+✅ Payment to you: 1.50 USDC                    from 0x5a21…f8c4
+✅ Matches invoice INV-US-001                   callDataHash join verified
+✅ Payer signed this transaction directly       Memo.sender == Transfer.from
+✅ Included in anchored run RUN-2026-09         Merkle proof valid · 3 items
+```
+
+Each rung maps to a specific check:
+
+| # | Rung | Check | Source |
+|---|---|---|---|
+| 1 | Transaction exists and succeeded | `eth_getTransactionReceipt`, `status == 1` | chain |
+| 2 | A payment to this recipient | `Transfer.to`, `value`, `token.decimals()` | chain |
+| 3 | Payment belongs to this invoice | `keccak(0xa9059cbb ‖ to ‖ value) == memo.callDataHash` **and** `memoId == keccak(salt ‖ invoiceId)` | chain + URL salt |
+| 4 | Payer identity intact | `memo.sender == transfer.from` | chain |
+| 5 | Item was in the committed manifest | `PayoutAnchor.verifyItem(runId, leaf, proof)` | chain + URL proof |
+
+##### Failure states — each names its rung
+
+| State | Trigger | What the page says |
+|---|---|---|
+| `bad_link` | Missing/malformed URL params | "This link is incomplete — ask the payer to resend it." Names which param is missing |
+| `rpc_unreachable` | RPC call failed | "Could not reach Arc." Offers retry **and the RPC selector (below)**. Never implies the payment is invalid |
+| `tx_not_found` | No receipt for `txHash` | "No such transaction on Arc mainnet." Suggests checking the network |
+| `run_reverted` | `status == 0` | "**This payout run did not execute.** The transaction failed, so no money moved and nothing was paid." Links to the failed tx |
+| `memo_absent` | No `Memo` log with that `memoId` | "This transaction exists but contains no payment for this invoice." |
+| `unlinked` | Memo present, no `Transfer` satisfies the hash join | **Critical.** "Anomaly: a reference exists with no matching payment." Show raw evidence and advise contacting the payer |
+| `salt_mismatch` | `memoId != keccak(salt ‖ invoiceId)` | "This link's invoice reference does not match. The link may be for a different invoice." |
+| `identity_broken` | `memo.sender != transfer.from` | **Critical.** "The payer on record differs from the sender of funds." |
+| `not_anchored` | `runs[runId].payer == address(0)` | Degraded, not failed — see below |
+| `proof_invalid` | Merkle verification false | "This payment is real, but it was **not** part of the committed manifest." |
+| `verified` | All rungs pass | Full success |
+
+##### Honest degradation
+
+When the URL carries no `p=` proof, or the run was never anchored, the page
+**must not** silently show success. It verifies rungs 1–4 and states plainly:
+
+> ✅ Payment verified against the blockchain.
+> ⚠️ Could not confirm it was part of a committed payout run — no anchor proof
+> in this link. The payment itself is real.
+
+Saying what was *not* checked is as important as saying what was.
+
+##### RPC transparency
+
+The page shows which RPC endpoint it used and lets the viewer **substitute
+their own**:
+
+```
+Verified using  https://rpc.mainnet.arc.io          [ change ]
+```
+
+This is not a convenience feature. It closes the last trust gap: a viewer who
+distrusts our hosting can point the page at any Arc RPC — or their own node —
+and re-run every check. Combined with the self-contained URL (§4.4), the claim
+"you do not have to trust this page" becomes literally testable, and that
+demonstration is submission artifact #4.
+
+##### Layout
+
+`Result` for the verdict, `Descriptions` for payment detail (payer, recipient,
+token, amount, invoice, run, block, timestamp), the ladder as a checklist, and
+a raw-evidence disclosure (`Collapse`) containing the decoded logs so a
+technical recipient can audit by hand.
+
+---
+
+#### 4.5.2 Reconciliation view — `/run/<txHash>`
+
+##### Two modes, and the difference is not cosmetic
+
+| Mode | Who | Data available | What can be concluded |
+|---|---|---|---|
+| **With manifest** | Payer (holds the manifest JSON) | Intent + actual | All 6 statuses. Can prove completeness |
+| **Without manifest** | Anyone with the link | Actual + anchor (`root`, `itemCount`) | Payment list, plus a **completeness check** |
+
+The second mode is stronger than it first appears. `PayoutAnchor` stores
+`itemCount`, so even without the manifest:
+
+```
+anchored itemCount = 5
+payments found     = 3
+⇒ 2 payments are missing — detectable with no manifest at all
+```
+
+This is why `itemCount` is a stored field rather than an afterthought.
+
+##### Status presentation
+
+| Status | Severity | Must display |
+|---|---|---|
+| `matched` | ok | amount, recipient, invoice |
+| `amount_mismatch` | warn | **both** expected and actual, and the delta |
+| `recipient_mismatch` | warn | both addresses, visually diffed |
+| `unpaid` | error | invoice + intended amount; state that the subcall failed |
+| `unexpected` | warn | the payment, flagged as absent from the manifest |
+| `unlinked` | **critical** | raw log evidence; this indicates anomaly, not user error |
+
+The three non-green statuses that are easiest to forget while coding are
+`unlinked`, `amount_mismatch` and `unexpected`. Each needs a golden-fixture
+test **before** the view is built (T3), not after.
+
+##### Page states
+
+`loading` · `tx_not_found` · `run_reverted` · `ready`
+
+`run_reverted` is a first-class state, not an error toast: a reverted run means
+**nothing was paid**, which is a legitimate and important thing to display
+clearly rather than as a failure banner.
+
+##### Layout
+
+`Table` with per-token grouping and a summary row; `Statistic` row for totals
+per token and counts by status; `Tag` for statuses; filters by status and by
+token; every row links to the receipt page and to explorer.arc.io.
+
+Default sort: **most severe first.** A finance user opening this page needs the
+problems, not the successes — the 97 rows that worked are not why they are here.
+
+---
+
+#### 4.5.3 Create-run screen (deferred)
+
+`Steps`: upload → preview → preflight → sign. `Upload.Dragger` for CSV,
+`Table` for preview with on-chain token symbols and decimals, `Alert` for
+preflight results per §4.3, wallet signature last.
+
+Deliberately left at this level of detail. It is cuttable (§8) and not required
+for submission; specify it fully at T10, when the reconciler's output shape and
+the preflight result format are both settled.
+
+---
+
+#### 4.5.4 Rules shared by all screens
+
+1. **Never show an amount without its token and decimals.** Decimals are read
+   from chain, never hardcoded (USDC 6, EURC 6, cirBTC 8).
+2. **Never show a payment as complete without a receipt** (§4.3). `pending` is
+   a visible state, not an absence of state.
+3. **Addresses are truncated but always copyable in full**, and always link to
+   explorer.arc.io.
+4. **Every claim the UI makes must be traceable to a rung or a log.** If the
+   interface asserts something the user cannot verify, it does not belong.
+
 ## 5. Data model
 
 ```
