@@ -404,9 +404,44 @@ for reconciliation simplicity.
 | Layer | Choice | Rationale |
 |---|---|---|
 | Framework | Next.js App Router on Vercel | Public URL required for submission |
+| **UI kit** | **Ant Design v6** + `@ant-design/nextjs-registry` **[measured]** | See below |
 | Chain | **viem `arc`** (built in: id 5042, currency USDC) **[measured]** | No hand-rolled chain definition |
 | Wallet | MetaMask / Rabby (**EOA only**) | Hard constraint, §6.1 |
 | Storage | **None required**; KV is a convenience only | §4 source-of-truth principle |
+
+#### Why Ant Design rather than Tailwind + shadcn/ui
+
+This is an enterprise data-table product, and antd's components map almost 1:1
+onto what the screens need:
+
+| Need | Component |
+|---|---|
+| Reconciliation table: 6 statuses, sorting, per-token grouping, totals row | `Table` (expandable rows, summary, filters built in) |
+| CSV drop | `Upload.Dragger` |
+| upload → preview → preflight → sign | `Steps` |
+| Receipt verdict (verified / failed) | `Result` |
+| Payment detail | `Descriptions` |
+| Status badges, per-token totals | `Tag`, `Statistic` |
+| Preflight warnings | `Alert` |
+
+With a headless kit these would be assembled by hand (TanStack Table, a custom
+dropzone, a custom stepper) — several days, none of it the interesting part of
+this project.
+
+Verified compatible **[measured]**: antd `6.6.5`, `@ant-design/nextjs-registry`
+`1.3.0`, Next `16.3.5`, React `19.3.0`.
+
+Two costs, both mitigated:
+
+1. **App Router SSR.** The root layout must wrap children in `AntdRegistry`, or
+   styles flash unstyled on first paint. One file, done once.
+2. **Generic admin-panel look**, a real risk against the "quality of what you
+   built" criterion. Mitigated with `ConfigProvider` theme tokens (brand colour,
+   radius, typography) — roughly 30 minutes. **Do not ship stock antd defaults.**
+
+Visual design direction is deliberately **not** decided here. It should follow
+T3, once the reconciler's real output shape is fixed; designing before then is
+designing for imaginary data.
 
 #### Self-contained receipt URL
 

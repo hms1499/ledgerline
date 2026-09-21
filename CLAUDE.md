@@ -108,6 +108,17 @@ validated; keep using it instead of burning testnet cycles.
   `arc-anvil --network arc` from `circlefin/arc-foundry`, or real testnet.
 - **TypeScript:** viem, vitest.
 - **App:** Next.js App Router on Vercel.
+- **UI:** **Ant Design v6** + `@ant-design/nextjs-registry`. Chosen because this
+  is a data-table product — `Table`, `Upload.Dragger`, `Steps`, `Result`,
+  `Descriptions`, `Tag`, `Statistic` cover the screens almost 1:1.
+  Verified: antd `6.6.5`, registry `1.3.0`, Next `16.3.5`, React `19.3.0`.
+  - Root layout **must** wrap children in `AntdRegistry`, or styles flash
+    unstyled on SSR first paint.
+  - **Do not ship stock antd defaults.** Set `ConfigProvider` theme tokens
+    (brand colour, radius, typography). Judging includes "quality of what you
+    built", and an untouched admin-panel look reads as templated.
+  - Visual design direction follows T3 — don't design for data shapes that
+    aren't fixed yet.
 
 ---
 
