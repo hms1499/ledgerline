@@ -1,0 +1,167 @@
+:root {
+  --ground: #f2f5f0;
+  --raised: #fafbf9;
+  --ink: #1a2a28;
+  --ink-soft: #53625f;
+  --rule: #c8d4cb;
+  --tick: #0b6e4f;
+  --flag: #a62639;
+  --pending: #b26b00;
+  --measure: 62ch;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  /* The whole page is figures; tabular by default keeps columns honest. */
+  font-variant-numeric: tabular-nums;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--rule); }
+a:hover { text-decoration-color: currentColor; }
+
+:focus-visible { outline: 2px solid var(--tick); outline-offset: 2px; }
+
+.sheet {
+  max-width: 44rem;
+  margin: 0 auto;
+  padding: clamp(2rem, 6vw, 4.5rem) 16px clamp(3rem, 8vw, 6rem);
+}
+
+/* ── the masthead ─────────────────────────────────────────────────────── */
+.masthead {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 1px solid var(--rule);
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+  flex-wrap: wrap;
+}
+.masthead strong { color: var(--ink); font-weight: 600; letter-spacing: -0.01em; }
+
+/* ── the ledger line: the product, in one line ────────────────────────── */
+.line {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding: 2.2rem 0 1.4rem;
+  border-bottom: 2px solid var(--ruleStrong, var(--ink));
+}
+.amount {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: clamp(2.1rem, 7vw, 3.1rem);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  margin: 0;
+}
+.amount .unit { font-size: 0.42em; font-weight: 400; margin-left: 0.5em; letter-spacing: 0; }
+.payee { margin: 0.55rem 0 0; font-size: 0.87rem; color: var(--ink-soft); }
+.reference {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 1rem;
+  padding-bottom: 0.3rem;
+  border-bottom: 2px solid var(--tick);
+}
+.reference.is-void { border-bottom-color: var(--flag); }
+
+/* ── verdict ──────────────────────────────────────────────────────────── */
+.verdict { padding: 1.9rem 0 0.4rem; }
+.verdict h1 {
+  font-size: 1.45rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.45rem;
+}
+.verdict p { margin: 0; max-width: var(--measure); color: var(--ink-soft); }
+.verdict.ok h1 { color: var(--tick); }
+.verdict.error h1, .verdict.critical h1 { color: var(--flag); }
+.verdict.degraded h1 { color: var(--pending); }
+
+/* ── the tickmark ladder ──────────────────────────────────────────────── */
+.ladder { list-style: none; margin: 2rem 0 0; padding: 0; }
+.rung {
+  position: relative;
+  padding: 0.62rem 0 0.62rem 2rem;
+  border-top: 1px solid var(--rule);
+}
+.rung:last-child { border-bottom: 1px solid var(--rule); }
+.mark {
+  position: absolute;
+  left: 0;
+  top: 0.62rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.rung.pass .mark { color: var(--tick); }
+.rung.fail .mark { color: var(--flag); }
+.rung.skipped .mark { color: var(--pending); }
+.rung.skipped .claim { color: var(--ink-soft); }
+.claim { display: block; }
+.because {
+  display: block;
+  margin-top: 0.18rem;
+  font-size: 0.85rem;
+  color: var(--ink-soft);
+  max-width: var(--measure);
+}
+
+/* Verification is genuinely sequential, so show it happening — once. */
+@media (prefers-reduced-motion: no-preference) {
+  .rung { animation: settle 340ms ease-out both; }
+  @keyframes settle { from { opacity: 0; } to { opacity: 1; } }
+}
+
+/* ── trust footer ─────────────────────────────────────────────────────── */
+.footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.84rem; color: var(--ink-soft); }
+.footer .endpoint { font-family: var(--font-mono), ui-monospace, monospace; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--tick); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.hex { font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.85em; word-break: break-all; }
+
+dl.detail { margin: 0; display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: 0.45rem 1.4rem; font-size: 0.88rem; }
+dl.detail dt { color: var(--ink-soft); }
+dl.detail dd { margin: 0; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground: #121917;
+    --raised: #182220;
+    --ink: #e6ece9;
+    --ink-soft: #9aaba6;
+    --rule: #2c3b37;
+    --tick: #4cc08d;
+    --flag: #e2707f;
+    --pending: #d9a441;
+  }
+}
+
+/* Announced to screen readers, never painted. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.amount.is-absent {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(1.3rem, 4vw, 1.75rem);
+  font-weight: 500;
+  color: var(--ink-soft);
+  letter-spacing: -0.02em;
+}

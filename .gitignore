@@ -38,3 +38,6 @@ Thumbs.db
 tmp/
 scratch/
 *.local.json
+
+# playwright mcp scratch
+.playwright-mcp/

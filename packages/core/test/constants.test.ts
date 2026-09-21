@@ -8,6 +8,7 @@ import {
   CIRBTC_ADDRESS,
   tokensForChain,
   MEMO_TOPIC,
+  RUN_COMMITTED_TOPIC,
   BEFORE_MEMO_TOPIC,
   TRANSFER_TOPIC,
   TRANSFER_SELECTOR,
@@ -22,6 +23,11 @@ describe("constants", () => {
 
   it("derives the BeforeMemo topic", () => {
     expect(keccak256(toHex("BeforeMemo(uint256)"))).toBe(BEFORE_MEMO_TOPIC);
+  });
+
+  it("derives the RunCommitted topic, measured against a live Arc log", () => {
+    expect(keccak256(toHex("RunCommitted(bytes32,address,bytes32,uint32)")))
+      .toBe(RUN_COMMITTED_TOPIC);
   });
 
   it("derives the Transfer topic", () => {

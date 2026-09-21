@@ -24,6 +24,15 @@ export const MEMO_TOPIC: Hex =
   "0xeb15ee720798341c37739df41be53acfbbf70ae6802dade35457beec6e47a5e4";
 export const BEFORE_MEMO_TOPIC: Hex =
   "0xb252e055da754c72fbf7542cf424b190808a9b541e912894c5e15b4238c41501";
+/**
+ * RunCommitted(bytes32 indexed runId, address indexed payer, bytes32 root, uint32 itemCount)
+ *
+ * runId is topics[1], so a receipt alone is enough to find which run a
+ * transaction anchored — no extra URL parameter, no log search.
+ */
+export const RUN_COMMITTED_TOPIC: Hex =
+  "0x0f45a5f974bf76498b4b8c4af496aad573f7c44a335744555aca6043762745d7";
+
 export const TRANSFER_TOPIC: Hex =
   "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
 

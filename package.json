@@ -3,8 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "pnpm -r test",
-    "typecheck": "pnpm -r typecheck"
+    "test": "pnpm --filter @ledgerline/core build && pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "build": "pnpm --filter @ledgerline/core build && pnpm --filter @ledgerline/web build"
   },
   "devDependencies": {
     "@ledgerline/core": "workspace:*",
