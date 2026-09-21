@@ -12,3 +12,4 @@ export * from "./verify.js";
 export * from "./completeness.js";
 export * from "./compare.js";
 export * from "./csv.js";
+export * from "./validate.js";
