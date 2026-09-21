@@ -104,7 +104,7 @@ export default function Receipt(props: Props) {
             body="This says nothing about the payment — only that the checks could not run. Try again, or point the page at another endpoint below."
           />
           {error && (
-            <Alert type="warning" showIcon style={{ marginTop: 20 }} message={error} />
+            <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} />
           )}
         </>
       )}

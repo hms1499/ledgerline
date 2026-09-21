@@ -41,3 +41,7 @@ scratch/
 
 # playwright mcp scratch
 .playwright-mcp/
+
+# screenshots from browser checks are evidence for a moment, not artifacts
+*.png
+!apps/web/app/**/*.png

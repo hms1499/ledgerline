@@ -42,6 +42,26 @@ export const theme: ThemeConfig = {
   },
   components: {
     Collapse: { headerPadding: "10px 0", contentPadding: "0 0 16px" },
-    Alert: { withDescriptionPadding: "14px 16px" },
+    // Stock antd blue does not belong on ledger paper.
+    Alert: {
+      withDescriptionPadding: "14px 16px",
+      colorInfoBg: "#E8EFE9",
+      colorInfoBorder: palette.rule,
+      colorInfo: palette.tick,
+      colorWarningBg: "#F7EFE0",
+      colorWarningBorder: "#E0CBA4",
+      colorSuccessBg: "#E4EEE7",
+      colorSuccessBorder: "#B4CDBC",
+      colorErrorBg: "#F5E4E7",
+      colorErrorBorder: "#DFB8BF",
+    },
+    Table: {
+      headerBg: "transparent",
+      headerSplitColor: "transparent",
+      rowHoverBg: "#EAEFE8",
+      borderColor: palette.rule,
+      footerBg: "transparent",
+    },
+    Tag: { defaultBg: "transparent" },
   },
 };
