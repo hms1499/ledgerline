@@ -6,6 +6,7 @@ solc = "0.8.28"
 optimizer = true
 optimizer_runs = 200
 remappings = ["@openzeppelin/=lib/openzeppelin-contracts/"]
+fs_permissions = [{ access = "read", path = "../packages/core/test/fixtures" }]
 
 [rpc_endpoints]
 arc = "https://rpc.mainnet.arc.io"
