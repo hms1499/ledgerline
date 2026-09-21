@@ -825,7 +825,8 @@ repo and deployment update continuously.
 
 | Risk | Severity | Mitigation |
 |---|---|---|
-| **EURC / cirBTC unobtainable on mainnet** | **High** — kills the strongest "Arc is necessary" argument | T0 runs first. Fall back to USDC + EURC, then USDC only. Code stays token-agnostic regardless |
+| ~~EURC / cirBTC unobtainable on mainnet~~ | **RETIRED 2026-09-21** | Resolved by T0 — see §9.1. Deep Uniswap liquidity exists for both |
+| Priority-fee floor set too low | Medium | Uniswap's Arc playbook states `maxPriorityFeePerGas ≈ 5 gwei`; `eth_maxPriorityFeePerGas` returns **0.33 gwei** **[measured]**. Our §4.3 floor of 1 gwei may be too low. Confirm with a real transaction at T5 and raise if needed |
 | Smart-wallet rejection behaves unexpectedly | Medium | T5 tests it for real; simulation cannot (§6.1) |
 | Real log ordering differs from expectation | Low | §4.1 join is order-independent by construction |
 | Judged as derivative of Request Network | Medium | Position honestly (§2); lead with the 3-token single-transaction demo, which Request cannot do |
@@ -833,6 +834,35 @@ repo and deployment update continuously.
 | Scope creep into payroll SaaS | Medium | §3 non-goals are binding |
 
 ---
+
+### 9.1 T0 resolved — token acquisition path
+
+Investigated 2026-09-21. **The project's highest risk is retired.**
+
+Direct cirBTC minting is gated to KYB-verified institutions through Circle
+Mint, and StableFX is an enterprise RFQ venue — neither is available to us.
+Neither is needed: **Uniswap v2, v3, v4 and UniswapX are live on Arc**, the
+Uniswap Web App supports chain 5042 directly, and cirBTC was supported from
+launch.
+
+| Token | Path | Liquidity **[measured]** |
+|---|---|---|
+| USDC | CCTP bridge from another chain | — |
+| **EURC** | Uniswap swap on Arc | v3 fee=500 pool `0x6fd5F2fb…`: **$16,656 / €12,862**; v4 PoolManager holds **€45,873** |
+| **cirBTC** | Uniswap swap on Arc | v3 fee=100 pool `0x82916bee…`: **67.05 BTC / $5.85M** |
+
+Three on-chain discoveries cross-check exactly against Uniswap's published Arc
+playbook, which is what makes this conclusion trustworthy rather than inferred:
+
+| Found on chain | Confirmed as |
+|---|---|
+| factory `0xf0db7b58379503491d857dB50AC9ece64c653918` | Uniswap **v3 Factory** on Arc |
+| swap sender `0x53bf6b0684ec7ef91e1387da3d1a1769bc5a6f77` (24,497 bytes) | **SwapRouter02** |
+| large EURC holder `0x8366a39cc670b4001a1121b8f6a443a643e40951` | Uniswap **v4 PoolManager** |
+
+Demo needs only a few dollars against pools holding millions, so slippage is
+immaterial. Pool addresses above are **not** hardcoded anywhere in the product —
+they are acquisition logistics only.
 
 ## 10. Definition of done
 

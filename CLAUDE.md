@@ -81,6 +81,21 @@ BeforeMemo(uint256)
 
 ---
 
+## Funding a wallet (T0 — resolved)
+
+Direct cirBTC minting needs Circle Mint + KYB, and StableFX is enterprise RFQ.
+Neither is needed. **Uniswap v2/v3/v4 are live on Arc** and the Uniswap Web App
+supports chain 5042 directly.
+
+```
+USDC    → CCTP bridge from another chain
+EURC    → swap on Uniswap (Arc).  v3 fee=500 pool ≈ $16.6k / €12.8k; v4 holds €45.8k
+cirBTC  → swap on Uniswap (Arc).  v3 fee=100 pool ≈ 67 BTC / $5.85M — very deep
+```
+
+A few dollars is enough for the whole demo. Pool addresses are acquisition
+logistics only — **never hardcode them in the product.**
+
 ## Endpoints
 
 ```
