@@ -22,8 +22,19 @@
 |---|---|
 | Done | Tasks 1–14, every step ticked below |
 | Blocked | Tasks 15–16 — need USDC, EURC and cirBTC in a mainnet wallet |
-| Verified | 94 TypeScript tests, 21 Solidity tests, typecheck clean on 3 packages |
+| Verified | 113 TypeScript tests, 21 Solidity tests, typecheck clean on 3 packages |
 | Testnet anchor | `0xb8907A07768D936D1D498257E5803c91033a8802` (chain 5042002) |
+| Testnet run | `0x272c8fd186d17c042de60c9eb991b92b58fa960fee1f04842b01c7492c88a354` |
+
+**`PayoutAnchor.sol` is ready to freeze.** The post-audit contract had been
+deployed but never used: the only three-token run on testnet anchored to the
+*pre-audit* address, so the receipt page's `verifyItem` rung and the
+reconciliation view's completeness verdict both degraded silently, and the
+frozen API had never been exercised by its largest consumer. The run was sent
+again against the new anchor and both surfaces now verify completely — five of
+five rungs, "Complete run. All 3 committed payments are present." That was the
+stated precondition for the mainnet deploy. See the re-run section of
+`docs/notes/2026-09-21-testnet-findings.md`.
 
 **This plan's code blocks are no longer a faithful copy of the codebase.** A
 pre-mainnet audit changed three of them, and running the chain disproved a
@@ -52,8 +63,13 @@ immediately — building the receipt page found that spec §4.5.1's URL scheme
 could not satisfy its own rung 3, and that its rung 5 called the `verifyItem`
 signature the audit had already removed.
 
-Sequence from here: finish Plan 2 against testnet, freeze `PayoutAnchor.sol`,
-then run Tasks 15–16 once.
+It paid for itself a second time: the anchor the app was configured against
+held no runs at all, which nothing but a working consumer would have surfaced.
+
+Sequence from here: `/why` is built and the anchor is exercised, so
+`PayoutAnchor.sol` is frozen. Remaining before submission: the README (T16).
+Remaining and cuttable: the create-run screen (T10) and wallet connect (T9).
+Tasks 15–16 run once, when there are mainnet funds.
 
 ---
 

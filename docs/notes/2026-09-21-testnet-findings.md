@@ -12,7 +12,7 @@ demo costs nothing on testnet. Three tokens also exercise the decimal spread
 
 | What | Address |
 |---|---|
-| `PayoutAnchor` | `0xf22B15fDCADB13573E732eE89841299717f6B7f4` |
+| `PayoutAnchor` | `0xf22B15fDCADB13573E732eE89841299717f6B7f4` — **superseded**, see the re-run below |
 | `MemoCallerProbe` | `0xd4838881EcBa8320d456B8B65A07A0ac167F0890` |
 | Payer EOA | `0x595558B91DFAA97840F2F00bF6728A74B8E6de17` |
 | Recipient | `0xe48A096B9E74f064b13c17734af29F85E02d732a` |
@@ -134,3 +134,69 @@ asserting the selectors the chain actually returned.
 Mainnet. Testnet settles the two behavioural rules, not the economics: the
 `[measured]` gas and cost figures in the spec are mainnet numbers and stand
 unchanged. Tasks 15 and 16 remain to be run.
+
+
+---
+
+## Re-run against the post-audit anchor — later the same day
+
+Everything above was run against `0xf22B15fD…`, the **pre-audit** contract.
+The audit then changed `verifyItem`'s signature and repacked storage, and the
+fixed contract was redeployed to `0xb8907A07768D936D1D498257E5803c91033a8802`.
+Nothing was ever run against it.
+
+That left a gap worth naming plainly: `PayoutAnchor` has no admin and is not
+upgradeable, so the mainnet deploy freezes its API forever — and its largest
+consumer, the web app, had never once called the frozen version. The receipt
+page's anchor rung and the reconciliation view's completeness verdict both
+degraded silently on the only run that existed.
+
+So the run was sent again, unchanged, against the new anchor:
+
+```
+0x272c8fd186d17c042de60c9eb991b92b58fa960fee1f04842b01c7492c88a354
+```
+
+| | |
+|---|---|
+| Status | success, block 63257321 |
+| Anchor | `0xb8907A07768D936D1D498257E5803c91033a8802` |
+| runId | `0x43af2ad3e0ded4c512351beca5ed3b539cd68147825f4427289fd8dcbc731724` |
+| Logs | 11, the same 1 + 4 + 3 + 3 split as before |
+| Gas used | **209,927** |
+| Cost | 0.005248175 USDC |
+
+`runs[runId]` read back from the anchor: root `0xefcd388b…c46000` matching the
+manifest, payer the EOA, `itemCount` 3.
+
+### Finding 6 — the post-audit anchor costs 64,225 less gas per run
+
+| | Pre-audit anchor | Post-audit anchor |
+|---|---|---|
+| Gas, 3-token run | 274,152 | **209,927** |
+| Per payment | 91,384 | **69,976** |
+
+A 23% drop, measured as the difference between two runs of the same unchanged
+script against the two contracts — **not** an isolated measurement of any one
+change. Audit M-2 (moving `bytes32 root` ahead of `address payer` so the struct
+packs into fewer slots) is the only audit change that touches the write path,
+so it is the likely cause; M-1 altered `verifyItem`, a view function this run
+never calls, and H-1 changed `clientRunId`, which is derived off chain. Costing
+M-2 on its own would need a Foundry gas snapshot across the two versions, which
+has not been run.
+
+69,976 per payment is what `/why` now renders against the 114,193 the ordinary
+`Multicall3` route costs for a single payment.
+
+### What this unblocked
+
+Both web surfaces now verify completely against a real run, which is what the
+deploy-freeze argument required:
+
+- `/r/<txHash>` — **all five rungs pass**, including rung 5, the `verifyItem`
+  call. That signature had never been exercised outside Foundry.
+- `/run/<txHash>` — **"Complete run. All 3 committed payments are present."**
+  Previously "Completeness unknown", because the configured anchor held nothing.
+
+`PayoutAnchor.sol` can now be frozen. Tasks 15 and 16 remain, and still need
+mainnet funds.
