@@ -21,6 +21,11 @@ Violating any of these breaks the product's core claim, not just a feature.
 1. **The chain is the truth; our backend is a convenience.**
    `reconcile()` is a pure function over logs. It takes no database handle. If
    a feature needs our server to be correct, redesign it.
+   *One deliberate exception:* `packages/core/src/execute.ts` is async and
+   takes a client, because the payout sequence must be identical in the script
+   and the browser and two copies of it would drift across the gas floor. It
+   orchestrates; it decides nothing. `reconcile()` is still pure and still
+   takes no handle. Do not "tidy" this file out of core.
 2. **Our contract is never the *caller* in the payment path.**
    `CallFrom` rejects sender spoofing, so a custom contract calling `Memo`
    reverts. `PayoutAnchor` is a *sibling subcall* inside
