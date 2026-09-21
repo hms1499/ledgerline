@@ -35,6 +35,11 @@ export function parseCsv(text: string): ParsedCsv {
 
   // Excel writes a BOM; left in place it becomes part of the first header name.
   const clean = text.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  // Split on newlines before quote-aware parsing: a quoted field containing a
+  // literal newline (RFC 4180 permits it) will fragment. That's intentional — the
+  // four columns are invoiceId, token (symbol), address, and amount; none
+  // legitimately contains a newline, so multi-line quoted fields fail closed via
+  // the column-count check below rather than producing bogus data.
   const lines = clean.split("\n");
 
   const headerIndex = lines.findIndex((l) => l.trim() !== "");

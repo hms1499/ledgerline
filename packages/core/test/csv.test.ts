@@ -80,4 +80,15 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     const { issues } = parseCsv("InvoiceID,Token,To,Amount\na,b,c,d");
     expect(issues).toEqual([]);
   });
+
+  it("fails closed on a newline inside a quoted field rather than inventing a row", () => {
+    const text = `invoiceId,token,to,amount
+"INV
+001",USDC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
+    const { rows, issues } = parseCsv(text);
+    // Not supported, and deliberately so — but it must never yield a row that
+    // looks valid and pays the wrong thing.
+    expect(rows).toEqual([]);
+    expect(issues.length).toBeGreaterThan(0);
+  });
 });
