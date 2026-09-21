@@ -12,7 +12,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { arcTestnet } from "viem/chains";
 import { writeFileSync, mkdirSync } from "node:fs";
 import {
-  buildRun, buildPreflightData, clientRunIdFor, decodePreflightResult, gasPolicy,
+  buildRun, buildPreflightData, clientRunIdFor, runIdFor, decodePreflightResult, gasPolicy,
   explainRevert,
   USDC_TESTNET_ADDRESS, EURC_TESTNET_ADDRESS, CIRBTC_TESTNET_ADDRESS,
   type Manifest, type ManifestItem,
@@ -22,6 +22,11 @@ const RPC = process.env.ARC_TESTNET_RPC || "https://rpc.testnet.arc.io";
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
 const anchor = process.env.ANCHOR_TESTNET as `0x${string}`;
 const RECIPIENT = process.env.DEMO_RECIPIENT as `0x${string}`;
+
+// The period this run belongs to. Two months of an identical fixed-salary list
+// differ only by this, so it is what keeps the anchor's replay guard from
+// blocking next month's legitimate payment.
+const RUN_LABEL = process.env.RUN_LABEL || "testnet-2026-09";
 
 if (!anchor) throw new Error("ANCHOR_TESTNET is not set");
 if (!RECIPIENT) throw new Error("DEMO_RECIPIENT is not set");
@@ -34,7 +39,7 @@ const items: ManifestItem[] = [
 
 const manifest: Manifest = {
   // Deterministic, so re-running this script unchanged must hit RunExists.
-  clientRunId: clientRunIdFor(account.address, items),
+  clientRunId: clientRunIdFor(account.address, items, RUN_LABEL),
   payer: account.address,
   chainId: arcTestnet.id,
   runSalt: keccak256(toHex("ledgerline-testnet-salt-1")),
@@ -45,10 +50,14 @@ const publicClient = createPublicClient({ chain: arcTestnet, transport: http(RPC
 const walletClient = createWalletClient({ account, chain: arcTestnet, transport: http(RPC) });
 
 const built = buildRun(manifest, anchor);
-console.log(`\n  payer     ${account.address}`);
-console.log(`  anchor    ${anchor}`);
-console.log(`  runId     ${manifest.clientRunId}`);
-console.log(`  root      ${built.root}\n`);
+console.log(`\n  payer        ${account.address}`);
+console.log(`  anchor       ${anchor}`);
+console.log(`  runLabel     ${RUN_LABEL}`);
+console.log(`  clientRunId  ${manifest.clientRunId}`);
+// The key the anchor actually stores under. Looking up clientRunId on an
+// explorer returns an empty record that reads like "never committed".
+console.log(`  runId        ${runIdFor(account.address, manifest.clientRunId)}`);
+console.log(`  root         ${built.root}\n`);
 
 // Preflight first — never sign blind.
 console.log("  preflight:");

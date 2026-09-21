@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { decodeFunctionData } from "viem";
-import { buildRun, clientRunIdFor } from "../src/build.js";
+import { buildRun, clientRunIdFor, runIdFor } from "../src/build.js";
 import {
   MULTICALL3FROM_ADDRESS, MEMO_ADDRESS, USDC_ADDRESS, EURC_ADDRESS, CIRBTC_ADDRESS,
 } from "../src/constants.js";
@@ -96,30 +96,68 @@ describe("buildRun", () => {
     expect(() => buildRun(bad, ANCHOR)).toThrow(/amount/i);
   });
 
-  it("derives a deterministic clientRunId from payer and items", () => {
-    const a = clientRunIdFor(manifest.payer, manifest.items);
-    const b = clientRunIdFor(manifest.payer, [...manifest.items]);
+  it("derives a deterministic clientRunId from payer, items and label", () => {
+    const a = clientRunIdFor(manifest.payer, manifest.items, "2026-09");
+    const b = clientRunIdFor(manifest.payer, [...manifest.items], "2026-09");
     expect(a).toBe(b);
   });
 
+  it("lets an identical payout run again under a new label", () => {
+    // Audit H-1. A fixed monthly payroll has the same invoice ids and the same
+    // amounts every month. Without a label those runs collide, PayoutAnchor
+    // rejects the second with RunExists, and the payment becomes permanently
+    // impossible — a write-once anchor with no admin cannot be undone.
+    const september = clientRunIdFor(manifest.payer, manifest.items, "2026-09");
+    const october = clientRunIdFor(manifest.payer, manifest.items, "2026-10");
+    expect(october).not.toBe(september);
+  });
+
+  it("still blocks the same run submitted twice under the same label", () => {
+    const once = clientRunIdFor(manifest.payer, manifest.items, "2026-09");
+    const twice = clientRunIdFor(manifest.payer, manifest.items, "2026-09");
+    expect(twice).toBe(once);
+  });
+
+  it("rejects an empty label, which would silently restore the collision", () => {
+    expect(() => clientRunIdFor(manifest.payer, manifest.items, "")).toThrow(/label/i);
+  });
+
   it("changes clientRunId when any item changes, so a corrected run is a new run", () => {
-    const base = clientRunIdFor(manifest.payer, manifest.items);
+    const base = clientRunIdFor(manifest.payer, manifest.items, "2026-09");
     const edited = [...manifest.items];
     edited[0] = { ...edited[0]!, amount: 1_500_001n };
-    expect(clientRunIdFor(manifest.payer, edited)).not.toBe(base);
+    expect(clientRunIdFor(manifest.payer, edited, "2026-09")).not.toBe(base);
   });
 
   it("is payer-scoped, so two payers submitting the same list do not collide", () => {
     const other = "0x5555555555555555555555555555555555555555" as const;
-    expect(clientRunIdFor(other, manifest.items)).not.toBe(
-      clientRunIdFor(manifest.payer, manifest.items),
+    expect(clientRunIdFor(other, manifest.items, "2026-09")).not.toBe(
+      clientRunIdFor(manifest.payer, manifest.items, "2026-09"),
     );
   });
 
   it("ignores item order, so re-sorting a spreadsheet is not a new run", () => {
     const reversed = [...manifest.items].reverse();
-    expect(clientRunIdFor(manifest.payer, reversed)).toBe(
-      clientRunIdFor(manifest.payer, manifest.items),
+    expect(clientRunIdFor(manifest.payer, reversed, "2026-09")).toBe(
+      clientRunIdFor(manifest.payer, manifest.items, "2026-09"),
+    );
+  });
+
+  it("cannot be forged by an invoiceId carrying delimiter characters", () => {
+    // Found during the H-1 fix: the old implementation joined fields with "|"
+    // and rows with "\n", so one crafted row canonicalised identically to two
+    // honest ones. Every field is ABI-encoded at fixed width now.
+    const T = USDC_ADDRESS;
+    const R = "0x2222222222222222222222222222222222222222" as const;
+    const honest = [
+      { invoiceId: "A", token: T, to: R, amount: 1n },
+      { invoiceId: "B", token: T, to: R, amount: 2n },
+    ];
+    const crafted = [
+      { invoiceId: `A|${T.toLowerCase()}|${R.toLowerCase()}|1\nB`, token: T, to: R, amount: 2n },
+    ];
+    expect(clientRunIdFor(manifest.payer, crafted, "2026-09")).not.toBe(
+      clientRunIdFor(manifest.payer, honest, "2026-09"),
     );
   });
 
@@ -132,5 +170,25 @@ describe("buildRun", () => {
       })),
     };
     expect(() => buildRun(many, ANCHOR)).toThrow(/400/);
+  });
+});
+
+describe("runIdFor", () => {
+  it("mirrors PayoutAnchor.runIdFor exactly", () => {
+    // Measured against the deployed testnet anchor: runIdFor(payer, clientRunId)
+    // returned this for the values below.
+    const payer = "0x595558B91DFAA97840F2F00bF6728A74B8E6de17" as const;
+    const clientRunId =
+      "0x5787be5461a5e6d8669afadaa28f544125016fb24a3f53c88845523fc09faa63" as const;
+    expect(runIdFor(payer, clientRunId)).toBe(
+      "0x710619a6cf9f3351b81dfc44c718ed372ba246872040141c5a3ec6b40aee66a6",
+    );
+  });
+
+  it("is namespaced by payer, so nobody can squat another payer's id", () => {
+    const id = ("0x" + "11".repeat(32)) as `0x${string}`;
+    expect(runIdFor("0x1111111111111111111111111111111111111111", id)).not.toBe(
+      runIdFor("0x2222222222222222222222222222222222222222", id),
+    );
   });
 });

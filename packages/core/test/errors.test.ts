@@ -41,6 +41,7 @@ describe("explainRevert", () => {
     const r = explainRevert({ cause: { data: "0xc0d6b579" } });
     expect(r.name).toBe("RunExists");
     expect(r.message).toMatch(/already been committed/i);
+    expect(r.message).toMatch(/run label/i);
   });
 
   it("names EmptyRun", () => {

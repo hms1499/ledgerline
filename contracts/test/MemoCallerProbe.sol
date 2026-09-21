@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity 0.8.28;
 
 /**
  * @notice Probe for spec §6.1: does Arc's Memo precompile reject a

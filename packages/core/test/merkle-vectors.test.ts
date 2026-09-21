@@ -21,7 +21,17 @@ describe("merkle vectors", () => {
     writeFileSync(
       "test/fixtures/merkle-vectors.json",
       JSON.stringify(
-        { root, leaves, proofs: leaves.map((_, i) => proofFor(i)) },
+        {
+          root,
+          leaves,
+          proofs: leaves.map((_, i) => proofFor(i)),
+          // verifyItem now takes the fields and derives the leaf itself, so the
+          // cross-check has to feed it the same fields rather than a bare hash.
+          memoIds: items.map((i) => i.memoId),
+          tokens: items.map((i) => i.token),
+          recipients: items.map((i) => i.to),
+          amounts: items.map((i) => i.amount.toString()),
+        },
         null,
         2,
       ),

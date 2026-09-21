@@ -1,4 +1,4 @@
-import { concatHex, encodeFunctionData, keccak256, toHex } from "viem";
+import { encodeAbiParameters, encodeFunctionData, keccak256, toHex } from "viem";
 import { MEMO_ADDRESS, MULTICALL3FROM_ADDRESS } from "./constants.js";
 import { memoIdFor } from "./memo.js";
 import { buildTree, leafFor } from "./merkle.js";
@@ -7,23 +7,67 @@ import type { Address, Hex, Manifest, ManifestItem } from "./types.js";
 export const MAX_ITEMS_PER_RUN = 400;
 
 /**
- * Deterministic run id: the same payout list, submitted twice, produces the
- * same id — and PayoutAnchor rejects a repeat with RunExists. Double payment
- * is therefore blocked at the contract layer rather than in the UI, which
- * survives a closed browser tab, a double-clicked button, or a retry after a
- * timeout.
+ * Deterministic run id: the same payout list, submitted twice under the same
+ * label, produces the same id — and PayoutAnchor rejects the repeat with
+ * RunExists. Double payment is therefore blocked at the contract layer rather
+ * than in the UI, which survives a closed browser tab, a double-clicked
+ * button, or a retry after a timeout.
  *
  * Order-independent, because re-sorting a spreadsheet is not a different
  * payroll. Payer-scoped, so two companies paying identical lists never clash.
+ *
+ * `runLabel` is what separates "the same payroll, paid twice by accident" from
+ * "next month's payroll, which happens to be identical". A fixed salary run
+ * has the same invoice ids and amounts every month; without a label the second
+ * month collides with the first and PayoutAnchor refuses it permanently, since
+ * it is write-once and has no admin. Required rather than defaulted, because a
+ * default would restore exactly that failure silently.
+ *
+ * Every field is ABI-encoded at fixed width and the invoiceId is hashed, so no
+ * delimiter appearing inside an id can make one row canonicalise as two.
  */
-export function clientRunIdFor(payer: Address, items: ManifestItem[]): Hex {
-  const canonical = items
+export function clientRunIdFor(
+  payer: Address,
+  items: ManifestItem[],
+  runLabel: string,
+): Hex {
+  if (runLabel.length === 0) {
+    throw new Error(
+      "runLabel must not be empty — it is what lets an identical payout run again next period",
+    );
+  }
+  if (items.length === 0) throw new Error("cannot derive a run id from an empty item list");
+
+  const itemHashes = items
     .map((i) =>
-      [i.invoiceId, i.token.toLowerCase(), i.to.toLowerCase(), i.amount.toString()].join("|"),
+      keccak256(
+        encodeAbiParameters(
+          [{ type: "bytes32" }, { type: "address" }, { type: "address" }, { type: "uint256" }],
+          [keccak256(toHex(i.invoiceId)), i.token, i.to, i.amount],
+        ),
+      ),
     )
-    .sort()
-    .join("\n");
-  return keccak256(concatHex([payer.toLowerCase() as Hex, toHex(canonical)]));
+    .sort();
+
+  return keccak256(
+    encodeAbiParameters(
+      [{ type: "address" }, { type: "bytes32" }, { type: "bytes32[]" }],
+      [payer, keccak256(toHex(runLabel)), itemHashes],
+    ),
+  );
+}
+
+/**
+ * The on-chain run key, mirroring PayoutAnchor.runIdFor. The contract derives
+ * it from msg.sender, so `payer` must be the EOA that signs — not the batching
+ * contract. Kept here because `clientRunId` and `runId` are different values
+ * and looking up the wrong one on an explorer returns an empty record that
+ * reads exactly like "the run was never committed".
+ */
+export function runIdFor(payer: Address, clientRunId: Hex): Hex {
+  return keccak256(
+    encodeAbiParameters([{ type: "address" }, { type: "bytes32" }], [payer, clientRunId]),
+  );
 }
 
 export interface BuiltRun {

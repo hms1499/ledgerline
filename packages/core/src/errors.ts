@@ -18,9 +18,10 @@ const KNOWN: Record<string, { name: string; message: string }> = {
   [RUN_EXISTS_SELECTOR]: {
     name: "RunExists",
     message:
-      "This exact payout list has already been committed by this payer, so it was refused. " +
-      "Double payment is blocked at the contract layer, not in the UI. " +
-      "If you meant to pay again, change the list — a corrected run is a new run.",
+      "This payout list has already been committed by this payer under this run label, " +
+      "so it was refused. Double payment is blocked at the contract layer, not in the UI. " +
+      "If this is a later period paying the same amounts, give it its own run label. " +
+      "If you are correcting the list, changing any line already makes it a new run.",
   },
   [EMPTY_RUN_SELECTOR]: {
     name: "EmptyRun",
