@@ -24,6 +24,25 @@ importers:
         specifier: ^2.1.0
         version: 2.1.9
 
+  packages/cli:
+    dependencies:
+      '@ledgerline/core':
+        specifier: workspace:*
+        version: link:../core
+      viem:
+        specifier: ^2.56.0
+        version: 2.56.8(typescript@5.9.3)
+    devDependencies:
+      tsx:
+        specifier: ^4.19.0
+        version: 4.23.15
+      typescript:
+        specifier: ^5.7.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.0
+        version: 2.1.9
+
   packages/core:
     dependencies:
       viem:
