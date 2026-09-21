@@ -2,7 +2,9 @@
   "name": "@ledgerline/cli",
   "version": "0.1.0",
   "type": "module",
-  "bin": { "arc-reconcile": "./src/index.ts" },
+  "bin": {
+    "arc-reconcile": "./src/index.ts"
+  },
   "scripts": {
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
@@ -12,8 +14,9 @@
     "viem": "^2.56.0"
   },
   "devDependencies": {
-    "vitest": "^2.1.0",
+    "@types/node": "^26.6.2",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0",
-    "tsx": "^4.19.0"
+    "vitest": "^2.1.0"
   }
 }
