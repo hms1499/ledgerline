@@ -149,8 +149,19 @@ button. The manifest JSON download remains, demoted from sole lifeline to
 convenience backup.
 
 `/run/<txHash>` gains a **Recover receipt links** action driving §2.2, which
-turns "closed the tab" from a catastrophe into one click — provided the payer
-still has the `txHash`. Keeping that findable is §7.
+turns "closed the tab" from a catastrophe into one click.
+
+That needs the `txHash`, which is findable three ways, none of them ours: the
+downloaded manifest carries it, the wallet lists every transaction it signed,
+and the explorer indexes the payer's address permanently. `[measured]`
+2026-09-21 — Blockscout returned all 17 transactions for the payer address,
+including runs five hours old, well past the ~2 hour window `eth_getLogs`
+reaches at Arc's 0.725 s blocks.
+
+That measurement is why the application must not try to search the chain for
+past runs, and why it does not need an index of its own either. The masthead
+carries a link to the connected address on the explorer, and that is the whole
+feature.
 
 ---
 
@@ -391,8 +402,8 @@ Route `/new`, not `/run/new`, to keep it clear of `/run/<txHash>`.
 ```
 
 Wallet connection is **not a step**. It lives in the masthead — address,
-network, disconnect, and a link to `/runs` — always visible, and step 3 gates
-on it. Requiring a
+network, disconnect, and a link to the address on the explorer — always
+visible, and step 3 gates on it. Requiring a
 wallet before someone may look at their own CSV is a bad habit of the genre.
 
 ### 6.1 Files
@@ -407,9 +418,7 @@ app/new/StepPreview.tsx
 app/new/StepPreflight.tsx
 app/new/StepSend.tsx
 app/new/Result.tsx
-app/runs/page.tsx          local run history (§7)
 lib/wallet.ts
-lib/history.ts             localStorage index, no authority
 ```
 
 The existing ledger-paper vocabulary is reused throughout — `.sheet`,
@@ -417,60 +426,7 @@ The existing ledger-paper vocabulary is reused throughout — `.sheet`,
 
 ---
 
-## 7. Run history
-
-### 7.1 The problem the source-of-truth principle creates
-
-`[measured]` on Arc testnet, 2026-09-21: the most recent 10,000 blocks span
-7,247 seconds — **2.01 hours**, at an average block time of 0.725 s.
-
-The public RPC caps `eth_getLogs` at roughly 2,000 results over ~10,000 blocks.
-`RunCommitted` does index `payer`, so filtering by it is possible — for the
-last two hours. Beyond that the chain is, in practice, unsearchable.
-
-So a payer who loses a `txHash` has lost the run. Opening the application
-tomorrow, there is no way to find last month's payroll. This compounds with
-§2: recovery needs the `txHash` *and* the `runLabel`, and losing the first
-makes the second worthless.
-
-### 7.2 A local index that holds no authority
-
-Invariant #1 says `reconcile()` must take no database handle and that no
-feature may need our server to be *correct*. It does not forbid an index for
-*finding* things. The distinction is the whole design:
-
-- Stored in the payer's browser (`localStorage`), never on a server of ours.
-- Holds `txHash`, `runLabel`, `chainId`, timestamp, item count, per-token
-  totals. Enough to find a run, never enough to prove one.
-- **Opening an entry re-reads the chain.** Nothing displayed comes from
-  storage. Where storage and chain disagree, the chain wins and the entry is
-  marked stale.
-- Deleting the whole history loses nothing that the chain does not still hold,
-  provided the payer kept the `txHash`.
-
-An entry is written **as soon as a `txHash` exists**, not on `confirmed`. A
-`dropped` or `pending` run is precisely the one worth finding again.
-
-### 7.3 What it deliberately is not
-
-It is per-browser and per-device, and it does not sync. A payer on a new laptop
-sees an empty list. That is a real limitation, and the downloaded manifest
-remains the portable record — this index is a convenience on top of it, not a
-replacement for it.
-
-It also holds `runLabel` in plain text, which may name a client or a pay
-period. That is the same exposure as browser history on a shared machine, and
-the history screen carries an explicit clear action for it.
-
-### 7.4 Screen
-
-Route `/runs`: a list of local entries, newest first, each linking to
-`/run/<txHash>`. Reachable from the masthead. Empty state explains what the
-list is and why it may be empty on this device.
-
----
-
-## 8. Testing
+## 7. Testing
 
 **Core, TDD with vitest.** `parseCsv` and `resolveRows` against a case table:
 BOM, CRLF, quoted fields, missing and extra columns, every amount case in §3.3,
@@ -496,19 +452,19 @@ Two questions belong to the wallet and can only be answered by hand:
 2. Does re-signing the same message produce the same signature? — answered in
    passing the first time anyone uses recovery, because §2.2 checks itself.
 
-### 8.1 Definition of done
+### 7.1 Definition of done
 
 One complete three-token payout run on Arc testnet, executed entirely from the
 browser with no script involved, followed by opening a receipt link produced by
 the results screen and seeing all five rungs pass.
 
-Then, from a fresh page load: find that run again in `/runs`, open it, use
-**Recover receipt links**, and get the same links back — proving §2.2 and §7
-together, and answering the wallet-determinism question in passing.
+Then, from a fresh page load with nothing but that `txHash`: open
+`/run/<txHash>`, use **Recover receipt links**, and get the same links back —
+proving §2.2 and answering the wallet-determinism question in passing.
 
 ---
 
-## 9. Out of scope, with reasons
+## 8. Out of scope, with reasons
 
 | Item | Why not |
 |---|---|
@@ -516,6 +472,6 @@ together, and answering the wallet-determinism question in passing.
 | `allowFailure` opt-in | Parent §4.3 offers it. Adds a hard-to-test branch for a case this MVP does not have. Default stays `false`: a whole run reverts rather than paying some people |
 | An email column in the CSV | Assumes the payer holds a mailing list; rejected when the format was chosen, and not to be reintroduced by the back door |
 | wagmi / RainbowKit | §5 |
-| Development-only injected provider | §8 |
-| Syncing run history across devices | §7.3 — would need a server holding payer data, which is the shape invariant #1 exists to prevent. The downloaded manifest is the portable record |
+| Development-only injected provider | §7 |
+| A run-history index of our own | §2.4 — the manifest, the wallet and the explorer already record every run permanently. A stored index, a screen and staleness checks to replace one link |
 | Real fee bump (replacement transaction at the same nonce) | Parent §4.3 describes it. Requires nonce management, `replacement underpriced` handling, and the race where the original lands after the bump. The write-once anchor already makes a plain re-run safe, which covers the same ground for far less risk |
