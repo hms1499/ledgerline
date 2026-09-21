@@ -1,3 +1,7 @@
+import { getAddress, isAddress } from "viem";
+import type { TokenSet } from "./constants.js";
+import type { ManifestItem } from "./types.js";
+
 /** One row as it appears in the file. `amount` is still text: converting it
  *  needs the token's on-chain decimals, which is Task 2's job. */
 export interface ParsedRow {
@@ -108,4 +112,110 @@ function splitLine(line: string): string[] {
   }
   out.push(field);
   return out;
+}
+
+export interface ResolvedRow extends ManifestItem {
+  line: number;
+}
+
+/**
+ * Decimal text to base units, by string arithmetic. No floating point: at six
+ * decimals a double already loses digits on values a payroll reaches, and a
+ * rounding error here is a wrong payment.
+ *
+ * Refuses rather than rounds. Silently truncating "0.0000001" for a 6-decimal
+ * token would pay zero and report success.
+ */
+export function toBaseUnits(
+  text: string,
+  decimals: number,
+): { ok: true; value: bigint } | { ok: false; reason: string } {
+  const t = text.trim();
+  if (t === "") return { ok: false, reason: "Amount is empty." };
+  if (!/^\d*\.?\d*$/.test(t) || t === ".") {
+    return {
+      ok: false,
+      reason: `"${text}" is not a plain decimal number. Scientific notation, thousands separators and negative values are not accepted.`,
+    };
+  }
+
+  const [whole = "", frac = ""] = t.split(".");
+  if (frac.length > decimals) {
+    return {
+      ok: false,
+      reason: `"${text}" has ${frac.length} decimal places but this token has ${decimals} decimal place${decimals === 1 ? "" : "s"}. Rounding a payment is not something this tool will do quietly.`,
+    };
+  }
+
+  const value = BigInt((whole || "0") + frac.padEnd(decimals, "0"));
+  if (value === 0n) {
+    return { ok: false, reason: "Amount is zero, which is legal on chain but meaningless in a payout." };
+  }
+  return { ok: true, value };
+}
+
+/**
+ * Parsed text into manifest items.
+ *
+ * `decimals` is keyed by lowercased token address and can only come from
+ * `decimals()` on chain. Requiring it here is how the "never hardcode
+ * decimals" rule becomes a type signature instead of a comment.
+ */
+export function resolveRows(
+  rows: ParsedRow[],
+  tokens: TokenSet,
+  decimals: Record<string, number>,
+): { items: ResolvedRow[]; issues: CsvIssue[] } {
+  const items: ResolvedRow[] = [];
+  const issues: CsvIssue[] = [];
+
+  const bySymbol = new Map<string, `0x${string}`>(
+    Object.entries(tokens).map(([symbol, address]) => [symbol.toLowerCase(), address]),
+  );
+
+  for (const row of rows) {
+    if (row.invoiceId === "") {
+      issues.push({ line: row.line, message: "Invoice reference is empty." });
+      continue;
+    }
+
+    const token = bySymbol.get(row.tokenSymbol.toLowerCase());
+    if (!token) {
+      issues.push({
+        line: row.line,
+        message: `Unknown token "${row.tokenSymbol}". This chain has ${[...bySymbol.keys()].join(", ")}.`,
+      });
+      continue;
+    }
+
+    const d = decimals[token.toLowerCase()];
+    if (d === undefined) {
+      issues.push({
+        line: row.line,
+        message: `No on-chain decimals were read for ${row.tokenSymbol}.`,
+      });
+      continue;
+    }
+
+    if (!isAddress(row.to)) {
+      issues.push({ line: row.line, message: `"${row.to}" is not a valid address.` });
+      continue;
+    }
+
+    const amount = toBaseUnits(row.amount, d);
+    if (!amount.ok) {
+      issues.push({ line: row.line, message: amount.reason });
+      continue;
+    }
+
+    items.push({
+      line: row.line,
+      invoiceId: row.invoiceId,
+      token,
+      to: getAddress(row.to),
+      amount: amount.value,
+    });
+  }
+
+  return { items, issues };
 }

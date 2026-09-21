@@ -92,3 +92,105 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     expect(issues.length).toBeGreaterThan(0);
   });
 });
+
+import { toBaseUnits, resolveRows } from "../src/csv.js";
+import { tokensForChain, ARC_TESTNET_CHAIN_ID } from "../src/constants.js";
+
+const TOKENS = tokensForChain(ARC_TESTNET_CHAIN_ID);
+const DECIMALS = {
+  [TOKENS.USDC.toLowerCase()]: 6,
+  [TOKENS.EURC.toLowerCase()]: 6,
+  [TOKENS.cirBTC.toLowerCase()]: 8,
+};
+const TO = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+
+describe("toBaseUnits", () => {
+  it("converts a decimal amount at the token's scale", () => {
+    expect(toBaseUnits("0.10", 6)).toEqual({ ok: true, value: 100_000n });
+    expect(toBaseUnits("0.00001", 8)).toEqual({ ok: true, value: 1_000n });
+    expect(toBaseUnits("1", 6)).toEqual({ ok: true, value: 1_000_000n });
+  });
+
+  it("keeps full precision on a value that would lose digits as a float", () => {
+    // 123456789.123456 is not exactly representable in IEEE 754 binary64.
+    expect(toBaseUnits("123456789.123456", 6)).toEqual({
+      ok: true,
+      value: 123_456_789_123_456n,
+    });
+  });
+
+  it("accepts trailing zeros and a bare leading dot", () => {
+    expect(toBaseUnits("0.1000", 6)).toEqual({ ok: true, value: 100_000n });
+    expect(toBaseUnits(".1", 6)).toEqual({ ok: true, value: 100_000n });
+  });
+
+  it("refuses more precision than the token has, rather than rounding", () => {
+    const r = toBaseUnits("0.0000001", 6);
+    expect(r.ok).toBe(false);
+    expect((r as { reason: string }).reason).toMatch(/6 decimal/);
+  });
+
+  it("refuses scientific notation, separators, negatives, zero and empty", () => {
+    for (const bad of ["1e-7", "1,000.50", "-5", "0", "", "abc", "1.2.3"]) {
+      expect(toBaseUnits(bad, 6).ok, bad).toBe(false);
+    }
+  });
+});
+
+describe("resolveRows", () => {
+  const row = (over: Partial<import("../src/csv.js").ParsedRow> = {}) => ({
+    line: 2, invoiceId: "INV-1", tokenSymbol: "USDC", to: TO, amount: "0.10", ...over,
+  });
+
+  it("resolves a symbol to the chain's token address and scales the amount", () => {
+    const { items, issues } = resolveRows([row()], TOKENS, DECIMALS);
+    expect(issues).toEqual([]);
+    expect(items[0]).toEqual({
+      line: 2, invoiceId: "INV-1", token: TOKENS.USDC, to: TO, amount: 100_000n,
+    });
+  });
+
+  it("uses each token's own decimals, not one shared number", () => {
+    const { items } = resolveRows(
+      [row({ tokenSymbol: "cirBTC", amount: "0.00001" })], TOKENS, DECIMALS,
+    );
+    expect(items[0]!.amount).toBe(1_000n);
+  });
+
+  it("matches a token symbol regardless of case", () => {
+    const { items, issues } = resolveRows([row({ tokenSymbol: "usdc" })], TOKENS, DECIMALS);
+    expect(issues).toEqual([]);
+    expect(items[0]!.token).toBe(TOKENS.USDC);
+  });
+
+  it("reports an unknown symbol against its line and drops the row", () => {
+    const { items, issues } = resolveRows([row({ tokenSymbol: "DAI" })], TOKENS, DECIMALS);
+    expect(items).toEqual([]);
+    expect(issues[0]).toEqual({ line: 2, message: expect.stringMatching(/DAI/) });
+  });
+
+  it("reports a malformed recipient address", () => {
+    const { items, issues } = resolveRows([row({ to: "0x123" })], TOKENS, DECIMALS);
+    expect(items).toEqual([]);
+    expect(issues[0]!.message).toMatch(/address/i);
+  });
+
+  it("reports an empty invoice id, which would make a meaningless reference", () => {
+    const { issues } = resolveRows([row({ invoiceId: "" })], TOKENS, DECIMALS);
+    expect(issues[0]!.message).toMatch(/invoice/i);
+  });
+
+  it("collects every bad row instead of stopping at the first", () => {
+    const { items, issues } = resolveRows(
+      [row({ line: 2, tokenSymbol: "DAI" }), row({ line: 3, to: "nope" }), row({ line: 4 })],
+      TOKENS, DECIMALS,
+    );
+    expect(issues).toHaveLength(2);
+    expect(items).toHaveLength(1);
+  });
+
+  it("fails loudly when the decimals table is missing a token it was given", () => {
+    const { issues } = resolveRows([row()], TOKENS, {});
+    expect(issues[0]!.message).toMatch(/decimals/i);
+  });
+});
