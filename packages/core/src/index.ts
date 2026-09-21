@@ -6,3 +6,4 @@ export * from "./join.js";
 export * from "./reconcile.js";
 export * from "./merkle.js";
 export * from "./build.js";
+export * from "./preflight.js";
