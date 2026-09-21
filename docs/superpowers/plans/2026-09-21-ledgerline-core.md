@@ -12,6 +12,51 @@
 
 **Scope:** This plan covers the core libraries, the contract, the CLI, and the real mainnet proof (spec tasks T1–T8, T13, T14). The web surfaces (receipt page, reconciliation view, `/why`, create-run) are **Plan 2**, deliberately deferred because their layout depends on the reconciler's final output shape.
 
+---
+
+## Status — updated 2026-09-21
+
+**Tasks 1–14 complete and verified. Tasks 15–16 blocked on mainnet funding.**
+
+| | |
+|---|---|
+| Done | Tasks 1–14, every step ticked below |
+| Blocked | Tasks 15–16 — need USDC, EURC and cirBTC in a mainnet wallet |
+| Verified | 94 TypeScript tests, 21 Solidity tests, typecheck clean on 3 packages |
+| Testnet anchor | `0xb8907A07768D936D1D498257E5803c91033a8802` (chain 5042002) |
+
+**This plan's code blocks are no longer a faithful copy of the codebase.** A
+pre-mainnet audit changed three of them, and running the chain disproved a
+fourth. Each divergence is annotated inline below as a `> **Changed after
+writing**` note. Where a note and a code block disagree, the note is right.
+
+Summary of what moved, and why:
+
+| Task | Plan says | Reality | Reason |
+|---|---|---|---|
+| 9 | `verifyItem(runId, leaf, proof)` | takes the item's fields, derives the leaf | audit M-1 — the root and every internal node verified as members |
+| 9 | `address payer` declared first | `bytes32 root` first | audit M-2 — 22,140 gas per commit |
+| 11 | `clientRunIdFor(payer, items)` | `runLabel` required, fields ABI-encoded | audit H-1 — an identical repeat payout was permanently blocked |
+| 14, 16 | `testnet-run.ts` + `mainnet-run.ts` | one `run-payout.ts --network` | two near-identical scripts drift, and drift costs real money |
+| 16 | naive batch shows `from` = the batcher | **false** — `from` stays the payer | measured; only a custodial batcher loses identity |
+
+Evidence: `docs/notes/2026-09-21-preflight-audit.md`,
+`docs/notes/2026-09-21-testnet-findings.md`,
+`docs/notes/2026-09-21-negative-control.md`.
+
+**Plan 2 started early, deliberately.** The receipt page is built and running
+against testnet, before Tasks 15–16. `PayoutAnchor` has no admin and is not
+upgradeable, so deploying it to mainnet freezes its API forever; the web app is
+its largest consumer and had not exercised it. That judgement paid for itself
+immediately — building the receipt page found that spec §4.5.1's URL scheme
+could not satisfy its own rung 3, and that its rung 5 called the `verifyItem`
+signature the audit had already removed.
+
+Sequence from here: finish Plan 2 against testnet, freeze `PayoutAnchor.sol`,
+then run Tasks 15–16 once.
+
+---
+
 ## Global Constraints
 
 - **Chain:** Arc mainnet, chainId `5042`. viem ships `arc` — never hand-roll a chain definition.
@@ -60,6 +105,16 @@ ledgerline/
 
 Split by responsibility, not layer. `join.ts` is separate from `logs.ts` because the join is the product's core claim and deserves its own test surface; `reconcile.ts` is separate again because it is the only file that knows about intent.
 
+> **Changed after writing.** Three source files are missing from the tree above.
+> `preflight.ts` is created by Task 12 and was simply omitted here. `errors.ts`
+> came out of the audit — the replay guard worked but the tooling reported
+> "reverted for an unknown reason", because a selector had been guessed rather
+> than derived. `verify.ts` is Plan 2's verification ladder, kept in core so it
+> stays a pure function over evidence and gets tested against the fixture.
+> `@ledgerline/core` also builds to `dist/` now: Turbopack does not map `.js`
+> imports onto `.ts` sources, and `npx arc-reconcile` is a submission artifact
+> that should not depend on tsx resolving a non-standard import shape.
+
 ---
 
 ## Task 1: Workspace scaffold
@@ -74,7 +129,7 @@ Split by responsibility, not layer. `join.ts` is separate from `logs.ts` because
 - Consumes: nothing
 - Produces: a green `pnpm test` and `forge test`, workspace package name `@ledgerline/core`
 
-- [ ] **Step 1: Create the workspace root**
+- [x] **Step 1: Create the workspace root**
 
 `package.json`:
 ```json
@@ -116,7 +171,7 @@ packages:
 }
 ```
 
-- [ ] **Step 2: Create the core package**
+- [x] **Step 2: Create the core package**
 
 `packages/core/package.json`:
 ```json
@@ -156,7 +211,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 3: Write a smoke test**
+- [x] **Step 3: Write a smoke test**
 
 `packages/core/test/smoke.test.ts`:
 ```ts
@@ -175,12 +230,12 @@ describe("toolchain", () => {
 This value was measured against Arc mainnet tooling; if it fails, the hashing
 assumptions behind the whole design are wrong and nothing else should proceed.
 
-- [ ] **Step 4: Install and run**
+- [x] **Step 4: Install and run**
 
 Run: `pnpm install && pnpm test`
 Expected: 1 test passes.
 
-- [ ] **Step 5: Scaffold Foundry**
+- [x] **Step 5: Scaffold Foundry**
 
 Run:
 ```bash
@@ -205,12 +260,17 @@ arc_testnet = "https://rpc.testnet.arc.io"
 
 Delete the generated `src/Counter.sol`, `test/Counter.t.sol`, `script/Counter.s.sol`.
 
-- [ ] **Step 6: Run Foundry**
+> **Changed after writing.** Foundry 1.5 removed `--no-commit`; it is the
+> default and passing it is an error. `forge init --no-git` also leaves
+> forge-std as untracked files rather than a submodule, so it was reinstalled
+> with `forge install` to match OpenZeppelin.
+
+- [x] **Step 6: Run Foundry**
 
 Run: `cd contracts && forge build && forge test`
 Expected: builds clean, 0 tests.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add -A
@@ -231,7 +291,7 @@ git commit -m "chore: scaffold pnpm workspace and foundry project"
   type vocabulary (`RawLog`, `PaymentRecord`, `ManifestItem`, `Manifest`,
   `ReconcileStatus`, `ReconcileRow`, `ReconcileResult`)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/constants.test.ts`:
 ```ts
@@ -269,12 +329,12 @@ describe("constants", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test`
 Expected: FAIL — cannot resolve `../src/constants.js`.
 
-- [ ] **Step 3: Write constants**
+- [x] **Step 3: Write constants**
 
 `packages/core/src/constants.ts`:
 ```ts
@@ -315,7 +375,7 @@ export const MIN_MAX_FEE_WEI = 25_000_000_000n;
 export const MIN_PRIORITY_FEE_WEI = 1_000_000_000n;
 ```
 
-- [ ] **Step 4: Write types**
+- [x] **Step 4: Write types**
 
 `packages/core/src/types.ts`:
 ```ts
@@ -405,12 +465,12 @@ export interface ReconcileResult {
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test`
 Expected: PASS, 5 assertions.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/constants.ts packages/core/src/types.ts packages/core/test/constants.test.ts
@@ -429,7 +489,7 @@ git commit -m "feat(core): add Arc constants and shared types"
 - Consumes: `Hex` from `types.ts`
 - Produces: `memoIdFor(runSalt: Hex, invoiceId: string): Hex`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/memo.test.ts`:
 ```ts
@@ -463,12 +523,12 @@ describe("memoIdFor", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test memo`
 Expected: FAIL — cannot resolve `../src/memo.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 `packages/core/src/memo.ts`:
 ```ts
@@ -494,12 +554,12 @@ export function memoIdFor(runSalt: Hex, invoiceId: string): Hex {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test memo`
 Expected: PASS, 4 assertions.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/memo.ts packages/core/test/memo.test.ts
@@ -524,7 +584,7 @@ This runs `debug_traceCall` against real mainnet state with a balance override,
 so it costs nothing and sends no transaction. Regenerating it re-validates the
 architecture at implementation time.
 
-- [ ] **Step 1: Write the capture script**
+- [x] **Step 1: Write the capture script**
 
 `scripts/capture-fixture.ts`:
 ```ts
@@ -624,17 +684,23 @@ writeFileSync(
 console.log(`captured ${logs.length} logs`);
 ```
 
-- [ ] **Step 2: Run it**
+- [x] **Step 2: Run it**
 
+
+
+> **Changed after writing.** `scripts/` sits outside `packages/*`, so it cannot
+> resolve `viem` from the workspace. `viem`, `tsx` and `@ledgerline/core` were
+> added to the root `devDependencies`; without them this command fails on the
+> first import.
 Run: `pnpm dlx tsx scripts/capture-fixture.ts`
 Expected: prints `captured 8 logs` (2 payments × [BeforeMemo, Memo, ERC-20 Transfer, system Transfer]). Any count other than 8 means the chain's behaviour changed — stop and investigate before continuing.
 
-- [ ] **Step 3: Sanity-check the fixture by eye**
+- [x] **Step 3: Sanity-check the fixture by eye**
 
 Run: `cat packages/core/test/fixtures/mainnet-2pay.json | head -40`
 Expected: the first log's `topics[0]` is the `BeforeMemo` topic; at least one log has `address` equal to `0xffff…fffe` (the system emitter we will exclude).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/capture-fixture.ts packages/core/test/fixtures/mainnet-2pay.json
@@ -655,7 +721,7 @@ git commit -m "test(core): capture real Arc mainnet logs as a reconciler fixture
   - `decodeMemoLogs(logs: RawLog[]): MemoEvent[]`
   - `decodeTransferLogs(logs: RawLog[]): TransferEvent[]` — system emitter excluded
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/logs.test.ts`:
 ```ts
@@ -715,12 +781,12 @@ describe("decodeTransferLogs", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test logs`
 Expected: FAIL — cannot resolve `../src/logs.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 `packages/core/src/logs.ts`:
 ```ts
@@ -797,12 +863,12 @@ export function decodeTransferLogs(logs: RawLog[]): TransferEvent[] {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test logs`
 Expected: PASS, 7 assertions.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/logs.ts packages/core/test/logs.test.ts
@@ -823,7 +889,7 @@ git commit -m "feat(core): decode Memo and Transfer logs, excluding the system e
 
 This is the product's core claim. `Memo` emits `callDataHash = keccak256(forwarded calldata)`, and the forwarded calldata is exactly `transfer(to, value)`. So a candidate `Transfer` can be **proven** to belong to a memo by rebuilding and hashing. No positional matching, so log ordering is irrelevant.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/join.test.ts`:
 ```ts
@@ -888,12 +954,12 @@ describe("joinPayments", () => {
 
 The last test is the property that matters: change one byte of the payment and the join refuses it.
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test join`
 Expected: FAIL — cannot resolve `../src/join.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 `packages/core/src/join.ts`:
 ```ts
@@ -963,12 +1029,12 @@ export function joinPayments(logs: RawLog[]): {
 
 `consumed` prevents two identical payments (same recipient, same amount, same token) in one run from both matching the first transfer.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test join`
 Expected: PASS, 6 assertions.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/join.ts packages/core/test/join.test.ts
@@ -987,7 +1053,7 @@ git commit -m "feat(core): join payments to references by callDataHash"
 - Consumes: `join.ts`, `memo.ts`, `types.ts`
 - Produces: `reconcile(logs: RawLog[], manifest?: Manifest): ReconcileResult`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/reconcile.test.ts`:
 ```ts
@@ -1090,12 +1156,12 @@ describe("reconcile with a manifest", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test reconcile`
 Expected: FAIL — cannot resolve `../src/reconcile.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 `packages/core/src/reconcile.ts`:
 ```ts
@@ -1204,12 +1270,12 @@ function unexpectedRow(p: PaymentRecord): ReconcileRow {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test reconcile`
 Expected: PASS, 7 assertions.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/reconcile.ts packages/core/test/reconcile.test.ts
@@ -1236,7 +1302,7 @@ the leaf preimage is 128 bytes (bytes32 + address + address + uint256 ABI-encode
 while an internal node preimage is always 64 bytes, so the two can never be
 confused and second-preimage protection is already structural.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/merkle.test.ts`:
 ```ts
@@ -1313,12 +1379,12 @@ describe("buildTree", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test merkle`
 Expected: FAIL — cannot resolve `../src/merkle.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 `packages/core/src/merkle.ts`:
 ```ts
@@ -1381,12 +1447,12 @@ export function buildTree(leaves: Hex[]): { root: Hex; proofFor(index: number): 
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test merkle`
 Expected: PASS, 5 assertions.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/merkle.ts packages/core/test/merkle.test.ts
@@ -1407,10 +1473,26 @@ git commit -m "feat(core): add OZ-compatible Merkle tree for manifest commitment
   - `commit(bytes32 clientRunId, bytes32 root, uint32 itemCount)`
   - `runs(bytes32 runId) → (address payer, bytes32 root, uint32 itemCount, uint64 timestamp)`
   - `verifyItem(bytes32 runId, bytes32 leaf, bytes32[] proof) → bool`
+
+> **Changed after writing — audit M-1.** This signature took a caller-supplied
+> `leaf`, and `MerkleProof.processProof` returns the leaf unchanged for an empty
+> proof, so `verifyItem(runId, root, [])` returned **true** and every internal
+> node verified with its sibling's proof. The 128-vs-64-byte preimage argument
+> in Task 8 is true but answers a different question: it stops someone *finding*
+> a preimage for a node, not *passing the node's hash straight in*. The shipped
+> signature takes the item's fields and derives the leaf itself:
+>
+> ```solidity
+> function verifyItem(bytes32 runId, bytes32 memoId, address token,
+>                     address to, uint256 amount, bytes32[] calldata proof)
+> ```
+>
+> `isCommitted(bytes32 runId)` was added alongside it, because a lone `false`
+> could not distinguish "no such run" from "proof did not verify".
   - `runIdFor(address payer, bytes32 clientRunId) → bytes32`
   - `event RunCommitted(bytes32 indexed runId, address indexed payer, bytes32 root, uint32 itemCount)`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `contracts/test/PayoutAnchor.t.sol`:
 ```solidity
@@ -1513,12 +1595,12 @@ contract PayoutAnchorTest is Test {
 }
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `cd contracts && forge test`
 Expected: FAIL — `PayoutAnchor.sol` not found.
 
-- [ ] **Step 3: Write the contract**
+- [x] **Step 3: Write the contract**
 
 `contracts/src/PayoutAnchor.sol`:
 ```solidity
@@ -1543,6 +1625,16 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
  *      a contract calling Memo reverts.
  */
 contract PayoutAnchor {
+    struct Run {
+        address payer;
+        bytes32 root;
+        uint32 itemCount;
+        uint64 timestamp;
+    }contract PayoutAnchor {
+    // CHANGED (audit M-2): `root` is declared first in the shipped contract, so
+    // payer+itemCount+timestamp pack into one slot and the struct costs two
+    // rather than three. Measured at 22,140 gas per commit. The pragma is also
+    // pinned to 0.8.28 rather than ^0.8.28, for reproducible verification.
     struct Run {
         address payer;
         bytes32 root;
@@ -1593,12 +1685,12 @@ contract PayoutAnchor {
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `cd contracts && forge test -vv`
 Expected: PASS, 8 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add contracts/src/PayoutAnchor.sol contracts/test/PayoutAnchor.t.sol
@@ -1621,7 +1713,13 @@ git commit -m "feat(contracts): add PayoutAnchor for manifest commitments"
 Without this, the two Merkle implementations can silently disagree and the
 failure surfaces only on mainnet, with real money and no easy diagnosis.
 
-- [ ] **Step 1: Generate vectors from the TypeScript implementation**
+> **Changed after writing.** The cross-check now feeds `verifyItem` the item
+> fields, following the M-1 fix, so the vectors file carries `memoIds`,
+> `tokens`, `recipients` and `amounts` alongside the leaves. A third test
+> asserts that `leafFor()` and the contract encode a leaf identically — the
+> thing that would actually break first if they ever drifted.
+
+- [x] **Step 1: Generate vectors from the TypeScript implementation**
 
 `packages/core/test/merkle-vectors.test.ts`:
 ```ts
@@ -1660,12 +1758,12 @@ describe("merkle vectors", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to produce the vectors**
+- [x] **Step 2: Run it to produce the vectors**
 
 Run: `pnpm --filter @ledgerline/core test merkle-vectors`
 Expected: PASS, and `packages/core/test/fixtures/merkle-vectors.json` exists.
 
-- [ ] **Step 3: Write the Solidity cross-check**
+- [x] **Step 3: Write the Solidity cross-check**
 
 `contracts/test/MerkleCrossCheck.t.sol`:
 ```solidity
@@ -1718,19 +1816,19 @@ contract MerkleCrossCheckTest is Test {
 }
 ```
 
-- [ ] **Step 4: Allow Foundry to read the fixture**
+- [x] **Step 4: Allow Foundry to read the fixture**
 
 Append to `contracts/foundry.toml` under `[profile.default]`:
 ```toml
 fs_permissions = [{ access = "read", path = "../packages/core/test/fixtures" }]
 ```
 
-- [ ] **Step 5: Run the cross-check**
+- [x] **Step 5: Run the cross-check**
 
 Run: `cd contracts && forge test --match-contract MerkleCrossCheck -vv`
 Expected: PASS, 2 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add contracts/test/MerkleCrossCheck.t.sol contracts/foundry.toml \
@@ -1750,10 +1848,28 @@ git commit -m "test: cross-check TypeScript Merkle proofs against PayoutAnchor"
 - Consumes: `constants.ts`, `memo.ts`, `merkle.ts`, `types.ts`
 - Produces:
   - `clientRunIdFor(payer: Address, items: ManifestItem[]): Hex`
+
+> **Changed after writing — audit H-1, the most serious finding.** Hashing only
+> the payer and the list means a fixed-salary payroll produces the same id every
+> month. Month two hits `RunExists` and can never be paid, on a write-once
+> contract with no admin — the replay guard blocking the legitimate payment it
+> exists to protect. `runLabel` is now a required third argument. Same list and
+> same label still collides, so a double-clicked button is still blocked; next
+> period is a new run. Required rather than defaulted, because a default would
+> restore the bug silently.
+>
+> Fixing it surfaced a second defect. The canonical form below joins fields with
+> `|` and rows with `\n`, and one row carrying those characters in its
+> `invoiceId` collides with two honest rows — reproduced before the fix. Every
+> field is ABI-encoded at fixed width now and the `invoiceId` is hashed.
+>
+> `runIdFor(payer, clientRunId)` was also added to core, mirroring the contract.
+> `clientRunId` and `runId` are different values, and looking up the wrong one
+> returns an empty record that reads exactly like "never committed".
   - `buildRun(manifest: Manifest, anchor: Address, opts?: { allowFailure?: boolean }): BuiltRun`
   - `BuiltRun = { to: Address; data: Hex; root: Hex; leaves: Hex[]; proofs: Hex[][]; memoIds: Hex[]; itemCount: number }`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/build.test.ts`:
 ```ts
@@ -1896,12 +2012,12 @@ describe("buildRun", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test build`
 Expected: FAIL — cannot resolve `../src/build.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 `packages/core/src/build.ts`:
 ```ts
@@ -2059,7 +2175,7 @@ export function buildRun(
 
 Note `memoData` is `"0x"`: the memo bytes are public, so nothing identifying goes there. The reference lives in the salted `memoId`.
 
-- [ ] **Step 4: Create the package entry point**
+- [x] **Step 4: Create the package entry point**
 
 `packages/core/src/index.ts`:
 ```ts
@@ -2073,12 +2189,12 @@ export * from "./merkle.js";
 export * from "./build.js";
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test`
 Expected: PASS — all suites, including the 9 new build assertions.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/build.ts packages/core/src/index.ts packages/core/test/build.test.ts
@@ -2105,7 +2221,7 @@ That is how per-payment outcomes are obtained on any RPC, with no
 `debug_traceCall` required — and it is the only way to detect Arc's runtime
 blocklist, which has no pre-check function.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/test/preflight.test.ts`:
 ```ts
@@ -2178,12 +2294,12 @@ describe("gasPolicy", () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/core test preflight`
 Expected: FAIL — cannot resolve `../src/preflight.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 `packages/core/src/preflight.ts`:
 ```ts
@@ -2235,19 +2351,19 @@ export function gasPolicy(
 }
 ```
 
-- [ ] **Step 4: Export it**
+- [x] **Step 4: Export it**
 
 Add to `packages/core/src/index.ts`:
 ```ts
 export * from "./preflight.js";
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/core test preflight`
 Expected: PASS, 6 assertions.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/preflight.ts packages/core/src/index.ts packages/core/test/preflight.test.ts
@@ -2270,7 +2386,7 @@ This is submission artifact #5 and the executable proof of the spec's
 source-of-truth principle: given only a transaction hash and an RPC URL, it
 rebuilds the table without touching our infrastructure.
 
-- [ ] **Step 1: Create the package**
+- [x] **Step 1: Create the package**
 
 `packages/cli/package.json`:
 ```json
@@ -2303,7 +2419,7 @@ rebuilds the table without touching our infrastructure.
 }
 ```
 
-- [ ] **Step 2: Write the failing test for the formatter**
+- [x] **Step 2: Write the failing test for the formatter**
 
 `packages/cli/test/format.test.ts`:
 ```ts
@@ -2339,12 +2455,12 @@ describe("formatRows", () => {
 });
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `pnpm --filter @ledgerline/cli test`
 Expected: FAIL — cannot resolve `../src/format.js`.
 
-- [ ] **Step 4: Write the formatter**
+- [x] **Step 4: Write the formatter**
 
 `packages/cli/src/format.ts`:
 ```ts
@@ -2395,12 +2511,12 @@ export function formatRows(
 }
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pnpm --filter @ledgerline/cli test`
 Expected: PASS, 4 assertions.
 
-- [ ] **Step 6: Write the CLI entry point**
+- [x] **Step 6: Write the CLI entry point**
 
 `packages/cli/src/index.ts`:
 ```ts
@@ -2476,12 +2592,12 @@ for (const row of formatRows(result.rows, decimalsByToken)) {
 console.log(`\n  ${result.payments.length} referenced payment(s) found.\n`);
 ```
 
-- [ ] **Step 7: Run it against the design-phase fixture data**
+- [x] **Step 7: Run it against the design-phase fixture data**
 
 Run: `pnpm --filter @ledgerline/cli exec tsx src/index.ts 0x0000000000000000000000000000000000000000000000000000000000000000`
 Expected: fails with a "transaction not found" error from viem — which confirms the CLI wires up, reaches the RPC, and reports honestly rather than printing an empty success. A real hash is used in Task 16.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/cli
@@ -2509,7 +2625,30 @@ The spec flags two things simulation cannot test, because `eth_call` and
 
 Both are settled here, on testnet, with faucet funds.
 
-- [ ] **Step 1: Write the deploy script**
+> **Changed after writing.** Both claims were settled, and both moved.
+>
+> §6.1 holds: a deployed probe calling `Memo` in a **real transaction** returned
+> `ok == false` with no `Transfer` log at all, reverting with
+> `sender spoofing requires tx.origin as sender`. Simulation disagreed with
+> reality exactly as this task predicted.
+>
+> The fee floor did not move — 1 Gwei lands in about a second — but
+> `eth_maxPriorityFeePerGas` returns **5 Gwei**, not the 0.33 Gwei recorded in
+> the constraints above.
+>
+> The run itself pays **three tokens rather than two USDC**, since the wallet
+> held all three and rehearsing the mainnet shape costs nothing here. It also
+> exercises the 6/6/8 decimal spread and the USDC-only double log, which a
+> USDC-only run cannot. EURC and cirBTC live at **different addresses** on
+> testnet; the mainnet ones have no code there.
+>
+> `scripts/testnet-run.ts` and `scripts/mainnet-run.ts` were merged into one
+> `scripts/run-payout.ts --network testnet|mainnet`, so the code that runs on
+> mainnet is the code already rehearsed rather than a near-duplicate that
+> drifted. It also grew `--dry-run`, which stops after preflight so the whole
+> path can be checked against live mainnet state without signing anything.
+
+- [x] **Step 1: Write the deploy script**
 
 `contracts/script/DeployAnchor.s.sol`:
 ```solidity
@@ -2528,7 +2667,7 @@ contract DeployAnchor is Script {
 }
 ```
 
-- [ ] **Step 2: Fund a testnet wallet**
+- [x] **Step 2: Fund a testnet wallet**
 
 Run: `cast wallet new` and save the key to `.env` as `PRIVATE_KEY` (already gitignored).
 Then visit https://faucet.circle.com, select Arc Testnet, and fund the address.
@@ -2536,7 +2675,7 @@ Then visit https://faucet.circle.com, select Arc Testnet, and fund the address.
 Verify: `cast balance $ADDRESS --rpc-url https://rpc.testnet.arc.io`
 Expected: non-zero.
 
-- [ ] **Step 3: Deploy to testnet**
+- [x] **Step 3: Deploy to testnet**
 
 Run:
 ```bash
@@ -2545,7 +2684,7 @@ cd contracts && forge script script/DeployAnchor.s.sol:DeployAnchor \
 ```
 Expected: prints a deployed address. Save it as `ANCHOR_TESTNET` in `.env`.
 
-- [ ] **Step 4: Execute a real two-payment run on testnet**
+- [x] **Step 4: Execute a real two-payment run on testnet**
 
 `scripts/testnet-run.ts`:
 ```ts
@@ -2592,12 +2731,12 @@ console.log("status:", receipt.status, "logs:", receipt.logs.length);
 Run: `pnpm dlx tsx scripts/testnet-run.ts`
 Expected: `status: success`, and a log count consistent with 2 payments plus the anchor.
 
-- [ ] **Step 5: Reconcile the real transaction**
+- [x] **Step 5: Reconcile the real transaction**
 
 Run: `pnpm --filter @ledgerline/cli exec tsx src/index.ts <hash> --rpc https://rpc.testnet.arc.io`
 Expected: two `unexpected` rows (no manifest passed), both with the right amounts.
 
-- [ ] **Step 6: Settle unverified claim #1 — smart-contract callers**
+- [x] **Step 6: Settle unverified claim #1 — smart-contract callers**
 
 Deploy a trivial forwarder and confirm `Memo` rejects it:
 
@@ -2619,7 +2758,7 @@ Expected: **`ok == false`** — the docs' rule holds in a real transaction.
 If it returns `true`, the spec's §6.1 claim is wrong; record that and reassess
 whether smart-contract wallets could be supported after all.
 
-- [ ] **Step 7: Settle unverified claim #2 — the priority-fee floor**
+- [x] **Step 7: Settle unverified claim #2 — the priority-fee floor**
 
 Send one transaction at `maxPriorityFeePerGas = 1 Gwei` and one at `5 Gwei`,
 recording inclusion time for each.
@@ -2627,14 +2766,14 @@ Expected: both included within a few blocks. If the 1 Gwei transaction stalls,
 raise `MIN_PRIORITY_FEE_WEI` in `constants.ts` to `5_000_000_000n` and rerun
 the Task 12 tests.
 
-- [ ] **Step 8: Record findings**
+- [x] **Step 8: Record findings**
 
 Write `docs/notes/<date>-testnet-findings.md` containing: the deployed testnet
 anchor address, the run transaction hash, the observed log count and ordering,
 the smart-contract-caller result, and the two inclusion times. Then update the
 spec's §6.1 tag from `[unverified]` to `[measured]` or correct it.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add contracts/script/DeployAnchor.s.sol scripts/testnet-run.ts docs/notes/ \
@@ -2821,7 +2960,23 @@ the hardest claim in the spec, now demonstrated on mainnet.
 
 - [ ] **Step 5: Produce the negative control**
 
-`scripts/naive-batch.ts`: send the same three payments through the standard
+
+
+> **Disproven — do not ship the claim in Step 5 below.** `transferFrom(from, …)`
+> emits `Transfer(from, …)`, so routing through `Multicall3` leaves the payer
+> perfectly visible. Measured on testnet: the naive batch's `Transfer.from` and
+> the referenced run's are **identical**. Had this reached mainnet as submission
+> artifact #3, the side-by-side would have shown two transactions whose senders
+> agree, captioned as though they differ, in front of judges who are Arc
+> engineers.
+>
+> Identity is lost with a **custodial** batcher instead — fund the contract, it
+> pays from its own balance — confirmed by deploying one to testnet. Spec §1 has
+> been corrected and tagged `[measured, corrected]`.
+>
+> The differences that hold against *every* batcher shape are the missing
+> reference and the allowance: the `Multicall3` route needs two transactions and
+> leaves a standing allowance on a contract the payer does not control.`scripts/naive-batch.ts`: send the same three payments through the standard
 `Multicall3` at `0xcA11bde05977b3631167028862bE2a173976CA11`, using
 `approve` + `transferFrom` as an ordinary batcher must.
 
