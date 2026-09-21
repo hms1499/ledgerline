@@ -24,10 +24,23 @@ Two failure modes, and on every other chain they are mutually exclusive:
 
 1. **No reference.** The recipient sees `+1,250 USDC`. Which invoice? Which
    month? The chain cannot say.
-2. **Batching destroys payer identity.** Batch through a standard `Multicall3`
-   and each recipient sees `from = 0xcA11bde0…`, the batching contract — not the
-   company. The recipient's own books break, and any compliance screening based
-   on "who paid me" breaks with them.
+2. **Batching destroys payer identity — for custodial batchers.** **[measured,
+   corrected 2026-09-21]** This depends on the batcher's shape, and an earlier
+   draft of this spec got it wrong by naming `Multicall3` specifically.
+
+   | Batcher | `Transfer.from` | Reference | Allowance |
+   |---|---|---|---|
+   | `Multicall3` + `approve`/`transferFrom` | payer EOA — **preserved** | none | standing allowance to a third party |
+   | Custodial (Disperse-style: fund the contract, it pays out) | **the contract** | none | none, but it takes custody |
+
+   `transferFrom(from, …)` emits `Transfer(from, …)`, so routing through
+   `Multicall3` keeps the payer visible. Identity is lost only when the batcher
+   pays from its own balance. Both were run on Arc testnet; see
+   `docs/notes/2026-09-21-negative-control.md`.
+
+   The reference is missing either way, and that is the failure mode this
+   product addresses. The `Multicall3` route also costs two transactions and
+   leaves a standing allowance on a contract the payer does not control.
 
 You can batch cheaply, **or** preserve identity and references. Not both.
 

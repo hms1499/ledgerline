@@ -48,3 +48,28 @@ export const ARC_TESTNET_CHAIN_ID = 5042002;
 export const USDC_TESTNET_ADDRESS: Address = "0x3600000000000000000000000000000000000000";
 export const EURC_TESTNET_ADDRESS: Address = "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a";
 export const CIRBTC_TESTNET_ADDRESS: Address = "0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF";
+
+export interface TokenSet {
+  USDC: Address;
+  EURC: Address;
+  cirBTC: Address;
+}
+
+/**
+ * Token addresses for a chain. Throws on an unknown chain rather than
+ * defaulting, because a silent fallback to mainnet addresses is how a testnet
+ * rehearsal ends up pointing at real money.
+ */
+export function tokensForChain(chainId: number): TokenSet {
+  if (chainId === ARC_CHAIN_ID) {
+    return { USDC: USDC_ADDRESS, EURC: EURC_ADDRESS, cirBTC: CIRBTC_ADDRESS };
+  }
+  if (chainId === ARC_TESTNET_CHAIN_ID) {
+    return {
+      USDC: USDC_TESTNET_ADDRESS,
+      EURC: EURC_TESTNET_ADDRESS,
+      cirBTC: CIRBTC_TESTNET_ADDRESS,
+    };
+  }
+  throw new Error(`unsupported chain ${chainId}; Ledgerline targets Arc 5042 and 5042002`);
+}

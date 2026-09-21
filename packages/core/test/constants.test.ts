@@ -1,6 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { keccak256, toHex } from "viem";
 import {
+  ARC_CHAIN_ID,
+  ARC_TESTNET_CHAIN_ID,
+  USDC_ADDRESS,
+  EURC_ADDRESS,
+  CIRBTC_ADDRESS,
+  tokensForChain,
   MEMO_TOPIC,
   BEFORE_MEMO_TOPIC,
   TRANSFER_TOPIC,
@@ -28,5 +34,27 @@ describe("constants", () => {
 
   it("stores the system emitter lowercased for comparison", () => {
     expect(SYSTEM_EMITTER).toBe(SYSTEM_EMITTER.toLowerCase());
+  });
+});
+
+describe("tokensForChain", () => {
+  it("returns mainnet tokens for 5042", () => {
+    const t = tokensForChain(ARC_CHAIN_ID);
+    expect(t.USDC).toBe(USDC_ADDRESS);
+    expect(t.EURC).toBe(EURC_ADDRESS);
+    expect(t.cirBTC).toBe(CIRBTC_ADDRESS);
+  });
+
+  it("returns testnet tokens for 5042002, which are not the mainnet ones", () => {
+    const t = tokensForChain(ARC_TESTNET_CHAIN_ID);
+    expect(t.USDC).toBe(USDC_ADDRESS); // native predeploy, same on both
+    expect(t.EURC).not.toBe(EURC_ADDRESS);
+    expect(t.cirBTC).not.toBe(CIRBTC_ADDRESS);
+  });
+
+  it("refuses an unknown chain rather than defaulting to mainnet", () => {
+    // Silently falling back to mainnet addresses is how a testnet rehearsal
+    // ends up pointing at real money.
+    expect(() => tokensForChain(1)).toThrow(/unsupported chain/i);
   });
 });
