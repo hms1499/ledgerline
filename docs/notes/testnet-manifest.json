@@ -1,0 +1,47 @@
+{
+  "clientRunId": "0x5787be5461a5e6d8669afadaa28f544125016fb24a3f53c88845523fc09faa63",
+  "payer": "0x595558B91DFAA97840F2F00bF6728A74B8E6de17",
+  "chainId": 5042002,
+  "runSalt": "0xfa993cebc46a539060543d8c45788d7605d4a38a11d448539054f872c3bcb12a",
+  "items": [
+    {
+      "invoiceId": "T-US-001",
+      "token": "0x3600000000000000000000000000000000000000",
+      "to": "0xe48A096B9E74f064b13c17734af29F85E02d732a",
+      "amount": "100000"
+    },
+    {
+      "invoiceId": "T-EU-002",
+      "token": "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a",
+      "to": "0xe48A096B9E74f064b13c17734af29F85E02d732a",
+      "amount": "100000"
+    },
+    {
+      "invoiceId": "T-BTC-003",
+      "token": "0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF",
+      "to": "0xe48A096B9E74f064b13c17734af29F85E02d732a",
+      "amount": "1000"
+    }
+  ],
+  "txHash": "0x06ce9e8d16b68bf4cdf5d354c239fe6212ad3358c9aee8f69ef3ad75cb9bc96a",
+  "anchor": "0xf22B15fDCADB13573E732eE89841299717f6B7f4",
+  "root": "0xd18f59b98ae6336e6430275ae734589104cb98a7c38932564798c1d74c997e5f",
+  "memoIds": [
+    "0x82e9ddc7f5fc8086921f7abbcf9db893b13410ddde74ce567139717774b73529",
+    "0x21c24aac589f2221cc2e8e1c355679ab91dad9d9f105529741a207519450f593",
+    "0xb8fd14a5443e42ba2bc71e2a726a6985f64f47ca595e0dcf362027e4c163c51b"
+  ],
+  "proofs": [
+    [
+      "0x96dc2167a89517566774c4a9f85efb85f54240834040a22537b9e2df764caf1a",
+      "0xa5fd2a884c0aee5220bd224f983d395c5ebaaa3a232aa1b78c540a063adc42a9"
+    ],
+    [
+      "0x4f4f9faa3c636cde61d6900027469a335aeb2f28eaa2ae352e3dc9967715bd2f",
+      "0xa5fd2a884c0aee5220bd224f983d395c5ebaaa3a232aa1b78c540a063adc42a9"
+    ],
+    [
+      "0xcea9803fd53ff128871c85cdc03c43bf6f48ff4075ca3f88302c1eaa8b2a1e95"
+    ]
+  ]
+}

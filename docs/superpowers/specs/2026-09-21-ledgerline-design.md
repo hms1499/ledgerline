@@ -673,10 +673,17 @@ invoice.
 This is a real product limitation and must be stated in the UI, since many
 finance teams use Safe.
 
-**[unverified]** — `eth_call` and `debug_traceCall` both force
-`msg.sender == tx.origin`, so simulation cannot test this rule. A contract-address
-caller "succeeded" in simulation, contradicting the docs. **Must be confirmed
-with a real transaction (task T5).**
+**[measured]** — confirmed on Arc testnet, 2026-09-21. `eth_call` and
+`debug_traceCall` both force `msg.sender == tx.origin`, so simulation cannot
+test this rule and a contract-address caller appears to "succeed" there. A
+real transaction settles it: a deployed `MemoCallerProbe` calling `Memo`
+returned `ok == false`, the whole receipt carried **no `Transfer` log at all**,
+and the bubbled-up revert reason was verbatim:
+
+> `sender spoofing requires tx.origin as sender`
+
+The docs are right and the simulation was the thing lying. Evidence:
+`docs/notes/2026-09-21-testnet-findings.md`.
 
 ### 6.2 USDC emits two Transfer logs; other tokens emit one
 

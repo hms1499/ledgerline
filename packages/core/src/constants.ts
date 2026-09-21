@@ -33,3 +33,18 @@ export const TRANSFER_SELECTOR: Hex = "0xa9059cbb";
 /** Minimum maxFeePerGas. Below 20 Gwei Arc silently drops transactions. */
 export const MIN_MAX_FEE_WEI = 25_000_000_000n;
 export const MIN_PRIORITY_FEE_WEI = 1_000_000_000n;
+
+/** Arc testnet, chainId 5042002. */
+export const ARC_TESTNET_CHAIN_ID = 5042002;
+
+/**
+ * Testnet token addresses. USDC keeps the same predeploy address as mainnet
+ * because it is the native gas token, but EURC and cirBTC are deployed
+ * elsewhere — the mainnet addresses have no code on testnet, so reusing them
+ * fails with an opaque "contract does not have any code" rather than a
+ * sensible error. All three verified live via symbol(), decimals() and
+ * balanceOf() on 2026-09-21.
+ */
+export const USDC_TESTNET_ADDRESS: Address = "0x3600000000000000000000000000000000000000";
+export const EURC_TESTNET_ADDRESS: Address = "0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a";
+export const CIRBTC_TESTNET_ADDRESS: Address = "0xf0C4a4CE82A5746AbAAd9425360Ab04fbBA432BF";
