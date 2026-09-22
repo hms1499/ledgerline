@@ -29,6 +29,11 @@ export default function StepPreflight({
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string>();
   const [prepared, setPrepared] = useState<PreparedRun>();
+  // Whether the salt message was actually signed before this attempt failed.
+  // A failure can land on either side of it — a dismissed signature prompt
+  // never reaches the simulation — and the difference is exactly what the
+  // payer is trying to work out when they read a failure screen.
+  const [signed, setSigned] = useState(false);
 
   const prepare = useCallback(async () => {
     setError(undefined);
@@ -37,6 +42,7 @@ export default function StepPreflight({
     // identifiers must not linger under the Skeleton describing a commitment
     // that no longer matches what is about to be signed.
     setPrepared(undefined);
+    setSigned(false);
     setPhase("signing");
     try {
       const items = draft.rows.map(({ invoiceId, token, to, amount }) => ({
@@ -50,6 +56,7 @@ export default function StepPreflight({
         message: saltMessageFor(net.chain.id, draft.runLabel),
       });
       const runSalt = saltFromSignature(signature);
+      setSigned(true);
 
       const manifest: Manifest = {
         clientRunId: clientRunIdFor(wallet.address, items, draft.runLabel),
@@ -121,12 +128,23 @@ export default function StepPreflight({
 
       {phase === "failed" && (
         <Alert style={{ marginTop: 20 }} type="error" showIcon
-          title="Nothing was signed or sent"
+          // Not "nothing was signed": by this point the payer has usually
+          // signed the salt message, and telling someone who just approved a
+          // wallet prompt that nothing happened is the fastest way to teach
+          // them this screen cannot be trusted about what did.
+          title="No transaction was signed, and no money moved"
           description={
-            error ??
-            "One or more payments would fail if sent to Arc — see the failing rows above. " +
-              "This is a live simulation against current chain state, which is also the only " +
-              "way to see Arc's runtime blocklist; it exposes no pre-check function."
+            <>
+              {error ??
+                "One or more payments would fail if sent to Arc — see the failing rows above. " +
+                  "This is a live simulation against current chain state, which is also the only " +
+                  "way to see Arc's runtime blocklist; it exposes no pre-check function."}
+              <p style={{ marginTop: 10, marginBottom: 0 }}>
+                {signed
+                  ? "Your wallet did sign the short message a moment ago. That one only derives this run's salt — it costs nothing, moves nothing, and is not a payment. Nothing else has been signed."
+                  : "Your wallet has not been asked to sign anything for this attempt."}
+              </p>
+            </>
           } />
       )}
 
