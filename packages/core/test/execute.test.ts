@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { encodeAbiParameters, keccak256, toHex } from "viem";
-import { executeRun, type ExecuteIO } from "../src/execute.js";
+import { executeRun, type ExecuteIO, type ExecuteRunArgs } from "../src/execute.js";
 import { clientRunIdFor } from "../src/build.js";
 import { EURC_TESTNET_ADDRESS } from "../src/constants.js";
 import type { Address, Hex, Manifest } from "../src/types.js";
@@ -57,7 +57,10 @@ function io(over: Partial<ExecuteIO> = {}): ExecuteIO {
   };
 }
 
-const run = (over: Partial<ExecuteIO> = {}, send = async () => HASH) =>
+const run = (
+  over: Partial<ExecuteIO> = {},
+  send: ExecuteRunArgs["send"] = async () => HASH,
+) =>
   executeRun({
     manifest, anchor: ANCHOR, io: io(over), send,
     dropCheck: { attempts: 1, delayMs: 0 },
