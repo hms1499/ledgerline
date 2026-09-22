@@ -3032,7 +3032,7 @@ EOF
 
 This is the definition of done from spec §7.1. It is manual because the wallet is, and the owner has taken that on.
 
-- [ ] **Step 1: Prepare a CSV**
+- [x] **Step 1: Prepare a CSV**
 
 Write `/tmp/payroll.csv` using the recipient from `.env` (`DEMO_RECIPIENT`):
 
@@ -3043,7 +3043,7 @@ INV-BROWSER-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10
 INV-BROWSER-003,cirBTC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.00001
 ```
 
-- [ ] **Step 2: Serve the app**
+- [x] **Step 2: Serve the app**
 
 Run:
 ```bash
@@ -3051,7 +3051,7 @@ pnpm --filter @ledgerline/core build && pnpm --filter @ledgerline/web build
 cd apps/web && npx next start -p 3847
 ```
 
-- [ ] **Step 3: Run the whole flow by hand**
+- [x] **Step 3: Run the whole flow by hand**
 
 Open `http://localhost:3847/new`. Connect the testnet payer wallet. Run name: `browser-2026-09`. Drop the CSV. Walk every step through to the result screen.
 
@@ -3064,11 +3064,11 @@ Record, as you go:
 | Transaction hash, block, gas used | Compared against the script's own run |
 | Did all three amounts render at the right decimals? | 6, 6 and 8 in one run |
 
-- [ ] **Step 4: Verify a receipt link**
+- [x] **Step 4: Verify a receipt link**
 
 Copy the link for `INV-BROWSER-001` and open it. Expected: **all five rungs pass**, including "The payment was in the committed payout run".
 
-- [ ] **Step 5: Verify recovery from nothing but the hash**
+- [x] **Step 5: Verify recovery from nothing but the hash**
 
 Open `/run/<txHash>?n=testnet` in a fresh tab. Expand **Rebuild the receipt links for this run**, enter `browser-2026-09` and the three invoice references, and sign.
 
@@ -3076,15 +3076,15 @@ Expected: "Rebuilt and checked against the chain", and a copied link that opens 
 
 **This answers the `[unverified]` question.** If it reports a mismatch instead, the wallet does not reproduce its signatures — record that, and the design degrades exactly as intended rather than producing wrong links.
 
-- [ ] **Step 6: Try the mismatch path deliberately**
+- [x] **Step 6: Try the mismatch path deliberately**
 
 Repeat step 5 with the run name `browser-2026-10`. Expected: the error alert, and no links shown.
 
-- [ ] **Step 7: Write it up**
+- [x] **Step 7: Write it up**
 
 Create `docs/notes/2026-09-21-create-run-testnet.md` recording: the transaction hash, block, gas used and log count; the answers to the four observations in step 3; the recovery result and therefore the wallet-determinism verdict; and anything that behaved differently from the spec.
 
-- [ ] **Step 8: Stop the server and run the full suite**
+- [x] **Step 8: Stop the server and run the full suite**
 
 ```bash
 lsof -ti:3847 | xargs -r kill -9
@@ -3093,7 +3093,7 @@ pnpm test && pnpm typecheck && (cd contracts && forge test)
 
 Expected: all green.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add docs/notes/2026-09-21-create-run-testnet.md docs/superpowers/plans/2026-09-21-create-run.md
