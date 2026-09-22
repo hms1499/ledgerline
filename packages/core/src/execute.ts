@@ -1,5 +1,6 @@
-import { buildRun } from "./build.js";
-import { MIN_MAX_FEE_WEI } from "./constants.js";
+import { TransactionNotFoundError } from "viem";
+import { buildRun, type BuiltRun } from "./build.js";
+import { MIN_MAX_FEE_WEI, tokensForChain } from "./constants.js";
 import { explainRevert } from "./errors.js";
 import { buildPreflightData, decodePreflightResult, gasPolicy } from "./preflight.js";
 import type { Address, Hex, Manifest, RawLog } from "./types.js";
@@ -30,6 +31,10 @@ export interface RunReceipt {
 /** Narrow on purpose. A fake in a test implements exactly this, and
  *  ioFromPublicClient adapts viem to it. */
 export interface ExecuteIO {
+  /** The chain the client is actually talking to. Checked before anything
+   *  else — USDC shares its predeploy address across mainnet and testnet, so
+   *  a wrong-chain client would otherwise read a real balance and sign. */
+  chainId(): Promise<number>;
   balanceOf(token: Address, owner: Address): Promise<bigint>;
   decimalsOf(token: Address): Promise<number>;
   /** eth_call from `from`. Returns the raw return data. */
@@ -37,9 +42,11 @@ export interface ExecuteIO {
   gasPrice(): Promise<bigint>;
   priorityFee(): Promise<bigint>;
   estimateGas(from: Address, to: Address, data: Hex): Promise<bigint>;
-  /** null when the node does not know the hash — which on Arc usually means
-   *  the mempool dropped it for being priced below the floor. */
-  findTransaction(hash: Hex): Promise<{ maxFeePerGas?: bigint } | null>;
+  /** null when the node genuinely does not know the hash — which on Arc
+   *  usually means the mempool dropped it for being priced below the floor.
+   *  `gasPrice` is populated instead of `maxFeePerGas` for a legacy
+   *  transaction, so the floor can still be checked. */
+  findTransaction(hash: Hex): Promise<{ maxFeePerGas?: bigint; gasPrice?: bigint } | null>;
   /** null when no receipt arrived inside the timeout. */
   waitForReceipt(hash: Hex, timeoutMs: number): Promise<RunReceipt | null>;
 }
@@ -56,7 +63,11 @@ export type RunStage =
   | "balances" | "preflight" | "fees" | "signing" | "broadcast" | "confirming";
 
 export type RunOutcome =
-  | { state: "blocked"; reason: "balance" | "preflight" | "signature"; details: string }
+  | {
+      state: "blocked";
+      reason: "chain" | "balance" | "preflight" | "fees" | "signature";
+      details: string;
+    }
   | { state: "dropped"; txHash: Hex; sentMaxFeePerGas: bigint }
   | { state: "pending"; txHash: Hex; sentMaxFeePerGas: bigint; feeWarning?: string }
   | { state: "reverted"; txHash: Hex; receipt: RunReceipt }
@@ -92,6 +103,32 @@ export async function executeRun({
   const say = (s: RunStage) => onProgress?.(s);
   const payer = manifest.payer;
 
+  // 0. Chain guard, before anything else. USDC keeps the same predeploy
+  //    address on mainnet and testnet, so a client pointed at the wrong
+  //    chain would otherwise read a real balance, pass preflight, and sign
+  //    for real money — silently turning a rehearsal into a live payout.
+  let clientChainId: number;
+  try {
+    clientChainId = await io.chainId();
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      state: "blocked",
+      reason: "chain",
+      details: `Could not read the client's chain id: ${message}. Nothing was signed.`,
+    };
+  }
+  if (clientChainId !== manifest.chainId) {
+    return {
+      state: "blocked",
+      reason: "chain",
+      details:
+        `The client is on chain ${clientChainId}, but this manifest targets chain ` +
+        `${manifest.chainId}. Refusing to read balances or sign. This is how a testnet ` +
+        `rehearsal would otherwise end up pointing at real money.`,
+    };
+  }
+
   // 1. Balances, per token and never pooled.
   say("balances");
   const needed = new Map<string, bigint>();
@@ -99,29 +136,59 @@ export async function executeRun({
     const key = item.token.toLowerCase();
     needed.set(key, (needed.get(key) ?? 0n) + item.amount);
   }
-  for (const [key, need] of needed) {
-    const token = manifest.items.find((i) => i.token.toLowerCase() === key)!.token;
-    const [balance, decimals] = await Promise.all([
-      io.balanceOf(token, payer),
-      io.decimalsOf(token),
-    ]);
-    if (balance < need) {
-      return {
-        state: "blocked",
-        reason: "balance",
-        details: `Short of ${token}: need ${need} base units, hold ${balance} (${decimals} decimals). Nothing was signed.`,
-      };
+  try {
+    for (const [key, need] of needed) {
+      const token = manifest.items.find((i) => i.token.toLowerCase() === key)!.token;
+      const [balance, decimals] = await Promise.all([
+        io.balanceOf(token, payer),
+        io.decimalsOf(token),
+      ]);
+      if (balance < need) {
+        return {
+          state: "blocked",
+          reason: "balance",
+          details: `Short of ${token}: need ${need} base units, hold ${balance} (${decimals} decimals). Nothing was signed.`,
+        };
+      }
     }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      state: "blocked",
+      reason: "balance",
+      details: `Could not read balances: ${message}. Nothing was signed.`,
+    };
   }
 
   // 2. Preflight. allowFailure=true so one bad row reports itself instead of
   //    reverting the simulation, and it is the only way to see Arc's runtime
   //    blocklist, which has no pre-check.
   say("preflight");
-  const built = buildRun(manifest, anchor);
+  let built: BuiltRun;
+  try {
+    built = buildRun(manifest, anchor);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      state: "blocked",
+      reason: "preflight",
+      details: `Could not build the run: ${message}. Nothing was signed.`,
+    };
+  }
   try {
     const returnData = await io.simulate(payer, built.to, buildPreflightData(manifest, anchor));
     const outcomes = decodePreflightResult(returnData);
+    const expected = manifest.items.length + 1; // items + the anchor commit
+    if (outcomes.length !== expected) {
+      return {
+        state: "blocked",
+        reason: "preflight",
+        details:
+          `Simulation returned ${outcomes.length} outcomes but the run has ` +
+          `${manifest.items.length} items (expected ${expected}, including the anchor ` +
+          `commit). Nothing was signed.`,
+      };
+    }
     const failed = outcomes
       .map((o, i) => ({ ok: o.success, label: i === 0 ? "the anchor commit" : manifest.items[i - 1]!.invoiceId }))
       .filter((o) => !o.ok);
@@ -143,14 +210,66 @@ export async function executeRun({
 
   // 3. Fees. The floor is the whole point: below 20 Gwei Arc drops silently.
   say("fees");
-  const fees = gasPolicy(await io.gasPrice(), await io.priorityFee());
-  const estimate = await io.estimateGas(payer, built.to, built.data);
-  const tx: PreparedTx = {
-    to: built.to,
-    data: built.data,
-    gas: (estimate * 12n) / 10n,
-    ...fees,
-  };
+  let tx: PreparedTx;
+  try {
+    const fees = gasPolicy(await io.gasPrice(), await io.priorityFee());
+    const estimate = await io.estimateGas(payer, built.to, built.data);
+    tx = {
+      to: built.to,
+      data: built.data,
+      gas: (estimate * 12n) / 10n,
+      ...fees,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      state: "blocked",
+      reason: "fees",
+      details: `Could not determine the gas price or gas estimate: ${message}. Nothing was signed.`,
+    };
+  }
+
+  // 3b. Gas affordability. Gas on Arc is paid in USDC, so a run that has
+  //     exactly enough USDC for its payouts (or pays no USDC at all) can
+  //     still stall for want of gas. Checked on top of, never instead of,
+  //     the phase-1 balance check above.
+  try {
+    const usdc = tokensForChain(manifest.chainId).USDC;
+    const usdcDecimals = await io.decimalsOf(usdc);
+    const usdcBalance = await io.balanceOf(usdc, payer);
+
+    // tx.gas * tx.maxFeePerGas is a cost in Arc's native 18-decimal unit
+    // (msg.value semantics). USDC's balanceOf returns usdcDecimals decimals
+    // (6, today) — the SAME balance expressed 10^(18 - usdcDecimals) apart.
+    // Convert the wei figure DOWN into USDC units; never compare the two
+    // directly, and round the converted cost UP so the check is never
+    // optimistic by a rounding unit.
+    const gasCostWei = tx.gas * tx.maxFeePerGas;
+    const weiPerUsdcUnit = 10n ** BigInt(18 - usdcDecimals);
+    const gasCostInUsdcUnits = (gasCostWei + weiPerUsdcUnit - 1n) / weiPerUsdcUnit;
+
+    const usdcNeededForPayouts = needed.get(usdc.toLowerCase()) ?? 0n;
+    const totalUsdcNeeded = usdcNeededForPayouts + gasCostInUsdcUnits;
+
+    if (usdcBalance < totalUsdcNeeded) {
+      return {
+        state: "blocked",
+        reason: "balance",
+        details:
+          `Short of USDC for gas: this run needs ${usdcNeededForPayouts} base units of USDC ` +
+          `for payouts plus ${gasCostInUsdcUnits} base units for gas (${usdcDecimals} ` +
+          `decimals), ${totalUsdcNeeded} total, but the payer holds ${usdcBalance}. ` +
+          `Nothing was signed.`,
+      };
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      state: "blocked",
+      reason: "fees",
+      details: `Could not verify the payer holds enough USDC to cover gas: ${message}. Nothing was signed.`,
+    };
+  }
 
   // 4. Sign and broadcast.
   say("signing");
@@ -165,28 +284,62 @@ export async function executeRun({
   // 5. Read back what was ACTUALLY broadcast. We set the fee correctly, but a
   //    browser wallet owns its own fee interface and the user can edit it.
   say("broadcast");
-  let broadcast: { maxFeePerGas?: bigint } | null = null;
+  let broadcast: { maxFeePerGas?: bigint; gasPrice?: bigint } | null = null;
+  let observeError: string | undefined;
   for (let i = 0; i < dropCheck.attempts; i++) {
-    broadcast = await io.findTransaction(txHash);
+    try {
+      broadcast = await io.findTransaction(txHash);
+    } catch (err) {
+      // The node did not answer — that is not the same fact as "the node
+      // answered and has never heard of this hash". We hold a real txHash
+      // and genuinely do not know its fate, so this must surface as
+      // pending, never as dropped: a dropped run misreported as pending is
+      // the safe direction, and the reverse is not (a payout believed dead
+      // gets re-run under a new label, which nothing protects against).
+      observeError = err instanceof Error ? err.message : String(err);
+      break;
+    }
     if (broadcast) break;
     if (i < dropCheck.attempts - 1) await sleep(dropCheck.delayMs);
   }
 
+  if (observeError) {
+    return {
+      state: "pending",
+      txHash,
+      sentMaxFeePerGas: tx.maxFeePerGas,
+      feeWarning:
+        `Could not reach the chain to check whether this transaction was broadcast: ` +
+        `${observeError}. We hold a real transaction hash (${txHash}) but do not know its ` +
+        `fate — check an explorer before treating this run as failed or re-running it under ` +
+        `a new label.`,
+    };
+  }
+
   if (!broadcast) {
-    return { state: "dropped", txHash, sentMaxFeePerGas: fees.maxFeePerGas };
+    return { state: "dropped", txHash, sentMaxFeePerGas: tx.maxFeePerGas };
   }
 
   const broadcastMaxFeePerGas = broadcast.maxFeePerGas;
+  // Whatever the node reported the fee as, checked against the same floor —
+  // maxFeePerGas for an EIP-1559 transaction, gasPrice for a legacy one.
+  const observedFee = broadcast.maxFeePerGas ?? broadcast.gasPrice;
   const feeWarning =
-    broadcastMaxFeePerGas !== undefined && broadcastMaxFeePerGas < MIN_MAX_FEE_WEI
-      ? `This transaction was broadcast at ${broadcastMaxFeePerGas} wei per gas, below the 25 Gwei floor. Arc drops transactions under 20 Gwei without a receipt or an error, so it may never be included.`
-      : undefined;
+    observedFee === undefined
+      ? `Could not verify the broadcast fee: the node returned neither maxFeePerGas nor ` +
+        `gasPrice for this transaction. Arc drops transactions under 20 Gwei with no ` +
+        `receipt or error, so confirm on an explorer before treating this as final.`
+      : observedFee < MIN_MAX_FEE_WEI
+        ? `This transaction was broadcast at ${observedFee} wei per gas, below the 25 Gwei ` +
+          `floor. Arc drops transactions under 20 Gwei without a receipt or an error, so it ` +
+          `may never be included.`
+        : undefined;
 
   // 6. A receipt, or an honest pending. Never a claim of success without one.
   say("confirming");
   const receipt = await io.waitForReceipt(txHash, receiptTimeoutMs);
   if (!receipt) {
-    return { state: "pending", txHash, sentMaxFeePerGas: fees.maxFeePerGas, feeWarning };
+    return { state: "pending", txHash, sentMaxFeePerGas: tx.maxFeePerGas, feeWarning };
   }
   if (receipt.status === "reverted") {
     return { state: "reverted", txHash, receipt };
@@ -195,7 +348,7 @@ export async function executeRun({
     state: "confirmed",
     txHash,
     receipt,
-    sentMaxFeePerGas: fees.maxFeePerGas,
+    sentMaxFeePerGas: tx.maxFeePerGas,
     broadcastMaxFeePerGas,
     feeWarning,
   };
@@ -213,12 +366,13 @@ const decimalsAbi = [{
 
 /** Minimal shape of viem's PublicClient that this adapter needs. */
 interface ViemLikeClient {
+  getChainId(): Promise<number>;
   readContract(args: unknown): Promise<unknown>;
   call(args: unknown): Promise<{ data?: Hex }>;
   getGasPrice(): Promise<bigint>;
   estimateMaxPriorityFeePerGas(): Promise<bigint>;
   estimateGas(args: unknown): Promise<bigint>;
-  getTransaction(args: { hash: Hex }): Promise<{ maxFeePerGas?: bigint }>;
+  getTransaction(args: { hash: Hex }): Promise<{ maxFeePerGas?: bigint; gasPrice?: bigint }>;
   waitForTransactionReceipt(args: unknown): Promise<{
     status: "success" | "reverted";
     blockNumber: bigint;
@@ -232,6 +386,8 @@ interface ViemLikeClient {
  *  has never heard of this" is an answer, not a failure. */
 export function ioFromPublicClient(client: ViemLikeClient): ExecuteIO {
   return {
+    chainId: () => client.getChainId(),
+
     balanceOf: (token, owner) =>
       client.readContract({
         address: token, abi: balanceAbi, functionName: "balanceOf", args: [owner],
@@ -253,9 +409,17 @@ export function ioFromPublicClient(client: ViemLikeClient): ExecuteIO {
 
     findTransaction: async (hash) => {
       try {
-        return await client.getTransaction({ hash });
-      } catch {
-        return null;
+        const tx = await client.getTransaction({ hash });
+        return { maxFeePerGas: tx.maxFeePerGas, gasPrice: tx.gasPrice };
+      } catch (err) {
+        // "The node has never heard of this hash" is an answer, not a
+        // failure — but only when it is genuinely that. viem throws
+        // TransactionNotFoundError for the not-found case specifically;
+        // anything else (a timeout, a 5xx, a dropped socket) is a failure to
+        // observe the chain, not an observation, and must not be reported as
+        // one — see C1.
+        if (err instanceof TransactionNotFoundError) return null;
+        throw err;
       }
     },
 
