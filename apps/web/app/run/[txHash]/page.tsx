@@ -15,5 +15,10 @@ export default async function RunPage({
     const v = q[k];
     return Array.isArray(v) ? (v[0] ?? null) : (v ?? null);
   };
-  return <Reconciliation txHash={txHash} networkName={one("n")} runSalt={one("s")} />;
+  return (
+    <Reconciliation
+      txHash={txHash} networkName={one("n")} runSalt={one("s")}
+      runLabel={one("label")}
+    />
+  );
 }

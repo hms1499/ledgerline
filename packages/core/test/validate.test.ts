@@ -4,6 +4,8 @@ import type { ResolvedRow } from "../src/csv.js";
 
 const TOKEN = "0x3600000000000000000000000000000000000000" as const;
 const TO = "0xe48A096B9E74f064b13c17734af29F85E02d732a" as const;
+const EURC = "0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1" as const;
+const CIRBTC = "0x171a4217b86a807a64eb94757db6849fb4bdbaa0" as const;
 
 const row = (over: Partial<ResolvedRow> = {}): ResolvedRow => ({
   line: 2, invoiceId: "INV-1", token: TOKEN, to: TO, amount: 100_000n, ...over,
@@ -46,7 +48,7 @@ describe("validateRun", () => {
     expect(validateRun(many).errors).toEqual([]);
   });
 
-  it("warns about a repeated recipient without blocking it", () => {
+  it("warns about the same recipient paid twice in the same token", () => {
     const r = validateRun([
       row({ line: 2, invoiceId: "INV-1" }),
       row({ line: 3, invoiceId: "INV-2" }),
@@ -54,7 +56,28 @@ describe("validateRun", () => {
     expect(r.errors).toEqual([]);
     expect(r.warnings).toHaveLength(1);
     expect(r.warnings[0]!.line).toBe(3);
-    expect(r.warnings[0]!.message).toMatch(/two invoices to one recipient is valid/i);
+    expect(r.warnings[0]!.message).toMatch(/already paid on line 2/i);
+  });
+
+  // The product's own demo is one recipient paid in three tokens. Warning on
+  // it trains people to dismiss the channel that also carries real warnings,
+  // and a different token cannot be the duplicated paste this rule is for.
+  it("says nothing about one recipient paid in three different tokens", () => {
+    const r = validateRun([
+      row({ line: 2, invoiceId: "INV-1" }),
+      row({ line: 3, invoiceId: "INV-2", token: EURC }),
+      row({ line: 4, invoiceId: "INV-3", token: CIRBTC }),
+    ]);
+    expect(r.errors).toEqual([]);
+    expect(r.warnings).toEqual([]);
+  });
+
+  it("compares tokens without case sensitivity", () => {
+    const r = validateRun([
+      row({ line: 2, invoiceId: "INV-1", token: TOKEN.toUpperCase() as `0x${string}` }),
+      row({ line: 3, invoiceId: "INV-2" }),
+    ]);
+    expect(r.warnings).toHaveLength(1);
   });
 
   it("rejects an empty run", () => {

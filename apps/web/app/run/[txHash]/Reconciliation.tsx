@@ -11,7 +11,7 @@ import {
   type PaymentRecord,
 } from "@ledgerline/core";
 import { networkFor, short, formatAmount, encodeProof, type NetworkView } from "@/lib/chain";
-import { connect, knownWallets, type WalletChoice } from "@/lib/wallet";
+import { connect, knownWallets, watchWalletList, type WalletChoice } from "@/lib/wallet";
 import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
 
@@ -68,8 +68,12 @@ interface Loaded {
 }
 
 export default function Reconciliation({
-  txHash, networkName, runSalt,
-}: { txHash: string; networkName: string | null; runSalt: string | null }) {
+  txHash, networkName, runSalt, runLabel,
+}: {
+  txHash: string; networkName: string | null; runSalt: string | null;
+  /** Carried from the history list so the payer does not retype it. */
+  runLabel?: string | null;
+}) {
   const net = networkFor(networkName);
   const [rpc, setRpc] = useState(net.defaultRpc);
   const [phase, setPhase] = useState<Phase>("loading");
@@ -135,7 +139,7 @@ export default function Reconciliation({
       {phase === "ready" && data && (
         <Ready
           data={data} net={net} txHash={txHash} hasManifest={!!manifest}
-          manifestName={manifestName}
+          manifestName={manifestName} runLabel={runLabel}
           onManifest={(m, name) => { setManifest(m); setManifestName(name); }}
         />
       )}
@@ -163,10 +167,11 @@ function Headline({ tone, title, body }: { tone: string; title: string; body: st
 }
 
 function Ready({
-  data, net, txHash, hasManifest, manifestName, onManifest,
+  data, net, txHash, hasManifest, manifestName, runLabel, onManifest,
 }: {
   data: Loaded; net: NetworkView; txHash: string; hasManifest: boolean;
   manifestName?: string;
+  runLabel?: string | null;
   onManifest: (m: Manifest, name: string) => void;
 }) {
   const { result, completeness, tokens } = data;
@@ -391,6 +396,8 @@ function Ready({
         memoIdsOnChain={new Set(result.payments.map((p) => p.memoId.toLowerCase()))}
         payments={result.payments}
         anchoredRoot={data.anchoredRoot}
+        anchorPayer={data.anchorPayer}
+        initialLabel={runLabel ?? ""}
       />
 
       <p style={{ marginTop: 20, fontSize: "0.85rem" }}>
@@ -540,15 +547,19 @@ function runIdFromLogs(logs: RawLog[], anchor?: Address): Hex | undefined {
  * worse than no link at all.
  */
 function RecoverLinks({
-  net, txHash, memoIdsOnChain, payments, anchoredRoot,
+  net, txHash, memoIdsOnChain, payments, anchoredRoot, anchorPayer, initialLabel,
 }: {
   net: NetworkView; txHash: string;
   memoIdsOnChain: Set<string>;
   payments: PaymentRecord[];
   /** The root PayoutAnchor committed for this run, when it could be read. */
   anchoredRoot?: Hex;
+  /** Who the anchor records as having paid — the only wallet this can work
+   *  for, and worth saying out loud rather than discovering by failing. */
+  anchorPayer?: Address;
+  initialLabel?: string;
 }) {
-  const [label, setLabel] = useState("");
+  const [label, setLabel] = useState(initialLabel ?? "");
   const [invoices, setInvoices] = useState("");
   const [state, setState] = useState<"idle" | "working" | "ok" | "mismatch" | "error">("idle");
   const [error, setError] = useState<string>();
@@ -556,6 +567,10 @@ function RecoverLinks({
   const [copied, setCopied] = useState<string>();
   const [choices, setChoices] = useState<WalletChoice[]>([]);
   const [picking, setPicking] = useState(false);
+
+  // Same reason as the history page: without an ask, this page sees only the
+  // wallets that announced before it mounted, which is none of them.
+  useEffect(() => watchWalletList(() => setChoices(knownWallets())), []);
 
   // Recovery re-derives the salt from a signature, so it must be signed by the
   // payer's wallet specifically. With two wallets installed, connecting to
@@ -577,6 +592,18 @@ function RecoverLinks({
       if (ids.length === 0) throw new Error("List the invoice references, one per line.");
 
       const { address, walletClient } = await connect(net, choice);
+
+      // Checked before signing, not after. Signing with the wrong account
+      // produces a different salt and therefore a mismatch, which is correct
+      // but says nothing useful — "these do not match the chain" is a poor
+      // way to tell someone they connected the wrong wallet.
+      if (anchorPayer && address.toLowerCase() !== anchorPayer.toLowerCase()) {
+        throw new Error(
+          `This run was paid by ${anchorPayer}, but the wallet you connected is ${address}. ` +
+          `Only the paying wallet can rebuild these links, because the salt is derived from its signature.`,
+        );
+      }
+
       const signature = await walletClient.signMessage({
         account: address,
         message: saltMessageFor(net.chain.id, label),
@@ -623,13 +650,17 @@ function RecoverLinks({
   };
 
   return (
-    <details style={{ marginTop: 26 }}>
-      <summary style={{ cursor: "pointer" }}>Rebuild the receipt links for this run</summary>
+    <details open={!!initialLabel} style={{ marginTop: 26 }}>
+      <summary style={{ cursor: "pointer" }}>
+        Lost the receipt links? Rebuild them by signing again
+      </summary>
 
       <p className="because" style={{ marginTop: 12 }}>
-        Sign the same message again and the links come back. Nothing was stored — the salt
-        is derived from your signature over the run name, so your wallet and this
-        transaction are all that is needed.
+        For the payer only{anchorPayer ? <> — the wallet at <span className="hex">{short(anchorPayer)}</span></> : null}.
+        Nothing about this run was stored: the salt that makes each link verifiable is
+        derived from that wallet&apos;s signature over the run name, so signing the same
+        message again is what brings the links back. Recipients and auditors do not need
+        this — the link they were given already verifies on its own.
       </p>
 
       <label style={{ display: "block", marginTop: 14, maxWidth: "32rem" }}>

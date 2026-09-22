@@ -6,6 +6,7 @@ import { createPublicClient, http, type Address } from "viem";
 import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue, type RunOutcome } from "@ledgerline/core";
 import { networkFor, short } from "@/lib/chain";
 import { describeError, errorCode } from "@/lib/errors";
+import { recordRun } from "@/lib/history";
 import {
   connect, disconnect, switchChain, watchWallet, watchWalletList, knownWallets,
   EoaRequiredError, type ConnectedWallet, type WalletChoice,
@@ -319,7 +320,19 @@ export default function CreateRun({ networkName }: { networkName: string | null 
         {step === 3 && prepared && wallet && !wrongChain && (
           <StepSend
             prepared={prepared} net={net} wallet={wallet}
-            onDone={(o) => { if (o.state === "confirmed") { setOutcome(o); setStep(4); } }}
+            onDone={(o) => {
+              if (o.state !== "confirmed") return;
+              setOutcome(o);
+              setStep(4);
+              // Only a confirmed run is worth remembering: a list that
+              // included attempts without receipts would be a list of things
+              // that might not have happened.
+              recordRun({
+                txHash: o.txHash, payer: wallet.address, chainId: net.chain.id,
+                runLabel: draft?.runLabel ?? "", seenAt: Date.now(),
+                itemCount: prepared.manifest.items.length,
+              });
+            }}
             onBusy={setSending}
           />
         )}

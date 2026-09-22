@@ -36,6 +36,8 @@ export default function Home() {
       <footer className="footer">
         <Link href="/new">Create a payout run</Link>
         {" · "}
+        <Link href="/runs">Runs you have sent</Link>
+        {" · "}
         <Link href="/why">How this differs from an ordinary batch</Link>
       </footer>
     </main>

@@ -123,6 +123,13 @@ export default function Result({
               from <a href={`/run/${outcome.txHash}?n=${net.name}`}>the run page</a> at any
               time, by signing the same message again. Neither is stored anywhere by us.
             </p>
+            <p>
+              This browser has remembered both, so{" "}
+              <a href={`/runs?n=${net.name}`}>your runs</a> can reopen this one without
+              them. That list is a convenience kept on this machine only — it is lost with
+              the site&apos;s data, which is why the two things above are still worth
+              writing down.
+            </p>
             <p style={{ marginBottom: 0 }}>
               The hash is also on{" "}
               <a href={`${net.explorer}/address/${prepared.manifest.payer}`} target="_blank" rel="noreferrer">

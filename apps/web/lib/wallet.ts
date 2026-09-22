@@ -110,6 +110,11 @@ let injectedSnapshot: WalletChoice[] | undefined;
  * is exactly the old behaviour.
  */
 export function knownWallets(): WalletChoice[] {
+  // Attaching the listener here is safe and makes the module hard to misuse:
+  // it was dispatching from inside the read that closed the announce loop,
+  // never listening. A caller that reads before anyone asked still needs
+  // requestWallets() to have run, which is what watchWalletList does.
+  startDiscovery();
   if (snapshot.length > 0) return snapshot;
   if (typeof window === "undefined") return [];
   if (injectedSnapshot) return injectedSnapshot;

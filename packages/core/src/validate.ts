@@ -37,7 +37,9 @@ export function validateRun(items: ResolvedRow[]): {
   }
 
   const invoiceLine = new Map<string, number>();
-  const recipientLine = new Map<string, number>();
+  // Keyed by recipient AND token: this rule exists to catch a duplicated
+  // paste, and the same person paid in two different tokens is not that.
+  const paidLine = new Map<string, number>();
 
   for (const item of items) {
     if (item.to.toLowerCase() === ZERO) {
@@ -59,16 +61,16 @@ export function validateRun(items: ResolvedRow[]): {
       invoiceLine.set(item.invoiceId, item.line);
     }
 
-    const to = item.to.toLowerCase();
-    const seenRecipient = recipientLine.get(to);
-    if (seenRecipient !== undefined) {
+    const pair = `${item.to.toLowerCase()}|${item.token.toLowerCase()}`;
+    const seenPair = paidLine.get(pair);
+    if (seenPair !== undefined) {
       warnings.push({
         line: item.line,
         invoiceId: item.invoiceId,
-        message: `Also paid on line ${seenRecipient}. Two invoices to one recipient is valid — check it is intended.`,
+        message: `This recipient was already paid on line ${seenPair}, in the same token. Two invoices to one person is valid — check it is not the same one twice.`,
       });
     } else {
-      recipientLine.set(to, item.line);
+      paidLine.set(pair, item.line);
     }
   }
 
