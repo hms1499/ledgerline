@@ -51,6 +51,8 @@ declare global {
 const announced = new Map<string, WalletChoice>();
 const listListeners = new Set<() => void>();
 let discovering = false;
+/** Cached so repeated reads keep array identity and do not re-render. */
+let snapshot: WalletChoice[] = [];
 
 function startDiscovery(): void {
   if (discovering || typeof window === "undefined") return;
@@ -58,41 +60,62 @@ function startDiscovery(): void {
   window.addEventListener("eip6963:announceProvider", (ev) => {
     const choice = ev.detail;
     if (!choice?.info?.uuid || !choice.provider) return;
+    // A wallet re-announcing something already on the list is not news, and
+    // treating it as news is how this turns into an endless storm: notify →
+    // subscriber re-renders → subscriber reads the list → read asks again →
+    // every wallet announces again. Some wallets also reassign
+    // window.ethereum when they answer, which two wallets cannot both do, so
+    // that storm shows up as a flood of extension errors and a hung page.
+    if (announced.get(choice.info.uuid)?.provider === choice.provider) return;
     announced.set(choice.info.uuid, choice);
+    snapshot = [...announced.values()].sort((a, b) => a.info.name.localeCompare(b.info.name));
     for (const notify of listListeners) notify();
   });
 }
 
-function ask(): void {
+/**
+ * Ask every installed wallet to announce itself. Deliberately separate from
+ * reading the list: asking inside the read is what created the loop above.
+ * One ask is enough, because EIP-6963 requires a wallet to announce on its
+ * own initialisation as well as on request, so one that loads late still
+ * arrives without being asked again.
+ */
+export function requestWallets(): void {
   if (typeof window === "undefined") return;
   startDiscovery();
-  // Wallets announce on their own at load and again on request, and an
-  // extension that woke up late only answers the next ask — so asking is
-  // cheap and repeatable rather than once at startup.
   window.dispatchEvent(new Event("eip6963:requestProvider"));
 }
 
+/** The injected global, if reading it is even safe. Two wallets fighting over
+ *  the property can leave a getter that throws. */
+function injectedGlobal(): (Eip1193Provider & { providers?: Eip1193Provider[] }) | undefined {
+  try {
+    return (window as unknown as {
+      ethereum?: Eip1193Provider & { providers?: Eip1193Provider[] };
+    }).ethereum;
+  } catch { return undefined; }
+}
+
+let injectedSnapshot: WalletChoice[] | undefined;
+
 /**
- * Every wallet this page can see. Falls back to the injected global when
- * nothing announces, so a wallet too old for EIP-6963 still works — it just
- * cannot be told apart from any other, which is exactly the old behaviour.
+ * Every wallet this page can see, as a snapshot. Never dispatches. Falls back
+ * to the injected global when nothing announced, so a wallet too old for
+ * EIP-6963 still works — it just cannot be told apart from any other, which
+ * is exactly the old behaviour.
  */
 export function knownWallets(): WalletChoice[] {
-  ask();
-  if (announced.size > 0) {
-    return [...announced.values()].sort((a, b) => a.info.name.localeCompare(b.info.name));
-  }
+  if (snapshot.length > 0) return snapshot;
   if (typeof window === "undefined") return [];
+  if (injectedSnapshot) return injectedSnapshot;
 
-  const injected = (window as unknown as {
-    ethereum?: Eip1193Provider & { providers?: Eip1193Provider[] };
-  }).ethereum;
+  const injected = injectedGlobal();
   if (!injected) return [];
 
   // Pre-6963 coexistence hack: some wallets stack themselves in an array on
   // the global instead of replacing it.
   const stacked = Array.isArray(injected.providers) ? injected.providers : [injected];
-  return stacked.map((provider, i) => ({
+  injectedSnapshot = stacked.map((provider, i) => ({
     provider,
     info: {
       uuid: `injected-${i}`,
@@ -101,12 +124,13 @@ export function knownWallets(): WalletChoice[] {
       icon: "",
     },
   }));
+  return injectedSnapshot;
 }
 
 /** Re-runs `onChange` as wallets announce themselves. */
 export function watchWalletList(onChange: () => void): () => void {
   listListeners.add(onChange);
-  ask();
+  requestWallets();
   return () => { listListeners.delete(onChange); };
 }
 
