@@ -45,6 +45,30 @@ export async function connect(net: NetworkView): Promise<ConnectedWallet> {
   return { address, walletClient };
 }
 
+/**
+ * There is no protocol-level "disconnect" — a page stops being connected by
+ * forgetting the client it holds. But forgetting it while the wallet still
+ * has the site's `eth_accounts` permission means the next connect silently
+ * reattaches the same account with no prompt, which is indistinguishable from
+ * a disconnect button that does nothing. EIP-2255 `wallet_revokePermissions`
+ * is what makes the next connect ask again.
+ *
+ * Not every wallet implements it, and one that doesn't must not turn a
+ * disconnect into an error: the caller clears its own state either way, so
+ * the worst case is a wallet that reconnects without prompting — degraded,
+ * not broken.
+ */
+export async function disconnect(): Promise<void> {
+  const provider = getProvider();
+  if (!provider) return;
+  try {
+    await provider.request({
+      method: "wallet_revokePermissions",
+      params: [{ eth_accounts: {} }],
+    });
+  } catch { /* unsupported, or refused; local state is the real disconnect */ }
+}
+
 /** Switch the wallet to Arc, adding the network if it has never seen it. */
 async function ensureChain(provider: Eip1193Provider, net: NetworkView): Promise<void> {
   const hex = `0x${net.chain.id.toString(16)}`;

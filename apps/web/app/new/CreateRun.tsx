@@ -5,7 +5,7 @@ import { Steps } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue, type RunOutcome } from "@ledgerline/core";
 import { networkFor, short } from "@/lib/chain";
-import { connect, watchWallet, EoaRequiredError, type ConnectedWallet } from "@/lib/wallet";
+import { connect, disconnect, watchWallet, EoaRequiredError, type ConnectedWallet } from "@/lib/wallet";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
 import StepPreflight, { type PreparedRun } from "./StepPreflight";
@@ -105,15 +105,61 @@ export default function CreateRun({ networkName }: { networkName: string | null 
   const [walletError, setWalletError] = useState<ConnectError>();
   const [prepared, setPrepared] = useState<PreparedRun>();
   const [outcome, setOutcome] = useState<Extract<RunOutcome, { state: "confirmed" }>>();
+  /** True while StepSend holds the only copy of a transaction hash. */
+  const [sending, setSending] = useState(false);
+  const [forgetQueued, setForgetQueued] = useState(false);
+
+  const drop = useCallback(() => {
+    setWallet(undefined);
+    setWalletError(undefined);
+    // Everything from the preflight signature onward is bound to one account:
+    // the run salt IS that account's signature, every memoId derives from it,
+    // and the root commits to those memoIds. So the prepared run goes with the
+    // wallet — keeping it would leave a commitment on screen that the next
+    // account did not make and cannot reproduce.
+    //
+    // A confirmed run is the exception, because it is a fact about a block
+    // rather than about whoever is connected now, and the result screen holds
+    // the payer's only copy of the receipt links.
+    if (outcome) return;
+    setPrepared(undefined);
+    setStep((s) => Math.min(s, 1));
+  }, [outcome]);
+
+  /**
+   * Dropping the wallet unmounts StepSend, and between "your wallet signed it"
+   * and "here is the receipt" that screen holds the only copy of a transaction
+   * hash for money that has already moved. Losing it is precisely the failure
+   * the never-report-success-without-a-receipt rule exists to prevent. So a
+   * disconnect asked for mid-send — by the button here, or by the wallet
+   * switching accounts underneath us — is queued and applied once the run has
+   * settled, rather than refused or obeyed immediately.
+   */
+  const forgetWallet = useCallback(() => {
+    if (sending) { setForgetQueued(true); return; }
+    drop();
+  }, [sending, drop]);
+
+  useEffect(() => {
+    if (forgetQueued && !sending) { setForgetQueued(false); drop(); }
+  }, [forgetQueued, sending, drop]);
 
   // An account or chain change invalidates everything signed against the old one.
-  useEffect(() => watchWallet(() => { setWallet(undefined); setStep((s) => Math.min(s, 1)); }), []);
+  useEffect(() => watchWallet(forgetWallet), [forgetWallet]);
 
   const onConnect = useCallback(async () => {
     setWalletError(undefined);
     try { setWallet(await connect(net)); }
     catch (err) { setWalletError(describeConnectError(err)); }
   }, [net]);
+
+  // Revoke before forgetting, so the next connect actually prompts instead of
+  // silently reattaching the same account — a disconnect that leaves you
+  // unable to pick a different account has not disconnected anything.
+  const onDisconnect = useCallback(async () => {
+    await disconnect();
+    forgetWallet();
+  }, [forgetWallet]);
 
   return (
     <main className="sheet sheet--wide">
@@ -127,6 +173,17 @@ export default function CreateRun({ networkName }: { networkName: string | null 
               <a href={`${net.explorer}/address/${wallet.address}`} target="_blank" rel="noreferrer">
                 {short(wallet.address)}
               </a>
+              {" · "}
+              <button
+                className="linkish"
+                onClick={() => void onDisconnect()}
+                disabled={sending}
+                title={sending
+                  ? "This run is in flight. Disconnecting now would take its transaction hash off the screen."
+                  : undefined}
+              >
+                disconnect
+              </button>
             </>
           ) : (
             <>
@@ -169,6 +226,7 @@ export default function CreateRun({ networkName }: { networkName: string | null 
           <StepSend
             prepared={prepared} net={net} wallet={wallet}
             onDone={(o) => { if (o.state === "confirmed") { setOutcome(o); setStep(4); } }}
+            onBusy={setSending}
           />
         )}
         {step === 4 && outcome && prepared && draft && (

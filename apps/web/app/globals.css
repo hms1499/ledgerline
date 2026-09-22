@@ -193,3 +193,7 @@ dl.detail dd { margin: 0; }
 }
 .card .hex { word-break: break-all; }
 .card dl.detail { grid-template-columns: minmax(6rem, auto) 1fr; }
+
+/* A disconnect that is temporarily unsafe still has to look like a control,
+   not like a link that stopped working. */
+.linkish:disabled { color: var(--ink-soft); cursor: not-allowed; text-decoration: none; }

@@ -19,10 +19,12 @@ const STAGE_LABEL: Record<RunStage, string> = {
 const ORDER: RunStage[] = ["balances", "preflight", "fees", "signing", "broadcast", "confirming"];
 
 export default function StepSend({
-  prepared, net, wallet, onDone,
+  prepared, net, wallet, onDone, onBusy,
 }: {
   prepared: PreparedRun; net: NetworkView; wallet: ConnectedWallet;
   onDone: (outcome: RunOutcome) => void;
+  /** True while this screen holds the only copy of a transaction hash. */
+  onBusy?: (busy: boolean) => void;
 }) {
   const [stage, setStage] = useState<RunStage>("balances");
   const [outcome, setOutcome] = useState<RunOutcome>();
@@ -31,25 +33,68 @@ export default function StepSend({
   // setStage call. This is the screen that opens the wallet and moves real
   // money — it must not depend on a coincidence to paint correctly.
   const [started, setStarted] = useState(false);
+  // executeRun turns every expected failure into a RunOutcome, so reaching
+  // this is an unexpected one. It cannot be reported as "nothing was signed":
+  // the throw may have come from after the signature, and claiming no money
+  // moved when it might have is the one direction that is never safe.
+  const [crash, setCrash] = useState<string>();
 
   const go = useCallback(async () => {
     const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
-    const result = await executeRun({
-      manifest: prepared.manifest,
-      anchor: net.anchor!,
-      io: ioFromPublicClient(client),
-      send: (tx) => wallet.walletClient.sendTransaction({
-        account: wallet.address, chain: net.chain, ...tx,
-      }),
-      onProgress: setStage,
-    });
-    setOutcome(result);
-    if (result.state === "confirmed") onDone(result);
+    try {
+      const result = await executeRun({
+        manifest: prepared.manifest,
+        anchor: net.anchor!,
+        io: ioFromPublicClient(client),
+        send: (tx) => wallet.walletClient.sendTransaction({
+          account: wallet.address, chain: net.chain, ...tx,
+        }),
+        onProgress: setStage,
+      });
+      setOutcome(result);
+      if (result.state === "confirmed") onDone(result);
+    } catch (err) {
+      setCrash(err instanceof Error ? err.message : String(err));
+    }
   }, [prepared, net, wallet, onDone]);
+
+  /**
+   * The wallet must not be dropped out from under this screen while it is the
+   * only thing holding a transaction hash: unmounting between "your wallet
+   * signed it" and "here is the receipt" discards the evidence for money that
+   * has already moved. `blocked` is the one settled state carrying no hash,
+   * because nothing was signed.
+   */
+  useEffect(() => {
+    onBusy?.(started && outcome?.state !== "blocked");
+  }, [started, outcome, onBusy]);
+
+  // Leaving this screen releases the hold however it ends.
+  useEffect(() => () => onBusy?.(false), [onBusy]);
 
   // Signing must follow a click, not a render — a wallet prompt nobody asked
   // for is how people learn to approve without reading.
-  useEffect(() => { setStarted(false); }, [prepared]);
+  useEffect(() => { setStarted(false); setCrash(undefined); }, [prepared]);
+
+  if (crash) {
+    return (
+      <>
+        <section className="verdict degraded">
+          <h1>The run stopped in an unknown state</h1>
+          <p>
+            Something failed that this screen cannot classify, and it is not safe to tell
+            you either that money moved or that it did not. Check{" "}
+            <a href={`${net.explorer}/address/${prepared.manifest.payer}`} target="_blank" rel="noreferrer">
+              your address on the explorer
+            </a>{" "}
+            before running this again — if the run did land, the anchor is write-once and a
+            second attempt is refused at preflight, but confirm rather than assume.
+          </p>
+        </section>
+        <Alert style={{ marginTop: 20 }} type="warning" showIcon title={crash} />
+      </>
+    );
+  }
 
   if (!outcome) {
     return (
