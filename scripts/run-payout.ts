@@ -9,12 +9,13 @@
  * --dry-run stops after preflight, so the whole path can be checked against
  * real mainnet state without signing anything.
  */
-import { createWalletClient, createPublicClient, http, keccak256, toHex } from "viem";
+import { createWalletClient, createPublicClient, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { writeFileSync, mkdirSync } from "node:fs";
 import {
-  buildRun, buildPreflightData, clientRunIdFor, runIdFor,
-  decodePreflightResult, gasPolicy, explainRevert,
+  buildRun, clientRunIdFor, runIdFor,
+  executeRun, ioFromPublicClient,
+  saltMessageFor, saltFromSignature,
   type Manifest, type ManifestItem,
 } from "@ledgerline/core";
 import { resolveNetwork, assertChainId, hasFlag } from "./lib/network.js";
@@ -38,18 +39,25 @@ const items: ManifestItem[] = [
   { invoiceId: "INV-BTC-003", token: net.tokens.cirBTC, to: RECIPIENT, amount: 1_000n },   // 0.00001 cirBTC
 ];
 
-const manifest: Manifest = {
-  clientRunId: clientRunIdFor(account.address, items, RUN_LABEL),
-  payer: account.address,
-  chainId: net.chain.id,
-  runSalt: keccak256(toHex(`ledgerline-${net.name}-salt-1`)),
-  items,
-};
-
 const publicClient = createPublicClient({ chain: net.chain, transport: http(net.rpcUrl) });
 const walletClient = createWalletClient({ account, chain: net.chain, transport: http(net.rpcUrl) });
 
 await assertChainId(await publicClient.getChainId(), net);
+
+// The salt is now derived from the payer's signature rather than a public
+// constant, so an observer cannot recompute the references. Same derivation
+// the browser uses.
+const runSalt = saltFromSignature(
+  await account.signMessage({ message: saltMessageFor(net.chain.id, RUN_LABEL) }),
+);
+
+const manifest: Manifest = {
+  clientRunId: clientRunIdFor(account.address, items, RUN_LABEL),
+  payer: account.address,
+  chainId: net.chain.id,
+  runSalt,
+  items,
+};
 
 const built = buildRun(manifest, net.anchor);
 
@@ -62,104 +70,80 @@ console.log(`  clientRunId  ${manifest.clientRunId}`);
 console.log(`  runId        ${runIdFor(account.address, manifest.clientRunId)}`);
 console.log(`  root         ${built.root}`);
 
-// Balances first: a preflight failure on a blocklisted or underfunded token is
-// far easier to read when the holdings are on screen next to it.
-console.log(`\n  holdings:`);
-for (const [symbol, token] of Object.entries(net.tokens)) {
-  const [balance, decimals] = await Promise.all([
-    publicClient.readContract({
-      address: token, functionName: "balanceOf", args: [account.address],
-      abi: [{ type: "function", name: "balanceOf", stateMutability: "view",
-        inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] }] as const,
-    }),
-    publicClient.readContract({
-      address: token, functionName: "decimals",
-      abi: [{ type: "function", name: "decimals", stateMutability: "view",
-        inputs: [], outputs: [{ type: "uint8" }] }] as const,
-    }),
-  ]);
-  const need = items.filter((i) => i.token === token).reduce((a, i) => a + i.amount, 0n);
-  const ok = balance >= need;
-  console.log(
-    `    ${ok ? "OK  " : "LOW "}  ${symbol.padEnd(6)} ${balance} raw (${decimals} dec), need ${need}`,
-  );
-}
-
-// Preflight — never sign blind. allowFailure is true here even though the real
-// run uses false, so a plain eth_call yields per-payment outcomes instead of
-// reverting on the first problem. It is also the only way to see Arc's runtime
-// blocklist, which exposes no pre-check.
-console.log(`\n  preflight:`);
-try {
-  const preflight = await publicClient.call({
-    account: account.address,
-    to: built.to,
-    data: buildPreflightData(manifest, net.anchor),
+if (dryRun) {
+  // Preflight without signing: executeRun's send is never reached because the
+  // balance and simulation stages come first and we stop at them.
+  const outcome = await executeRun({
+    manifest, anchor: net.anchor, io: ioFromPublicClient(publicClient),
+    send: async () => { throw new Error("--dry-run: refusing to sign"); },
+    onProgress: (s) => console.log(`  ${s}…`),
   });
-  const outcomes = decodePreflightResult(preflight.data!);
-  outcomes.forEach((o, i) => {
-    const label = i === 0 ? "anchor commit" : manifest.items[i - 1]!.invoiceId;
-    console.log(`    ${o.success ? "OK  " : "FAIL"}  ${label}`);
-  });
-  if (outcomes.some((o) => !o.success)) {
-    console.error(`\n  Preflight found failures. Not signing.\n`);
+  if (outcome.state === "blocked" && outcome.reason !== "signature") {
+    console.error(`\n  ${outcome.details}\n`);
     process.exit(1);
   }
-} catch (err) {
-  // The anchor call is allowFailure:false, so an already-committed run reverts
-  // the whole aggregate here rather than returning per-call flags.
-  const { name, message } = explainRevert(err);
-  console.error(`\n  Preflight reverted${name ? ` with ${name}` : ""}. Not signing.`);
-  console.error(`  ${message}\n`);
-  process.exit(1);
-}
-
-if (dryRun) {
   console.log(`\n  --dry-run: everything checks out against live ${net.name} state. Nothing signed.\n`);
   process.exit(0);
 }
 
-const fees = gasPolicy(
-  await publicClient.getGasPrice(),
-  await publicClient.estimateMaxPriorityFeePerGas(),
-);
-const gas = await publicClient.estimateGas({
-  account: account.address, to: built.to, data: built.data,
+const outcome = await executeRun({
+  manifest,
+  anchor: net.anchor,
+  io: ioFromPublicClient(publicClient),
+  send: (tx) => walletClient.sendTransaction(tx),
+  onProgress: (s) => console.log(`  ${s}…`),
 });
-console.log(`\n  maxFee ${fees.maxFeePerGas} wei   tip ${fees.maxPriorityFeePerGas} wei   gas ${gas}`);
 
-const hash = await walletClient.sendTransaction({
-  to: built.to, data: built.data, ...fees, gas: (gas * 12n) / 10n,
-});
-console.log(`\n  sent: ${hash}`);
+console.log();
+switch (outcome.state) {
+  case "blocked":
+    console.error(`  blocked (${outcome.reason}): ${outcome.details}\n`);
+    process.exit(1);
+  // eslint-disable-next-line no-fallthrough
+  case "dropped":
+    console.error(`  DROPPED: ${outcome.txHash}`);
+    console.error(`  The node has never seen this transaction. On Arc that means the`);
+    console.error(`  mempool discarded it, which happens silently below 20 Gwei.`);
+    console.error(`  It was sent at ${outcome.sentMaxFeePerGas} wei. Safe to run again.\n`);
+    process.exit(1);
+  // eslint-disable-next-line no-fallthrough
+  case "pending":
+    console.error(`  PENDING: ${outcome.txHash}`);
+    console.error(`  No receipt inside the timeout. This is NOT a successful payment.`);
+    if (outcome.feeWarning) console.error(`  ${outcome.feeWarning}`);
+    console.error(`  ${net.explorer}/tx/${outcome.txHash}\n`);
+    process.exit(1);
+  // eslint-disable-next-line no-fallthrough
+  case "reverted":
+    console.error(`  REVERTED: ${outcome.txHash}`);
+    console.error(`  No money moved and no anchor was written. Safe to run again.\n`);
+    process.exit(1);
+  // eslint-disable-next-line no-fallthrough
+  case "confirmed": {
+    const { receipt, txHash } = outcome;
+    const cost = receipt.gasUsed * receipt.effectiveGasPrice;
+    console.log(`  status:   success`);
+    console.log(`  block:    ${receipt.blockNumber}`);
+    console.log(`  gasUsed:  ${receipt.gasUsed}`);
+    console.log(`  cost:     ${Number(cost) / 1e18} USDC`);
+    console.log(`  logs:     ${receipt.logs.length}`);
+    if (outcome.feeWarning) console.log(`\n  WARNING  ${outcome.feeWarning}`);
+    console.log(`  ${net.explorer}/tx/${txHash}`);
 
-// Never report a payment as successful without a receipt.
-const receipt = await publicClient.waitForTransactionReceipt({ hash, timeout: 180_000 });
-const cost = receipt.gasUsed * receipt.effectiveGasPrice;
-console.log(`  status:   ${receipt.status}`);
-console.log(`  block:    ${receipt.blockNumber}`);
-console.log(`  gasUsed:  ${receipt.gasUsed}`);
-console.log(`  cost:     ${Number(cost) / 1e18} USDC`);
-console.log(`  logs:     ${receipt.logs.length}`);
-console.log(`  ${net.explorer}/tx/${hash}`);
-
-const out = `docs/notes/${net.name}-manifest.json`;
-mkdirSync("docs/notes", { recursive: true });
-writeFileSync(
-  out,
-  JSON.stringify(
-    {
+    const out = `docs/notes/${net.name}-manifest.json`;
+    mkdirSync("docs/notes", { recursive: true });
+    writeFileSync(out, JSON.stringify({
       ...manifest,
       items: manifest.items.map((i) => ({ ...i, amount: i.amount.toString() })),
       runLabel: RUN_LABEL,
-      txHash: hash,
+      txHash,
       anchor: net.anchor,
       runId: runIdFor(account.address, manifest.clientRunId),
       root: built.root,
       memoIds: built.memoIds,
       proofs: built.proofs,
-    },
-    null, 2,
-  ),
-);
-console.log(`\n  manifest written to ${out}\n`);
+    }, null, 2));
+    console.log(`\n  manifest written to ${out}\n`);
+    break;
+  }
+}
