@@ -130,6 +130,10 @@ switch (outcome.state) {
     if (outcome.feeWarning) console.log(`\n  WARNING  ${outcome.feeWarning}`);
     console.log(`  ${net.explorer}/tx/${txHash}`);
 
+    // This file carries manifest.runSalt — the payer-signature-derived secret
+    // that keeps every invoice reference in this run unguessable to an
+    // observer. docs/notes/*-manifest.json is gitignored for exactly that
+    // reason; don't `git add -f` it back without reading why.
     const out = `docs/notes/${net.name}-manifest.json`;
     mkdirSync("docs/notes", { recursive: true });
     writeFileSync(out, JSON.stringify({

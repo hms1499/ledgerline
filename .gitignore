@@ -42,6 +42,15 @@ scratch/
 # playwright mcp scratch
 .playwright-mcp/
 
+# ── run manifests ───────────────────────────────────────
+# scripts/run-payout.ts writes docs/notes/<net>-manifest.json on a confirmed
+# run, and that file carries the run's runSalt — the payer-signature-derived
+# secret that keeps every invoice reference in the run unguessable to an
+# observer (Task 4). Committing it defeats that for the whole run, so it
+# never goes into git even though the rest of docs/notes/ (the hand-written
+# evidence notes) does.
+docs/notes/*-manifest.json
+
 # screenshots from browser checks are evidence for a moment, not artifacts
 *.png
 !apps/web/app/**/*.png
