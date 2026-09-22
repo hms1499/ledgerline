@@ -5,6 +5,7 @@ import { Alert, Button, Steps } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue, type RunOutcome } from "@ledgerline/core";
 import { networkFor, short } from "@/lib/chain";
+import { describeError, errorCode } from "@/lib/errors";
 import {
   connect, disconnect, switchChain, watchWallet, watchWalletList, knownWallets,
   EoaRequiredError, type ConnectedWallet, type WalletChoice,
@@ -79,8 +80,10 @@ export interface ConnectError {
  *   reported as though it did.
  */
 function describeConnectError(err: unknown): ConnectError {
-  const code = (err as { code?: number } | null)?.code;
-  if (code === 4001) {
+  // Read through the nesting: a wallet's 4001 is often wrapped by whatever
+  // called it, and a dismissal misread as a failure accuses the wallet of
+  // something it did not do.
+  if (errorCode(err) === 4001) {
     return {
       type: "info",
       title: "Connection cancelled",
@@ -97,7 +100,7 @@ function describeConnectError(err: unknown): ConnectError {
   return {
     type: "error",
     title: "Couldn't connect to your wallet",
-    description: err instanceof Error ? err.message : String(err),
+    description: describeError(err),
   };
 }
 
@@ -189,10 +192,9 @@ export default function CreateRun({ networkName }: { networkName: string | null 
         setSwitchError(`The wallet is still on chain ${id || "unknown"}. Switch it to Arc ${net.name} from the wallet itself, then try again.`);
       }
     } catch (err) {
-      const code = (err as { code?: number } | null)?.code;
-      setSwitchError(code === 4001
+      setSwitchError(errorCode(err) === 4001
         ? "You dismissed the network prompt. Nothing changed — press the button again when you're ready."
-        : err instanceof Error ? err.message : String(err));
+        : describeError(err));
     } finally {
       setSwitching(false);
     }

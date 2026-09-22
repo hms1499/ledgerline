@@ -6,6 +6,7 @@ import { createPublicClient, http } from "viem";
 import { executeRun, ioFromPublicClient, type RunOutcome, type RunStage } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
+import { describeError } from "@/lib/errors";
 import type { PreparedRun } from "./StepPreflight";
 
 const STAGE_LABEL: Record<RunStage, string> = {
@@ -54,7 +55,7 @@ export default function StepSend({
       setOutcome(result);
       if (result.state === "confirmed") onDone(result);
     } catch (err) {
-      setCrash(err instanceof Error ? err.message : String(err));
+      setCrash(describeError(err));
     }
   }, [prepared, net, wallet, onDone]);
 

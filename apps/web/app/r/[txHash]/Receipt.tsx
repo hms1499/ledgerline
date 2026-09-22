@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { createPublicClient, http, type Address } from "viem";
 import { Alert, Collapse, Skeleton } from "antd";
+import { describeError } from "@/lib/errors";
 import {
   verifyReceipt, RUN_COMMITTED_TOPIC,
   type ReceiptResult, type RawLog, type Hex,
@@ -61,7 +62,7 @@ export default function Receipt(props: Props) {
         setData(loaded);
         setPhase("ready");
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = describeError(err);
         if (/not be found|not found/i.test(msg)) setPhase("tx_not_found");
         else {
           setError(msg);

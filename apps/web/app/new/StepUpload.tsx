@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Alert, Input, Upload } from "antd";
 import { parseCsv, resolveRows, validateRun, tokensForChain } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
+import { describeError } from "@/lib/errors";
 import { readTokenMeta, type RunDraft } from "./CreateRun";
 
 const SAMPLE = `invoiceId,token,to,amount
@@ -34,7 +35,7 @@ export default function StepUpload({
         errors, warnings, decimals, symbols,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err));
     } finally {
       setBusy(false);
     }

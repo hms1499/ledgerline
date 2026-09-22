@@ -8,6 +8,7 @@ import {
   type BatchAssessment, type PaymentRecord, type RawLog, type Hex,
 } from "@ledgerline/core";
 import { networkFor, short, formatAmount, type NetworkView } from "@/lib/chain";
+import { describeError } from "@/lib/errors";
 
 /** Approval(address indexed owner, address indexed spender, uint256 value) */
 const APPROVAL_TOPIC =
@@ -72,7 +73,7 @@ export default function Why({
       setData(await loadBoth(rpc, net, ours, naive, approve));
       setPhase("ready");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = describeError(err);
       if (/not be found|not found/i.test(msg)) setPhase("tx_not_found");
       else { setError(msg); setPhase("rpc_unreachable"); }
     }

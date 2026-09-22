@@ -12,6 +12,7 @@ import {
 } from "@ledgerline/core";
 import { networkFor, short, formatAmount, encodeProof, type NetworkView } from "@/lib/chain";
 import { connect, knownWallets, type WalletChoice } from "@/lib/wallet";
+import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
 
 const anchorAbi = [
@@ -86,7 +87,7 @@ export default function Reconciliation({
       setData(loaded);
       setPhase("ready");
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const msg = describeError(err);
       if (/not be found|not found/i.test(msg)) setPhase("tx_not_found");
       else { setError(msg); setPhase("rpc_unreachable"); }
     }
@@ -616,7 +617,7 @@ function RecoverLinks({
       })));
       setState("ok");
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(describeError(err));
       setState("error");
     }
   };
