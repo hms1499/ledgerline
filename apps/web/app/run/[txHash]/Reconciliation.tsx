@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPublicClient, http, type Address } from "viem";
-import { Alert, Skeleton, Table, Tag, Upload, type TableColumnsType } from "antd";
+import { Alert, Button, Input, Skeleton, Table, Tag, Upload, type TableColumnsType } from "antd";
 import {
   reconcile, assessCompleteness, checkManifestAgainstRoot, RUN_COMMITTED_TOPIC,
+  saltMessageFor, saltFromSignature, memoIdFor, buildTree, leafFor,
   type ReconcileResult, type ReconcileRow, type ReconcileStatus,
   type Manifest, type RawLog, type Hex, type Completeness, type ManifestCheck,
+  type PaymentRecord,
 } from "@ledgerline/core";
-import { networkFor, short, formatAmount, type NetworkView } from "@/lib/chain";
+import { networkFor, short, formatAmount, encodeProof, type NetworkView } from "@/lib/chain";
+import { connect } from "@/lib/wallet";
 
 const anchorAbi = [
   { type: "function", name: "runs", stateMutability: "view",
@@ -54,6 +57,10 @@ interface Loaded {
   blockNumber: bigint;
   anchoredItemCount?: number;
   anchorPayer?: Address;
+  /** The root PayoutAnchor committed, kept so link recovery can check against
+   *  it. It cannot lean on `manifestCheck`, which is undefined until someone
+   *  uploads a manifest — and recovery's whole premise is having none. */
+  anchoredRoot?: Hex;
   manifestCheck?: ManifestCheck;
   logs: RawLog[];
 }
@@ -377,6 +384,13 @@ function Ready({
         />
       </div>
 
+      <RecoverLinks
+        net={net} txHash={txHash}
+        memoIdsOnChain={new Set(result.payments.map((p) => p.memoId.toLowerCase()))}
+        payments={result.payments}
+        anchoredRoot={data.anchoredRoot}
+      />
+
       <p style={{ marginTop: 20, fontSize: "0.85rem" }}>
         <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">
           This run on the explorer
@@ -500,7 +514,7 @@ async function loadRun(
 
   return {
     result, completeness, tokens, blockNumber: receipt.blockNumber,
-    anchoredItemCount, anchorPayer, manifestCheck, logs,
+    anchoredItemCount, anchorPayer, anchoredRoot, manifestCheck, logs,
   };
 }
 
@@ -512,4 +526,145 @@ function runIdFromLogs(logs: RawLog[], anchor?: Address): Hex | undefined {
     (l) => l.address.toLowerCase() === anchor.toLowerCase() &&
       l.topics[0] === RUN_COMMITTED_TOPIC && l.topics.length >= 2,
   )?.topics[1];
+}
+
+/**
+ * The design's safety valve. The salt is derived from a signature and stored
+ * nowhere, so recovery is a signature rather than a backup — and what makes it
+ * safe to hand out the resulting links is that nothing here is assumed. The
+ * re-derived references must be ones this transaction's logs actually carry,
+ * and the tree rebuilt from those logs must produce the root the anchor
+ * committed. Either check failing means silence: an unverified receipt link is
+ * worse than no link at all.
+ */
+function RecoverLinks({
+  net, txHash, memoIdsOnChain, payments, anchoredRoot,
+}: {
+  net: NetworkView; txHash: string;
+  memoIdsOnChain: Set<string>;
+  payments: PaymentRecord[];
+  /** The root PayoutAnchor committed for this run, when it could be read. */
+  anchoredRoot?: Hex;
+}) {
+  const [label, setLabel] = useState("");
+  const [invoices, setInvoices] = useState("");
+  const [state, setState] = useState<"idle" | "working" | "ok" | "mismatch" | "error">("idle");
+  const [error, setError] = useState<string>();
+  const [links, setLinks] = useState<{ invoiceId: string; url: string }[]>([]);
+  const [copied, setCopied] = useState<string>();
+
+  const recover = async () => {
+    setState("working");
+    setError(undefined);
+    setCopied(undefined);
+    try {
+      const ids = invoices.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
+      if (ids.length === 0) throw new Error("List the invoice references, one per line.");
+
+      const { address, walletClient } = await connect(net);
+      const signature = await walletClient.signMessage({
+        account: address,
+        message: saltMessageFor(net.chain.id, label),
+      });
+      const runSalt = saltFromSignature(signature);
+
+      // Check 1: the derived references must be ones this transaction carries.
+      const derived = ids.map((invoiceId) => ({ invoiceId, memoId: memoIdFor(runSalt, invoiceId) }));
+      if (!derived.every((d) => memoIdsOnChain.has(d.memoId.toLowerCase()))) {
+        setState("mismatch");
+        setLinks([]);
+        return;
+      }
+
+      // The tree must be rebuilt from EVERY payment in the run, in the order
+      // the run built them — a tree over only the invoices someone happened to
+      // type produces different proofs that verify against nothing. The value
+      // is the emitted one, never a remembered request, which is also what the
+      // reconciler does.
+      const leaves = payments.map((p) => leafFor(p.memoId, p.token, p.to, p.value));
+      const { root, proofFor } = buildTree(leaves);
+
+      // Check 2: and the ordering assumption is not assumed. If the rebuilt
+      // root is the one the anchor committed, the leaves are in the right
+      // order and every proof below is valid. If it is not, say nothing.
+      if (!anchoredRoot || root.toLowerCase() !== anchoredRoot.toLowerCase()) {
+        setState("mismatch");
+        setLinks([]);
+        return;
+      }
+
+      setLinks(derived.map((d) => ({
+        invoiceId: d.invoiceId,
+        url: `${window.location.origin}/r/${txHash}?i=${encodeURIComponent(d.invoiceId)}`
+          + `&s=${runSalt}`
+          + `&p=${encodeProof(proofFor(payments.findIndex((p) => p.memoId.toLowerCase() === d.memoId.toLowerCase())))}`
+          + `&n=${net.name}`,
+      })));
+      setState("ok");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+      setState("error");
+    }
+  };
+
+  return (
+    <details style={{ marginTop: 26 }}>
+      <summary style={{ cursor: "pointer" }}>Rebuild the receipt links for this run</summary>
+
+      <p className="because" style={{ marginTop: 12 }}>
+        Sign the same message again and the links come back. Nothing was stored — the salt
+        is derived from your signature over the run name, so your wallet and this
+        transaction are all that is needed.
+      </p>
+
+      <label style={{ display: "block", marginTop: 14, maxWidth: "32rem" }}>
+        <span style={{ display: "block", fontSize: "0.87rem", marginBottom: 6 }}>Run name</span>
+        <Input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Payroll 2026-09" />
+      </label>
+
+      <label style={{ display: "block", marginTop: 14, maxWidth: "32rem" }}>
+        <span style={{ display: "block", fontSize: "0.87rem", marginBottom: 6 }}>
+          Invoice references, one per line
+        </span>
+        <Input.TextArea rows={4} value={invoices} onChange={(e) => setInvoices(e.target.value)} />
+      </label>
+
+      <Button style={{ marginTop: 14 }} loading={state === "working"} onClick={() => void recover()}>
+        Sign and rebuild
+      </Button>
+
+      {state === "mismatch" && (
+        <Alert style={{ marginTop: 16 }} type="error" showIcon
+          title="These do not match what is on chain"
+          description="Either the references derived from that signature are not the ones this transaction carries, or the rebuilt manifest root is not the one the anchor committed. That covers a run name typed differently, an invoice reference spelled differently, a wallet that does not reproduce its signatures, and an anchor that could not be read. Use the manifest you downloaded — no links are shown, because an unverified link is worse than none." />
+      )}
+
+      {state === "error" && error && (
+        <Alert style={{ marginTop: 16 }} type="warning" showIcon title={error} />
+      )}
+
+      {state === "ok" && (
+        <>
+          <Alert style={{ marginTop: 16 }} type="success" showIcon
+            title="Rebuilt and checked against the chain"
+            description="Every reference below was derived from your signature and then found in this transaction's logs, and the tree they came from rebuilds the root the anchor committed." />
+          <dl className="detail" style={{ marginTop: 14 }}>
+            {links.map((l) => (
+              <div key={l.invoiceId} style={{ display: "contents" }}>
+                <dt>{l.invoiceId}</dt>
+                <dd>
+                  <button className="linkish" onClick={() => {
+                    void navigator.clipboard.writeText(l.url);
+                    setCopied(l.invoiceId);
+                  }}>
+                    {copied === l.invoiceId ? "Copied" : "Copy link"}
+                  </button>
+                </dd>
+              </div>
+            ))}
+          </dl>
+        </>
+      )}
+    </details>
+  );
 }
