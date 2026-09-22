@@ -30,6 +30,9 @@ export interface ConnectedWallet {
   /** The provider actually connected to — NOT necessarily window.ethereum. */
   provider: Eip1193Provider;
   info: WalletInfo;
+  /** The chain connect() left the wallet on, so a later chainChanged can be
+   *  told apart from the echo of that very switch. */
+  chainId: number;
 }
 
 declare global {
@@ -156,7 +159,7 @@ export async function connect(net: NetworkView, choice?: WalletChoice): Promise<
   });
 
   await assertEoa(net, address);
-  return { address, walletClient, provider, info: picked.info };
+  return { address, walletClient, provider, info: picked.info, chainId: net.chain.id };
 }
 
 /**
@@ -247,15 +250,38 @@ export async function assertEoa(net: NetworkView, address: Address): Promise<voi
  * Bound to the connected provider: subscribing to the global instead would
  * miss the connected wallet's own changes and fire on a wallet nobody is
  * using.
+ *
+ * Both events are read, never merely counted. A wallet emits them to confirm
+ * what connect() just did as well as to report a real change, and the
+ * confirmation can arrive long after connect resolved — whenever the payer
+ * had to approve the network switch by hand. Treating that echo as a change
+ * disconnects the wallet a second after it appears.
  */
 export function watchWallet(wallet: ConnectedWallet, onChange: () => void): () => void {
   const provider = wallet.provider;
   if (!provider.on || !provider.removeListener) return () => {};
-  const handler = () => onChange();
-  provider.on("accountsChanged", handler);
-  provider.on("chainChanged", handler);
+
+  const onAccounts = (...args: unknown[]) => {
+    const accounts = Array.isArray(args[0]) ? (args[0] as string[]) : [];
+    // An empty list is the wallet saying it revoked this site, which is a
+    // real disconnection. A list still holding our address is confirmation.
+    const mine = accounts.some((a) => a?.toLowerCase() === wallet.address.toLowerCase());
+    if (!mine) onChange();
+  };
+
+  const onChain = (...args: unknown[]) => {
+    const raw = args[0];
+    const id = typeof raw === "string" ? Number.parseInt(raw, 16) : Number(raw);
+    // Unreadable means unknown, and unknown has to invalidate: continuing to
+    // sign against a chain we cannot identify is the unsafe direction.
+    if (Number.isNaN(id)) { onChange(); return; }
+    if (id !== wallet.chainId) onChange();
+  };
+
+  provider.on("accountsChanged", onAccounts);
+  provider.on("chainChanged", onChain);
   return () => {
-    provider.removeListener?.("accountsChanged", handler);
-    provider.removeListener?.("chainChanged", handler);
+    provider.removeListener?.("accountsChanged", onAccounts);
+    provider.removeListener?.("chainChanged", onChain);
   };
 }
