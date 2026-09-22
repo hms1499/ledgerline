@@ -3,6 +3,7 @@
 
 import { createWalletClient, createPublicClient, custom, http, type Address, type WalletClient } from "viem";
 import type { NetworkView } from "@/lib/chain";
+import { errorCode } from "@/lib/errors";
 
 /** The subset of EIP-1193 this app uses. */
 export interface Eip1193Provider {
@@ -226,17 +227,29 @@ async function ensureChain(provider: Eip1193Provider, net: NetworkView): Promise
       method: "wallet_switchEthereumChain",
       params: [{ chainId: hex }],
     });
+    return;
   } catch (err) {
-    // 4902: the wallet does not know this chain yet.
-    const code = (err as { code?: number }).code;
-    if (code !== 4902) throw err;
+    // A dismissed prompt is an answer. Following it immediately with a
+    // different dialog is nagging, so it propagates instead.
+    if (errorCode(err) === 4001) throw err;
+
+    // Everything else gets the add. "Unrecognized chain ID" is 4902 in the
+    // spec, but wallets disagree about how to say it: MetaMask wraps it as
+    // -32603 with the real code under data.originalError, and some only say
+    // it in the message. Matching on a top-level 4902 missed all of those and
+    // rethrew the switch error, which is why the payer saw "Try adding the
+    // chain using wallet_switchEthereumChain first" and no add ever happened.
+    // Adding a chain the wallet already knows is harmless, and a genuine
+    // failure surfaces with the add's own reason rather than the switch's.
     await provider.request({
       method: "wallet_addEthereumChain",
       params: [{
         chainId: hex,
         chainName: net.chain.name,
         nativeCurrency: net.chain.nativeCurrency,
-        rpcUrls: [net.defaultRpc],
+        // More than one, because a wallet validates the chain by calling the
+        // endpoint, and one slow or blocked URL should not sink the add.
+        rpcUrls: [...new Set([net.defaultRpc, ...net.chain.rpcUrls.default.http])],
         blockExplorerUrls: [net.explorer],
       }],
     });
