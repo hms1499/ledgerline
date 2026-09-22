@@ -18,7 +18,7 @@ export default function StepUpload({
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
-  const handle = async (text: string, fileName: string) => {
+  const handle = async (text: string) => {
     setBusy(true);
     setError(undefined);
     try {
@@ -31,7 +31,7 @@ export default function StepUpload({
         rows: resolved.items,
         runLabel: runLabel.trim(),
         issues: [...issues, ...resolved.issues],
-        errors, warnings, decimals, symbols, fileName,
+        errors, warnings, decimals, symbols,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -74,7 +74,7 @@ export default function StepUpload({
           disabled={busy || !labelReady}
           beforeUpload={(file) => {
             const reader = new FileReader();
-            reader.onload = () => void handle(String(reader.result), file.name);
+            reader.onload = () => void handle(String(reader.result));
             reader.readAsText(file);
             return false;
           }}

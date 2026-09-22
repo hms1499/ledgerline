@@ -17,7 +17,6 @@ export interface RunDraft {
   warnings: RowIssue[];
   decimals: Record<string, number>;
   symbols: Record<string, string>;
-  fileName: string;
 }
 
 const erc20Abi = [
@@ -47,12 +46,37 @@ export async function readTokenMeta(
   return { decimals, symbols };
 }
 
-/** A dismissed wallet prompt (EIP-1193 code 4001) is the ordinary, expected
- *  outcome of asking someone to connect — not a failure worth alarming over. */
-function describeConnectError(err: unknown): string {
+/** The title and body of a connect-failure Alert. Kept together so the two
+ *  can never drift apart the way a bare string once let them. */
+export interface ConnectError {
+  /** "info" for an outcome that says nothing about the wallet itself;
+   *  "error" for a genuine reason this wallet cannot sign a Ledgerline run. */
+  type: "info" | "error";
+  title: string;
+  description: string;
+}
+
+/**
+ * A dismissed wallet prompt (EIP-1193 code 4001) is the ordinary, expected
+ * outcome of asking someone to connect — not a claim about the wallet's
+ * compatibility, so its title must not read as one. Anything else, including
+ * the EOA-only rejection assertEoa throws for a smart-contract wallet, keeps
+ * the compatibility title: that one is a genuine, deliberate claim.
+ */
+function describeConnectError(err: unknown): ConnectError {
   const code = (err as { code?: number } | null)?.code;
-  if (code === 4001) return "Connection request dismissed. Click connect again when you're ready.";
-  return err instanceof Error ? err.message : String(err);
+  if (code === 4001) {
+    return {
+      type: "info",
+      title: "Connection cancelled",
+      description: "Click connect again when you're ready.",
+    };
+  }
+  return {
+    type: "error",
+    title: "This wallet cannot sign a Ledgerline run",
+    description: err instanceof Error ? err.message : String(err),
+  };
 }
 
 export default function CreateRun({ networkName }: { networkName: string | null }) {
@@ -60,7 +84,7 @@ export default function CreateRun({ networkName }: { networkName: string | null 
   const [step, setStep] = useState(0);
   const [draft, setDraft] = useState<RunDraft>();
   const [wallet, setWallet] = useState<ConnectedWallet>();
-  const [walletError, setWalletError] = useState<string>();
+  const [walletError, setWalletError] = useState<ConnectError>();
 
   // An account or chain change invalidates everything signed against the old one.
   useEffect(() => watchWallet(() => { setWallet(undefined); setStep((s) => Math.min(s, 1)); }), []);

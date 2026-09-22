@@ -4,14 +4,14 @@ import { Alert, Button, Table, type TableColumnsType } from "antd";
 import type { ResolvedRow } from "@ledgerline/core";
 import { formatAmount, short, type NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
-import type { RunDraft } from "./CreateRun";
+import type { ConnectError, RunDraft } from "./CreateRun";
 
 export default function StepPreview({
   draft, net, onBack, onNext, wallet, walletError, onConnect,
 }: {
   draft: RunDraft; net: NetworkView;
   onBack: () => void; onNext: () => void;
-  wallet?: ConnectedWallet; walletError?: string; onConnect: () => void;
+  wallet?: ConnectedWallet; walletError?: ConnectError; onConnect: () => void;
 }) {
   const blocking = draft.issues.length + draft.errors.length;
 
@@ -87,8 +87,8 @@ export default function StepPreview({
       </div>
 
       {walletError && (
-        <Alert style={{ marginTop: 18 }} type="error" showIcon
-          title="This wallet cannot sign a Ledgerline run" description={walletError} />
+        <Alert style={{ marginTop: 18 }} type={walletError.type} showIcon
+          title={walletError.title} description={walletError.description} />
       )}
 
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
