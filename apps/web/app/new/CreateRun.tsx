@@ -5,7 +5,7 @@ import { Steps } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue } from "@ledgerline/core";
 import { networkFor, short } from "@/lib/chain";
-import { connect, watchWallet, type ConnectedWallet } from "@/lib/wallet";
+import { connect, watchWallet, EoaRequiredError, type ConnectedWallet } from "@/lib/wallet";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
 
@@ -57,11 +57,19 @@ export interface ConnectError {
 }
 
 /**
- * A dismissed wallet prompt (EIP-1193 code 4001) is the ordinary, expected
- * outcome of asking someone to connect — not a claim about the wallet's
- * compatibility, so its title must not read as one. Anything else, including
- * the EOA-only rejection assertEoa throws for a smart-contract wallet, keeps
- * the compatibility title: that one is a genuine, deliberate claim.
+ * Three cases, each with its own title, because a title is a claim and only
+ * one of these three is a claim about the wallet's compatibility:
+ *
+ * - A dismissed wallet prompt (EIP-1193 code 4001) is the ordinary, expected
+ *   outcome of asking someone to connect. It says nothing about the wallet.
+ * - `EoaRequiredError` is the one genuine, deliberate compatibility claim —
+ *   assertEoa found real contract code at the address, so this wallet truly
+ *   cannot sign a Ledgerline run. Checked by type, not by matching the
+ *   message text, which is product copy and free to change.
+ * - Everything else (no injected provider, a dropped RPC, a rejected chain
+ *   switch that isn't 4001, ...) is a connection that failed for a reason
+ *   that has nothing to do with wallet compatibility, and must not be
+ *   reported as though it did.
  */
 function describeConnectError(err: unknown): ConnectError {
   const code = (err as { code?: number } | null)?.code;
@@ -72,9 +80,16 @@ function describeConnectError(err: unknown): ConnectError {
       description: "Click connect again when you're ready.",
     };
   }
+  if (err instanceof EoaRequiredError) {
+    return {
+      type: "error",
+      title: "This wallet cannot sign a Ledgerline run",
+      description: err.message,
+    };
+  }
   return {
     type: "error",
-    title: "This wallet cannot sign a Ledgerline run",
+    title: "Couldn't connect to your wallet",
     description: err instanceof Error ? err.message : String(err),
   };
 }

@@ -71,6 +71,14 @@ async function ensureChain(provider: Eip1193Provider, net: NetworkView): Promise
 }
 
 /**
+ * Thrown only by assertEoa's EOA-only rejection, so a caller can tell "this
+ * wallet genuinely cannot sign a Ledgerline run" apart from any other
+ * connection failure (a dropped RPC, a rejected chain switch, ...) without
+ * matching on message text — that text is product copy and free to change.
+ */
+export class EoaRequiredError extends Error {}
+
+/**
  * Arc's Memo predeploy reverts for contract callers with "sender spoofing
  * requires tx.origin as sender" — measured on testnet, since eth_call and
  * debug_traceCall force msg.sender == tx.origin and cannot test the rule.
@@ -88,7 +96,7 @@ export async function assertEoa(net: NetworkView, address: Address): Promise<voi
   // a false rejection if it does.
   if (code.toLowerCase().startsWith("0xef0100")) return;
 
-  throw new Error(
+  throw new EoaRequiredError(
     "This address is a smart-contract wallet. Arc's Memo contract requires the payer to be the transaction's origin, so Safe, ERC-4337 and similar wallets cannot sign a Ledgerline run. Connect an ordinary EOA instead.",
   );
 }
