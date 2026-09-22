@@ -67,7 +67,7 @@ apps/web/app/run/[txHash]/Reconciliation.tsx    gains recovery
 
 Excel produces BOM, CRLF and quoted fields containing commas. All three must survive. `amount` stays raw text here — conversion needs on-chain decimals and belongs to Task 2.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // packages/core/test/csv.test.ts
@@ -156,12 +156,12 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
 });
 ```
 
-- [ ] **Step 2: Run the test and watch it fail**
+- [x] **Step 2: Run the test and watch it fail**
 
 Run: `cd packages/core && npx vitest run test/csv.test.ts`
 Expected: FAIL — `Failed to load url ../src/csv.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 // packages/core/src/csv.ts
@@ -274,7 +274,7 @@ function splitLine(line: string): string[] {
 }
 ```
 
-- [ ] **Step 4: Export it**
+- [x] **Step 4: Export it**
 
 Append to `packages/core/src/index.ts`:
 
@@ -282,12 +282,12 @@ Append to `packages/core/src/index.ts`:
 export * from "./csv.js";
 ```
 
-- [ ] **Step 5: Run the test and watch it pass**
+- [x] **Step 5: Run the test and watch it pass**
 
 Run: `cd packages/core && npx vitest run test/csv.test.ts`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/csv.ts packages/core/test/csv.test.ts packages/core/src/index.ts
@@ -320,7 +320,7 @@ EOF
 
 `resolveRows` cannot be called without a decimals table, and that table can only come from `decimals()` on chain. The invariant is enforced by the signature.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Append to `packages/core/test/csv.test.ts`:
 
@@ -428,12 +428,12 @@ describe("resolveRows", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and watch it fail**
+- [x] **Step 2: Run the test and watch it fail**
 
 Run: `cd packages/core && npx vitest run test/csv.test.ts`
 Expected: FAIL — `toBaseUnits is not a function`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 Append to `packages/core/src/csv.ts`:
 
@@ -549,12 +549,12 @@ export function resolveRows(
 }
 ```
 
-- [ ] **Step 4: Run the test and watch it pass**
+- [x] **Step 4: Run the test and watch it pass**
 
 Run: `cd packages/core && npx vitest run test/csv.test.ts`
 Expected: PASS, 20 tests.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/csv.ts packages/core/test/csv.test.ts
@@ -591,7 +591,7 @@ EOF
 
 Returns arrays and never throws. Fixing a 400-row payroll one error per attempt is unusable. `buildRun`'s existing `throw`s stay as the last guard for callers reaching it directly.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // packages/core/test/validate.test.ts
@@ -657,12 +657,12 @@ describe("validateRun", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and watch it fail**
+- [x] **Step 2: Run the test and watch it fail**
 
 Run: `cd packages/core && npx vitest run test/validate.test.ts`
 Expected: FAIL — `Failed to load url ../src/validate.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 // packages/core/src/validate.ts
@@ -744,7 +744,7 @@ export function validateRun(items: ResolvedRow[]): {
 }
 ```
 
-- [ ] **Step 4: Export it**
+- [x] **Step 4: Export it**
 
 Append to `packages/core/src/index.ts`:
 
@@ -752,12 +752,12 @@ Append to `packages/core/src/index.ts`:
 export * from "./validate.js";
 ```
 
-- [ ] **Step 5: Run the test and watch it pass**
+- [x] **Step 5: Run the test and watch it pass**
 
 Run: `cd packages/core && npx vitest run test/validate.test.ts`
 Expected: PASS, 7 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/validate.ts packages/core/test/validate.test.ts packages/core/src/index.ts
@@ -795,7 +795,7 @@ EOF
 
 Spec §2. This replaces `keccak256(toHex("ledgerline-<network>-salt-1"))`, a public constant that any observer can recompute, defeating the privacy property `memo.ts` advertises.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // packages/core/test/salt.test.ts
@@ -879,12 +879,12 @@ describe("end to end", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and watch it fail**
+- [x] **Step 2: Run the test and watch it fail**
 
 Run: `cd packages/core && npx vitest run test/salt.test.ts`
 Expected: FAIL — `Failed to load url ../src/salt.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 // packages/core/src/salt.ts
@@ -935,7 +935,7 @@ export function saltFromSignature(signature: Hex): Hex {
 }
 ```
 
-- [ ] **Step 4: Export it**
+- [x] **Step 4: Export it**
 
 Append to `packages/core/src/index.ts`:
 
@@ -943,12 +943,12 @@ Append to `packages/core/src/index.ts`:
 export * from "./salt.js";
 ```
 
-- [ ] **Step 5: Run the test and watch it pass**
+- [x] **Step 5: Run the test and watch it pass**
 
 Run: `cd packages/core && npx vitest run test/salt.test.ts`
 Expected: PASS, 10 tests.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/salt.ts packages/core/test/salt.test.ts packages/core/src/index.ts
@@ -993,7 +993,7 @@ EOF
 
 Spec §4. `ExecuteIO` is a narrow structural interface rather than viem's `PublicClient` so the tests can fake it exactly; `ioFromPublicClient` adapts the real thing, including turning viem's throw-on-missing `getTransaction` into a `null`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 // packages/core/test/execute.test.ts
@@ -1153,12 +1153,12 @@ describe("executeRun", () => {
 });
 ```
 
-- [ ] **Step 2: Run the test and watch it fail**
+- [x] **Step 2: Run the test and watch it fail**
 
 Run: `cd packages/core && npx vitest run test/execute.test.ts`
 Expected: FAIL — `Failed to load url ../src/execute.js`.
 
-- [ ] **Step 3: Write the implementation**
+- [x] **Step 3: Write the implementation**
 
 ```ts
 // packages/core/src/execute.ts
@@ -1446,7 +1446,7 @@ export function ioFromPublicClient(client: ViemLikeClient): ExecuteIO {
 }
 ```
 
-- [ ] **Step 4: Export it**
+- [x] **Step 4: Export it**
 
 Append to `packages/core/src/index.ts`:
 
@@ -1454,7 +1454,7 @@ Append to `packages/core/src/index.ts`:
 export * from "./execute.js";
 ```
 
-- [ ] **Step 5: Record the exception in CLAUDE.md**
+- [x] **Step 5: Record the exception in CLAUDE.md**
 
 In `CLAUDE.md`, under **Non-negotiable invariants**, extend invariant 1 by appending this paragraph directly beneath it:
 
@@ -1466,17 +1466,17 @@ In `CLAUDE.md`, under **Non-negotiable invariants**, extend invariant 1 by appen
    takes no handle. Do not "tidy" this file out of core.
 ```
 
-- [ ] **Step 6: Run the test and watch it pass**
+- [x] **Step 6: Run the test and watch it pass**
 
 Run: `cd packages/core && npx vitest run test/execute.test.ts`
 Expected: PASS, 13 tests.
 
-- [ ] **Step 7: Run the whole suite**
+- [x] **Step 7: Run the whole suite**
 
 Run: `pnpm test`
 Expected: all core and CLI tests pass.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/core/src/execute.ts packages/core/test/execute.test.ts packages/core/src/index.ts CLAUDE.md
@@ -1520,7 +1520,7 @@ EOF
 
 Doing this before the UI proves the shared path against a real chain while there is still only one consumer. The script also moves to the signature-derived salt, so both consumers produce salts the same way.
 
-- [ ] **Step 1: Rewrite the middle of the script**
+- [x] **Step 1: Rewrite the middle of the script**
 
 In `scripts/run-payout.ts`, replace everything from the `const manifest: Manifest = {` declaration through the end of the file with:
 
@@ -1645,26 +1645,26 @@ import {
 import { resolveNetwork, assertChainId, hasFlag } from "./lib/network.js";
 ```
 
-- [ ] **Step 2: Build core so the script sees the new exports**
+- [x] **Step 2: Build core so the script sees the new exports**
 
 Run: `pnpm --filter @ledgerline/core build`
 Expected: no output, exit 0.
 
-- [ ] **Step 3: Dry-run against testnet**
+- [x] **Step 3: Dry-run against testnet**
 
 Run: `node --env-file=.env --import tsx scripts/run-payout.ts --network testnet --dry-run`
 Expected: the header block, then `balances… preflight…`, then `--dry-run: everything checks out against live testnet state. Nothing signed.`
 
 If it reports `blocked (preflight)` with `RunExists`, the same `runLabel` has already been used with this item list. Set a fresh one: `RUN_LABEL=testnet-shared-executor node --env-file=.env --import tsx scripts/run-payout.ts --network testnet --dry-run`.
 
-- [ ] **Step 4: Send it for real, with a fresh label**
+- [x] **Step 4: Send it for real, with a fresh label**
 
 Run: `RUN_LABEL=testnet-shared-executor node --env-file=.env --import tsx scripts/run-payout.ts --network testnet`
 Expected: `status: success`, a block number, 11 logs, and a manifest written.
 
 Record the transaction hash — Task 13 compares against it.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add scripts/run-payout.ts
@@ -1699,7 +1699,7 @@ EOF
 
 Raw EIP-1193 plus viem `custom()`. No wagmi: one chain, EOA only, and antd is already here.
 
-- [ ] **Step 1: Write the module**
+- [x] **Step 1: Write the module**
 
 ```ts
 // apps/web/lib/wallet.ts
@@ -1811,12 +1811,12 @@ export function watchWallet(onChange: () => void): () => void {
 }
 ```
 
-- [ ] **Step 2: Typecheck**
+- [x] **Step 2: Typecheck**
 
 Run: `pnpm --filter @ledgerline/web typecheck`
 Expected: `Done`, no errors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/web/lib/wallet.ts
@@ -1854,7 +1854,7 @@ EOF
 
 The file is dropped, parsed, and the decimals read from chain — all before a wallet is involved. Requiring a wallet before someone may look at their own CSV is a bad habit of the genre.
 
-- [ ] **Step 1: Write the page and the shell**
+- [x] **Step 1: Write the page and the shell**
 
 ```tsx
 // apps/web/app/new/page.tsx
@@ -1987,7 +1987,7 @@ export default function CreateRun({ networkName }: { networkName: string | null 
 }
 ```
 
-- [ ] **Step 2: Write the upload step**
+- [x] **Step 2: Write the upload step**
 
 ```tsx
 // apps/web/app/new/StepUpload.tsx
@@ -2097,7 +2097,7 @@ export default function StepUpload({
 }
 ```
 
-- [ ] **Step 3: Write the preview step**
+- [x] **Step 3: Write the preview step**
 
 ```tsx
 // apps/web/app/new/StepPreview.tsx
@@ -2214,7 +2214,7 @@ export default function StepPreview({
 }
 ```
 
-- [ ] **Step 4: Link it from the home page**
+- [x] **Step 4: Link it from the home page**
 
 In `apps/web/app/page.tsx`, replace the `<footer className="footer">` block with:
 
@@ -2226,19 +2226,19 @@ In `apps/web/app/page.tsx`, replace the `<footer className="footer">` block with
       </footer>
 ```
 
-- [ ] **Step 5: Build core, then build the web app**
+- [x] **Step 5: Build core, then build the web app**
 
 Run: `pnpm --filter @ledgerline/core build && pnpm --filter @ledgerline/web build`
 Expected: `Compiled successfully`, and `/new` listed in the route table.
 
-- [ ] **Step 6: Check it in a browser**
+- [x] **Step 6: Check it in a browser**
 
 Run: `cd apps/web && npx next start -p 3847`
 Open `http://localhost:3847/new`, type a run name, drop a CSV with one bad row, and confirm: the bad row is reported with its line number, the good rows render with symbols and amounts from the chain, and the continue button is disabled.
 
 Stop the server: `lsof -ti:3847 | xargs -r kill -9`
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web/app/new apps/web/app/page.tsx
@@ -2275,7 +2275,7 @@ EOF
 
 This is signature #1. The salt must exist before the calldata, because memoIds determine the calldata.
 
-- [ ] **Step 1: Write the step**
+- [x] **Step 1: Write the step**
 
 ```tsx
 // apps/web/app/new/StepPreflight.tsx
@@ -2423,7 +2423,7 @@ export default function StepPreflight({
 }
 ```
 
-- [ ] **Step 2: Wire it into the shell**
+- [x] **Step 2: Wire it into the shell**
 
 In `apps/web/app/new/CreateRun.tsx`, add the import and the state, then render step 2:
 
@@ -2441,12 +2441,12 @@ const [prepared, setPrepared] = useState<PreparedRun>();
 )}
 ```
 
-- [ ] **Step 3: Build and check**
+- [x] **Step 3: Build and check**
 
 Run: `pnpm --filter @ledgerline/core build && pnpm --filter @ledgerline/web build`
 Expected: `Compiled successfully`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web/app/new
@@ -2481,7 +2481,7 @@ EOF
 - Consumes: `executeRun`, `ioFromPublicClient`, `RunOutcome` from Task 5; `encodeProof` from `@/lib/chain`; `PreparedRun` from Task 9.
 - Produces: nothing later tasks consume.
 
-- [ ] **Step 1: Write the send step**
+- [x] **Step 1: Write the send step**
 
 ```tsx
 // apps/web/app/new/StepSend.tsx
@@ -2622,7 +2622,7 @@ function OutcomeView({
 }
 ```
 
-- [ ] **Step 2: Write the result screen**
+- [x] **Step 2: Write the result screen**
 
 ```tsx
 // apps/web/app/new/Result.tsx
@@ -2772,7 +2772,7 @@ export default function Result({
 }
 ```
 
-- [ ] **Step 3: Wire both into the shell**
+- [x] **Step 3: Wire both into the shell**
 
 In `apps/web/app/new/CreateRun.tsx`, add imports and state, then render steps 3 and 4:
 
@@ -2794,12 +2794,12 @@ const [outcome, setOutcome] = useState<Extract<RunOutcome, { state: "confirmed" 
 )}
 ```
 
-- [ ] **Step 4: Build**
+- [x] **Step 4: Build**
 
 Run: `pnpm --filter @ledgerline/core build && pnpm --filter @ledgerline/web build`
 Expected: `Compiled successfully`.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web/app/new
@@ -2839,7 +2839,7 @@ EOF
 
 Spec §2.2. This is the design's safety valve, and the check is the point: it re-derives, then compares against the memoIds actually in the transaction's logs. A wrong run label, or a wallet that signs non-deterministically, is caught rather than acted on.
 
-- [ ] **Step 1: Add the recovery component**
+- [x] **Step 1: Add the recovery component**
 
 Append to `apps/web/app/run/[txHash]/Reconciliation.tsx`:
 
@@ -2970,7 +2970,7 @@ function RecoverLinks({
 }
 ```
 
-- [ ] **Step 2: Extend the imports and render it**
+- [x] **Step 2: Extend the imports and render it**
 
 At the top of `Reconciliation.tsx`, extend the antd import to include `Button` and `Input`, extend the core import with `saltMessageFor, saltFromSignature, memoIdFor, buildTree, leafFor, type PaymentRecord`, extend the `@/lib/chain` import with `encodeProof`, and add `import { connect } from "@/lib/wallet";`.
 
@@ -2992,12 +2992,12 @@ Inside `Ready`, just before the closing explorer link paragraph, add:
       />
 ```
 
-- [ ] **Step 3: Build**
+- [x] **Step 3: Build**
 
 Run: `pnpm --filter @ledgerline/core build && pnpm --filter @ledgerline/web build`
 Expected: `Compiled successfully`.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web/app/run
