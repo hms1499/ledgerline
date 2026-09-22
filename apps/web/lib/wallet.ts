@@ -11,23 +11,113 @@ export interface Eip1193Provider {
   removeListener?(event: string, handler: (...args: unknown[]) => void): void;
 }
 
+/** EIP-6963's announcement payload. `icon` is a data URI. */
+export interface WalletInfo {
+  uuid: string;
+  name: string;
+  rdns: string;
+  icon: string;
+}
+
+export interface WalletChoice {
+  info: WalletInfo;
+  provider: Eip1193Provider;
+}
+
 export interface ConnectedWallet {
   address: Address;
   walletClient: WalletClient;
+  /** The provider actually connected to — NOT necessarily window.ethereum. */
+  provider: Eip1193Provider;
+  info: WalletInfo;
 }
 
-export function getProvider(): Eip1193Provider | undefined {
-  if (typeof window === "undefined") return undefined;
-  return (window as unknown as { ethereum?: Eip1193Provider }).ethereum;
+declare global {
+  interface WindowEventMap {
+    "eip6963:announceProvider": CustomEvent<WalletChoice>;
+  }
 }
 
-export async function connect(net: NetworkView): Promise<ConnectedWallet> {
-  const provider = getProvider();
-  if (!provider) {
+/**
+ * `window.ethereum` is one global and every extension wants it, so with two
+ * wallets installed it holds whichever won the injection race — usually not
+ * the one the payer meant to use. Reading it directly is why a second wallet
+ * appears not to work at all: the click opens the winner, or nothing.
+ *
+ * EIP-6963 replaces the race with an announcement. Every wallet that supports
+ * it answers `eip6963:requestProvider` with its own provider and identity, so
+ * the page can offer a choice instead of guessing.
+ */
+const announced = new Map<string, WalletChoice>();
+const listListeners = new Set<() => void>();
+let discovering = false;
+
+function startDiscovery(): void {
+  if (discovering || typeof window === "undefined") return;
+  discovering = true;
+  window.addEventListener("eip6963:announceProvider", (ev) => {
+    const choice = ev.detail;
+    if (!choice?.info?.uuid || !choice.provider) return;
+    announced.set(choice.info.uuid, choice);
+    for (const notify of listListeners) notify();
+  });
+}
+
+function ask(): void {
+  if (typeof window === "undefined") return;
+  startDiscovery();
+  // Wallets announce on their own at load and again on request, and an
+  // extension that woke up late only answers the next ask — so asking is
+  // cheap and repeatable rather than once at startup.
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+}
+
+/**
+ * Every wallet this page can see. Falls back to the injected global when
+ * nothing announces, so a wallet too old for EIP-6963 still works — it just
+ * cannot be told apart from any other, which is exactly the old behaviour.
+ */
+export function knownWallets(): WalletChoice[] {
+  ask();
+  if (announced.size > 0) {
+    return [...announced.values()].sort((a, b) => a.info.name.localeCompare(b.info.name));
+  }
+  if (typeof window === "undefined") return [];
+
+  const injected = (window as unknown as {
+    ethereum?: Eip1193Provider & { providers?: Eip1193Provider[] };
+  }).ethereum;
+  if (!injected) return [];
+
+  // Pre-6963 coexistence hack: some wallets stack themselves in an array on
+  // the global instead of replacing it.
+  const stacked = Array.isArray(injected.providers) ? injected.providers : [injected];
+  return stacked.map((provider, i) => ({
+    provider,
+    info: {
+      uuid: `injected-${i}`,
+      name: stacked.length > 1 ? `Browser wallet ${i + 1}` : "Browser wallet",
+      rdns: "",
+      icon: "",
+    },
+  }));
+}
+
+/** Re-runs `onChange` as wallets announce themselves. */
+export function watchWalletList(onChange: () => void): () => void {
+  listListeners.add(onChange);
+  ask();
+  return () => { listListeners.delete(onChange); };
+}
+
+export async function connect(net: NetworkView, choice?: WalletChoice): Promise<ConnectedWallet> {
+  const picked = choice ?? knownWallets()[0];
+  if (!picked) {
     throw new Error(
       "No wallet found. Ledgerline needs a browser wallet such as MetaMask or Rabby, and the payer must sign directly — Arc's Memo contract rejects smart-contract wallets.",
     );
   }
+  const provider = picked.provider;
 
   const accounts = (await provider.request({ method: "eth_requestAccounts" })) as Address[];
   const address = accounts[0];
@@ -42,7 +132,7 @@ export async function connect(net: NetworkView): Promise<ConnectedWallet> {
   });
 
   await assertEoa(net, address);
-  return { address, walletClient };
+  return { address, walletClient, provider, info: picked.info };
 }
 
 /**
@@ -58,8 +148,11 @@ export async function connect(net: NetworkView): Promise<ConnectedWallet> {
  * the worst case is a wallet that reconnects without prompting — degraded,
  * not broken.
  */
-export async function disconnect(): Promise<void> {
-  const provider = getProvider();
+export async function disconnect(wallet?: ConnectedWallet): Promise<void> {
+  // The connected provider, never the global: revoking on window.ethereum
+  // while connected to the other wallet would leave this one attached and
+  // log out a wallet the payer never connected.
+  const provider = wallet?.provider;
   if (!provider) return;
   try {
     await provider.request({
@@ -125,10 +218,15 @@ export async function assertEoa(net: NetworkView, address: Address): Promise<voi
   );
 }
 
-/** Account and chain changes invalidate everything downstream of connect. */
-export function watchWallet(onChange: () => void): () => void {
-  const provider = getProvider();
-  if (!provider?.on || !provider.removeListener) return () => {};
+/**
+ * Account and chain changes invalidate everything downstream of connect.
+ * Bound to the connected provider: subscribing to the global instead would
+ * miss the connected wallet's own changes and fire on a wallet nobody is
+ * using.
+ */
+export function watchWallet(wallet: ConnectedWallet, onChange: () => void): () => void {
+  const provider = wallet.provider;
+  if (!provider.on || !provider.removeListener) return () => {};
   const handler = () => onChange();
   provider.on("accountsChanged", handler);
   provider.on("chainChanged", handler);

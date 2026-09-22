@@ -197,3 +197,14 @@ dl.detail dd { margin: 0; }
 /* A disconnect that is temporarily unsafe still has to look like a control,
    not like a link that stopped working. */
 .linkish:disabled { color: var(--ink-soft); cursor: not-allowed; text-decoration: none; }
+
+.wallet-list { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.wallet-list button {
+  width: 100%; display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.7rem 0.85rem; font: inherit; text-align: left; cursor: pointer;
+  background: var(--raised); color: var(--ink);
+  border: 1px solid var(--rule); border-radius: 10px;
+}
+.wallet-list button:hover { border-color: var(--tick); }
+.wallet-list img { border-radius: 6px; }
+.wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--rule); }

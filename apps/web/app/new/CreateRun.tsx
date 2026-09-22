@@ -5,12 +5,16 @@ import { Steps } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue, type RunOutcome } from "@ledgerline/core";
 import { networkFor, short } from "@/lib/chain";
-import { connect, disconnect, watchWallet, EoaRequiredError, type ConnectedWallet } from "@/lib/wallet";
+import {
+  connect, disconnect, watchWallet, watchWalletList, knownWallets,
+  EoaRequiredError, type ConnectedWallet, type WalletChoice,
+} from "@/lib/wallet";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
 import StepPreflight, { type PreparedRun } from "./StepPreflight";
 import StepSend from "./StepSend";
 import Result from "./Result";
+import WalletPicker from "@/components/WalletPicker";
 
 export interface RunDraft {
   rows: ResolvedRow[];
@@ -108,6 +112,8 @@ export default function CreateRun({ networkName }: { networkName: string | null 
   /** True while StepSend holds the only copy of a transaction hash. */
   const [sending, setSending] = useState(false);
   const [forgetQueued, setForgetQueued] = useState(false);
+  const [choices, setChoices] = useState<WalletChoice[]>([]);
+  const [picking, setPicking] = useState(false);
 
   const drop = useCallback(() => {
     setWallet(undefined);
@@ -144,22 +150,41 @@ export default function CreateRun({ networkName }: { networkName: string | null 
     if (forgetQueued && !sending) { setForgetQueued(false); drop(); }
   }, [forgetQueued, sending, drop]);
 
-  // An account or chain change invalidates everything signed against the old one.
-  useEffect(() => watchWallet(forgetWallet), [forgetWallet]);
+  // An account or chain change invalidates everything signed against the old
+  // one. Bound to the connected wallet, so a change in some other installed
+  // wallet does not tear this screen down.
+  useEffect(() => {
+    if (!wallet) return;
+    return watchWallet(wallet, forgetWallet);
+  }, [wallet, forgetWallet]);
 
-  const onConnect = useCallback(async () => {
+  // Wallets announce themselves asynchronously, and one that wakes up late
+  // must still appear in the picker.
+  useEffect(() => watchWalletList(() => setChoices(knownWallets())), []);
+
+  const connectTo = useCallback(async (choice?: WalletChoice) => {
+    setPicking(false);
     setWalletError(undefined);
-    try { setWallet(await connect(net)); }
+    try { setWallet(await connect(net, choice)); }
     catch (err) { setWalletError(describeConnectError(err)); }
   }, [net]);
+
+  const onConnect = useCallback(() => {
+    const found = knownWallets();
+    setChoices(found);
+    // One wallet is not a choice, and no wallet needs connect's own error
+    // rather than an empty dialog.
+    if (found.length > 1) { setPicking(true); return; }
+    void connectTo(found[0]);
+  }, [connectTo]);
 
   // Revoke before forgetting, so the next connect actually prompts instead of
   // silently reattaching the same account — a disconnect that leaves you
   // unable to pick a different account has not disconnected anything.
   const onDisconnect = useCallback(async () => {
-    await disconnect();
+    await disconnect(wallet);
     forgetWallet();
-  }, [forgetWallet]);
+  }, [wallet, forgetWallet]);
 
   return (
     <main className="sheet sheet--wide">
@@ -171,7 +196,9 @@ export default function CreateRun({ networkName }: { networkName: string | null 
             <>
               {" · "}
               <a href={`${net.explorer}/address/${wallet.address}`} target="_blank" rel="noreferrer">
-                {short(wallet.address)}
+                {wallet.info.name === "Browser wallet"
+                  ? short(wallet.address)
+                  : `${wallet.info.name} ${short(wallet.address)}`}
               </a>
               {" · "}
               <button
@@ -233,6 +260,12 @@ export default function CreateRun({ networkName }: { networkName: string | null 
           <Result outcome={outcome} prepared={prepared} draft={draft} net={net} />
         )}
       </div>
+
+      <WalletPicker
+        choices={choices} open={picking}
+        onPick={(c) => void connectTo(c)}
+        onCancel={() => setPicking(false)}
+      />
     </main>
   );
 }

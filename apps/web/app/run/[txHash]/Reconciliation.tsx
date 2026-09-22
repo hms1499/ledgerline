@@ -11,7 +11,8 @@ import {
   type PaymentRecord,
 } from "@ledgerline/core";
 import { networkFor, short, formatAmount, encodeProof, type NetworkView } from "@/lib/chain";
-import { connect } from "@/lib/wallet";
+import { connect, knownWallets, type WalletChoice } from "@/lib/wallet";
+import WalletPicker from "@/components/WalletPicker";
 
 const anchorAbi = [
   { type: "function", name: "runs", stateMutability: "view",
@@ -552,8 +553,21 @@ function RecoverLinks({
   const [error, setError] = useState<string>();
   const [links, setLinks] = useState<{ invoiceId: string; url: string }[]>([]);
   const [copied, setCopied] = useState<string>();
+  const [choices, setChoices] = useState<WalletChoice[]>([]);
+  const [picking, setPicking] = useState(false);
 
-  const recover = async () => {
+  // Recovery re-derives the salt from a signature, so it must be signed by the
+  // payer's wallet specifically. With two wallets installed, connecting to
+  // whichever one the browser happened to hand over would sign with the wrong
+  // account and report a mismatch that says nothing about the run.
+  const onRebuild = () => {
+    const found = knownWallets();
+    if (found.length > 1) { setChoices(found); setPicking(true); return; }
+    void recover(found[0]);
+  };
+
+  const recover = async (choice?: WalletChoice) => {
+    setPicking(false);
     setState("working");
     setError(undefined);
     setCopied(undefined);
@@ -561,7 +575,7 @@ function RecoverLinks({
       const ids = invoices.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
       if (ids.length === 0) throw new Error("List the invoice references, one per line.");
 
-      const { address, walletClient } = await connect(net);
+      const { address, walletClient } = await connect(net, choice);
       const signature = await walletClient.signMessage({
         account: address,
         message: saltMessageFor(net.chain.id, label),
@@ -629,9 +643,15 @@ function RecoverLinks({
         <Input.TextArea rows={4} value={invoices} onChange={(e) => setInvoices(e.target.value)} />
       </label>
 
-      <Button style={{ marginTop: 14 }} loading={state === "working"} onClick={() => void recover()}>
+      <Button style={{ marginTop: 14 }} loading={state === "working"} onClick={onRebuild}>
         Sign and rebuild
       </Button>
+
+      <WalletPicker
+        choices={choices} open={picking}
+        onPick={(c) => void recover(c)}
+        onCancel={() => setPicking(false)}
+      />
 
       {state === "mismatch" && (
         <Alert style={{ marginTop: 16 }} type="error" showIcon
