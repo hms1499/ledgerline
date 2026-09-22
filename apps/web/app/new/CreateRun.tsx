@@ -8,6 +8,7 @@ import { networkFor, short } from "@/lib/chain";
 import { connect, watchWallet, EoaRequiredError, type ConnectedWallet } from "@/lib/wallet";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
+import StepPreflight, { type PreparedRun } from "./StepPreflight";
 
 export interface RunDraft {
   rows: ResolvedRow[];
@@ -100,6 +101,7 @@ export default function CreateRun({ networkName }: { networkName: string | null 
   const [draft, setDraft] = useState<RunDraft>();
   const [wallet, setWallet] = useState<ConnectedWallet>();
   const [walletError, setWalletError] = useState<ConnectError>();
+  const [prepared, setPrepared] = useState<PreparedRun>();
 
   // An account or chain change invalidates everything signed against the old one.
   useEffect(() => watchWallet(() => { setWallet(undefined); setStep((s) => Math.min(s, 1)); }), []);
@@ -151,6 +153,13 @@ export default function CreateRun({ networkName }: { networkName: string | null 
             onBack={() => setStep(0)}
             onNext={() => setStep(2)}
             wallet={wallet} walletError={walletError} onConnect={onConnect}
+          />
+        )}
+        {step === 2 && draft && wallet && (
+          <StepPreflight
+            draft={draft} net={net} wallet={wallet}
+            onBack={() => setStep(1)}
+            onReady={(p) => { setPrepared(p); setStep(3); }}
           />
         )}
       </div>
