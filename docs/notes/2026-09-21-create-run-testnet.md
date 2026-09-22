@@ -78,10 +78,23 @@ the 25 Gwei floor and well clear of the 20 Gwei silent-drop threshold. The run
 was included in a block and returned a receipt, so no fee warning was due and
 none appeared. [measured]
 
-**Not recorded:** whether Rabby's fee editor *permits* dropping below 25 Gwei.
-The run was sent at the floor the executor set, so the question of what the
-wallet would allow was never put to it. This remains the one thing the
-automated tests cannot reach, and it is still open.
+**Answered on a second pass, 2026-09-22.** Rabby's fee editor accepts a custom
+value of **10 Gwei and confirms it without any warning** — no caution about the
+chain's floor, no refusal, nothing. The payer is one text field away from a
+transaction Arc will never mine, and the wallet says nothing about it.
+
+This is the case the executor's fee floor exists for, and it is worth stating
+plainly: *the wallet will not stop this.* The floor is only enforced where we
+set it, and a payer who edits the field defeats it silently.
+
+What happened next was correct but mute. The node accepted the transaction into
+its mempool, so it was not `dropped`; `eth_getTransactionByHash` found it and
+reported 10 Gwei, and the run moved to waiting for a receipt that was never
+going to come. The fee warning was already computed at that point — and was
+held back until the 180-second timeout expired. Three minutes of a spinner over
+an app that already knew the answer. Fixed: `executeRun` now calls
+`onFeeWarning` before the wait rather than after it, and the stage says how long
+it will wait. [measured]
 
 ## Wallet signature determinism — the `[unverified]` claim answered
 
@@ -107,14 +120,27 @@ which is the designed degradation rather than a failure.
 Repeating recovery with the run name `browser-2026-10` produced the error and
 **no links**, as designed. An unverified receipt link is worse than none.
 
-## Open items, none blocking
+## What this run changed
 
-1. Rabby's fee floor behaviour, above.
-2. `validateRun` warns on a repeated recipient without considering the token,
-   so the three-token demo — one recipient, three tokens — always raises two
-   warnings that cannot be accidental duplicates. Noise in the channel that
-   also carries real warnings.
-3. The recovery panel is titled after its mechanism rather than the problem it
-   solves, and is offered to everyone who opens a run page although only the
-   payer's own wallet can use it. The page already reads `anchorPayer` from the
-   anchor and could say so.
+Three things the run exposed have since been fixed, and none of them touched
+money, calldata or reconciliation:
+
+1. `validateRun` warned on a repeated recipient without considering the token,
+   so the three-token demo — one recipient, three tokens — always raised two
+   warnings that could not be the duplicated paste the rule exists to catch.
+   Now keyed on recipient and token, with a test over this exact CSV.
+2. The recovery panel was titled after its mechanism rather than the problem
+   it solves, and was offered to everyone opening a run page although only the
+   payer's wallet can use it. It now names the anchor's payer, says recipients
+   do not need it, and opens prefilled when reached from the new `/runs` list.
+3. Preflight's failure was titled "Nothing was signed or sent" although the
+   salt signature happens before the simulation. Found while confirming that a
+   repeat run is refused: the `RunExists` text underneath was accurate and
+   decoded from the contract's own selector, and the sentence above it was not.
+
+Still open: nothing blocking. The fee question above is answered; what remains
+is a product decision rather than a defect — whether the send screen should
+refuse to proceed when the wallet reports a broadcast fee under the floor,
+rather than warning and waiting. Refusing would mean discarding a transaction
+that is already signed and in a mempool, which is the unsafe direction, so
+warning is probably right.

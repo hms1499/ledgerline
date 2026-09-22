@@ -114,6 +114,36 @@ describe("executeRun", () => {
     }
   });
 
+  // The payer watches this wait for as long as receiptTimeoutMs. Learning
+  // why no receipt is coming only after it expires is learning it too late
+  // to do anything with.
+  it("reports an under-floor fee before it starts waiting for a receipt", async () => {
+    const order: string[] = [];
+    const out = await executeRun({
+      manifest, anchor: ANCHOR, send: async () => HASH,
+      dropCheck: { attempts: 1, delayMs: 0 },
+      io: {
+        ...io({ findTransaction: async () => ({ maxFeePerGas: 10_000_000_000n }) }),
+        waitForReceipt: async (hash, timeout) => {
+          order.push("waitForReceipt");
+          return io().waitForReceipt(hash, timeout);
+        },
+      },
+      onFeeWarning: (w) => { order.push(`warned:${/25 Gwei/.test(w)}`); },
+    });
+    expect(out.state).toBe("confirmed");
+    expect(order).toEqual(["warned:true", "waitForReceipt"]);
+  });
+
+  it("does not announce a fee warning when the fee was left alone", async () => {
+    const onFeeWarning = vi.fn();
+    await executeRun({
+      manifest, anchor: ANCHOR, io: io(), send: async () => HASH,
+      dropCheck: { attempts: 1, delayMs: 0 }, onFeeWarning,
+    });
+    expect(onFeeWarning).not.toHaveBeenCalled();
+  });
+
   it("does not warn when the wallet left the fee alone", async () => {
     const out = await run();
     if (out.state === "confirmed") expect(out.feeWarning).toBeUndefined();

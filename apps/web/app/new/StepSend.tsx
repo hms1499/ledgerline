@@ -15,7 +15,7 @@ const STAGE_LABEL: Record<RunStage, string> = {
   fees: "Setting the fee floor",
   signing: "Waiting for your signature",
   broadcast: "Reading back what was broadcast",
-  confirming: "Waiting for a receipt",
+  confirming: "Waiting for a receipt — up to 3 minutes",
 };
 const ORDER: RunStage[] = ["balances", "preflight", "fees", "signing", "broadcast", "confirming"];
 
@@ -39,6 +39,10 @@ export default function StepSend({
   // the throw may have come from after the signature, and claiming no money
   // moved when it might have is the one direction that is never safe.
   const [crash, setCrash] = useState<string>();
+  // Known at the broadcast readback, which is minutes before the wait for a
+  // receipt ends. Holding it until then would leave the payer watching a
+  // spinner that already knows why nothing is arriving.
+  const [liveFeeWarning, setLiveFeeWarning] = useState<string>();
 
   const go = useCallback(async () => {
     const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
@@ -51,6 +55,7 @@ export default function StepSend({
           account: wallet.address, chain: net.chain, ...tx,
         }),
         onProgress: setStage,
+        onFeeWarning: setLiveFeeWarning,
       });
       setOutcome(result);
       if (result.state === "confirmed") onDone(result);
@@ -75,7 +80,11 @@ export default function StepSend({
 
   // Signing must follow a click, not a render — a wallet prompt nobody asked
   // for is how people learn to approve without reading.
-  useEffect(() => { setStarted(false); setCrash(undefined); }, [prepared]);
+  useEffect(() => {
+    setStarted(false);
+    setCrash(undefined);
+    setLiveFeeWarning(undefined);
+  }, [prepared]);
 
   if (crash) {
     return (
@@ -110,12 +119,32 @@ export default function StepSend({
         </section>
 
         {started ? (
-          <Steps
-            direction="vertical"
-            style={{ marginTop: 26 }}
-            current={ORDER.indexOf(stage)}
-            items={ORDER.map((s) => ({ title: STAGE_LABEL[s] }))}
-          />
+          <>
+            <Steps
+              direction="vertical"
+              style={{ marginTop: 26 }}
+              current={ORDER.indexOf(stage)}
+              items={ORDER.map((s) => ({ title: STAGE_LABEL[s] }))}
+            />
+            {liveFeeWarning && (
+              <Alert
+                style={{ marginTop: 20 }} type="error" showIcon
+                title="The fee was lowered below the floor"
+                description={
+                  <>
+                    {liveFeeWarning}
+                    <p style={{ marginTop: 10, marginBottom: 0 }}>
+                      The wait above will keep running, because a transaction in the mempool
+                      is not proof of a dead one. If no receipt arrives, this ends as
+                      &ldquo;sent, but not yet in a block&rdquo; — no money will have moved
+                      and no anchor will have been written, so the same run can be sent
+                      again at the proper fee.
+                    </p>
+                  </>
+                }
+              />
+            )}
+          </>
         ) : (
           <Button
             type="primary" size="large" style={{ marginTop: 26 }}
@@ -132,7 +161,9 @@ export default function StepSend({
   return (
     <OutcomeView
       outcome={outcome} net={net}
-      onRetry={() => { setOutcome(undefined); setStarted(false); }}
+      onRetry={() => {
+        setOutcome(undefined); setStarted(false); setLiveFeeWarning(undefined);
+      }}
     />
   );
 }

@@ -86,6 +86,13 @@ export interface ExecuteRunArgs {
   io: ExecuteIO;
   send: (tx: PreparedTx) => Promise<Hex>;
   onProgress?: (stage: RunStage) => void;
+  /**
+   * Called the moment the broadcast fee is known to be under the floor —
+   * before the wait for a receipt, not after it. The wait can run for
+   * minutes, and holding back the likeliest reason no receipt is coming
+   * leaves the payer watching a spinner that knows more than they do.
+   */
+  onFeeWarning?: (warning: string) => void;
   /** How hard to look for the broadcast transaction before calling it dropped. */
   dropCheck?: { attempts: number; delayMs: number };
   receiptTimeoutMs?: number;
@@ -98,6 +105,7 @@ export async function executeRun({
   manifest, anchor, io, send, onProgress,
   dropCheck = { attempts: 6, delayMs: 1_500 },
   receiptTimeoutMs = 180_000,
+  onFeeWarning,
   sleep = defaultSleep,
 }: ExecuteRunArgs): Promise<RunOutcome> {
   const say = (s: RunStage) => onProgress?.(s);
@@ -336,6 +344,12 @@ export async function executeRun({
         : undefined;
 
   // 6. A receipt, or an honest pending. Never a claim of success without one.
+  //
+  // Say what is already known before starting a wait measured in minutes. A
+  // fee under the floor is the likeliest reason a receipt will never arrive,
+  // and on Arc it arrives as silence rather than an error — so silence from
+  // us on top of it is the one thing that helps least.
+  if (feeWarning) onFeeWarning?.(feeWarning);
   say("confirming");
   const receipt = await io.waitForReceipt(txHash, receiptTimeoutMs);
   if (!receipt) {
