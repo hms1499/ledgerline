@@ -1,12 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Steps } from "antd";
+import { Alert, Button, Steps } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue, type RunOutcome } from "@ledgerline/core";
 import { networkFor, short } from "@/lib/chain";
 import {
-  connect, disconnect, watchWallet, watchWalletList, knownWallets,
+  connect, disconnect, switchChain, watchWallet, watchWalletList, knownWallets,
   EoaRequiredError, type ConnectedWallet, type WalletChoice,
 } from "@/lib/wallet";
 import StepUpload from "./StepUpload";
@@ -114,6 +114,10 @@ export default function CreateRun({ networkName }: { networkName: string | null 
   const [forgetQueued, setForgetQueued] = useState(false);
   const [choices, setChoices] = useState<WalletChoice[]>([]);
   const [picking, setPicking] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  const [switchError, setSwitchError] = useState<string>();
+
+  const wrongChain = !!wallet && wallet.chainId !== net.chain.id;
 
   const drop = useCallback(() => {
     setWallet(undefined);
@@ -150,13 +154,49 @@ export default function CreateRun({ networkName }: { networkName: string | null 
     if (forgetQueued && !sending) { setForgetQueued(false); drop(); }
   }, [forgetQueued, sending, drop]);
 
-  // An account or chain change invalidates everything signed against the old
-  // one. Bound to the connected wallet, so a change in some other installed
-  // wallet does not tear this screen down.
+  /**
+   * A chain change is a state, not a failure: the wallet stays connected and
+   * the screen offers to switch. It does invalidate a prepared run, because
+   * the salt message includes the chain id and the manifest records it — so
+   * a run prepared on one chain cannot be signed on another.
+   */
+  const onChainChanged = useCallback((chainId: number) => {
+    setWallet((w) => (w ? { ...w, chainId } : w));
+    setSwitchError(undefined);
+    if (sending || outcome) return;
+    setPrepared(undefined);
+    setStep((s) => Math.min(s, 1));
+  }, [sending, outcome]);
+
+  // Bound to the connected wallet, so a change in some other installed wallet
+  // does not tear this screen down.
   useEffect(() => {
     if (!wallet) return;
-    return watchWallet(wallet, forgetWallet);
-  }, [wallet, forgetWallet]);
+    return watchWallet(wallet, { accountLost: forgetWallet, chainChanged: onChainChanged });
+  }, [wallet, forgetWallet, onChainChanged]);
+
+  const onSwitch = useCallback(async () => {
+    if (!wallet) return;
+    setSwitching(true);
+    setSwitchError(undefined);
+    try {
+      const id = await switchChain(wallet, net);
+      // Read back, never assumed: a wallet can decline without throwing, and
+      // a screen that believes a switch it never made would let the payer
+      // sign against the wrong chain.
+      setWallet((w) => (w ? { ...w, chainId: id } : w));
+      if (id !== net.chain.id) {
+        setSwitchError(`The wallet is still on chain ${id || "unknown"}. Switch it to Arc ${net.name} from the wallet itself, then try again.`);
+      }
+    } catch (err) {
+      const code = (err as { code?: number } | null)?.code;
+      setSwitchError(code === 4001
+        ? "You dismissed the network prompt. Nothing changed — press the button again when you're ready."
+        : err instanceof Error ? err.message : String(err));
+    } finally {
+      setSwitching(false);
+    }
+  }, [wallet, net]);
 
   // Wallets announce themselves asynchronously, and one that wakes up late
   // must still appear in the picker.
@@ -230,6 +270,30 @@ export default function CreateRun({ networkName }: { networkName: string | null 
         ]}
       />
 
+      {wrongChain && wallet && (
+        <Alert
+          style={{ marginTop: 22 }}
+          type="warning"
+          showIcon
+          title={`This wallet is not on Arc ${net.name}`}
+          description={
+            <>
+              <p style={{ marginTop: 0 }}>
+                Ledgerline pays on Arc {net.name}, chain {net.chain.id}. Your wallet is on{" "}
+                chain {wallet.chainId || "an unreadable network"}. Nothing can be signed or
+                sent until it moves — your wallet will ask you to confirm.
+              </p>
+              <Button type="primary" loading={switching} onClick={() => void onSwitch()}>
+                Switch to Arc {net.name}
+              </Button>
+              {switchError && (
+                <p style={{ marginBottom: 0, marginTop: 12 }}>{switchError}</p>
+              )}
+            </>
+          }
+        />
+      )}
+
       <div style={{ marginTop: 28 }}>
         {step === 0 && (
           <StepUpload net={net} onReady={(d) => { setDraft(d); setStep(1); }} />
@@ -240,16 +304,17 @@ export default function CreateRun({ networkName }: { networkName: string | null 
             onBack={() => setStep(0)}
             onNext={() => setStep(2)}
             wallet={wallet} walletError={walletError} onConnect={onConnect}
+            wrongChain={wrongChain}
           />
         )}
-        {step === 2 && draft && wallet && (
+        {step === 2 && draft && wallet && !wrongChain && (
           <StepPreflight
             draft={draft} net={net} wallet={wallet}
             onBack={() => setStep(1)}
             onReady={(p) => { setPrepared(p); setStep(3); }}
           />
         )}
-        {step === 3 && prepared && wallet && (
+        {step === 3 && prepared && wallet && !wrongChain && (
           <StepSend
             prepared={prepared} net={net} wallet={wallet}
             onDone={(o) => { if (o.state === "confirmed") { setOutcome(o); setStep(4); } }}

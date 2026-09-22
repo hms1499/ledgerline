@@ -7,11 +7,13 @@ import type { ConnectedWallet } from "@/lib/wallet";
 import type { ConnectError, RunDraft } from "./CreateRun";
 
 export default function StepPreview({
-  draft, net, onBack, onNext, wallet, walletError, onConnect,
+  draft, net, onBack, onNext, wallet, walletError, onConnect, wrongChain,
 }: {
   draft: RunDraft; net: NetworkView;
   onBack: () => void; onNext: () => void;
   wallet?: ConnectedWallet; walletError?: ConnectError; onConnect: () => void;
+  /** Connected, but not on Arc. The banner above carries the fix. */
+  wrongChain?: boolean;
 }) {
   const blocking = draft.issues.length + draft.errors.length;
 
@@ -94,8 +96,12 @@ export default function StepPreview({
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Button onClick={onBack}>Choose another file</Button>
         {wallet ? (
-          <Button type="primary" disabled={blocking > 0} onClick={onNext}>
-            {blocking > 0 ? `${blocking} problem${blocking === 1 ? "" : "s"} to fix first` : "Check it against the chain"}
+          <Button type="primary" disabled={blocking > 0 || wrongChain} onClick={onNext}>
+            {wrongChain
+              ? "Switch to Arc first"
+              : blocking > 0
+                ? `${blocking} problem${blocking === 1 ? "" : "s"} to fix first`
+                : "Check it against the chain"}
           </Button>
         ) : (
           <Button type="primary" onClick={onConnect}>Connect a wallet to continue</Button>

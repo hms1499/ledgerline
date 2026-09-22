@@ -30,8 +30,9 @@ export interface ConnectedWallet {
   /** The provider actually connected to — NOT necessarily window.ethereum. */
   provider: Eip1193Provider;
   info: WalletInfo;
-  /** The chain connect() left the wallet on, so a later chainChanged can be
-   *  told apart from the echo of that very switch. */
+  /** The chain the wallet is actually on right now — not the one we want.
+   *  Connecting never forces a switch, so this can legitimately be wrong,
+   *  and the screen offers switchChain() rather than failing the connect. */
   chainId: number;
 }
 
@@ -150,7 +151,14 @@ export async function connect(net: NetworkView, choice?: WalletChoice): Promise<
   const address = accounts[0];
   if (!address) throw new Error("The wallet returned no account.");
 
-  await ensureChain(provider, net);
+  // Deliberately NOT switching the chain here. Wallets disagree about what
+  // wallet_switchEthereumChain means during a connect — some prompt, some
+  // apply it silently, Rabby scopes the chain to the site instead — so a
+  // connect that depends on it fails differently in every wallet, and fails
+  // completely when the payer dismisses a prompt they did not ask for.
+  // Connecting reports which chain the wallet is on; switching is its own
+  // button, with its own prompt, that the payer chose to press.
+  const chainId = await readChainId(provider);
 
   const walletClient = createWalletClient({
     account: address,
@@ -159,7 +167,7 @@ export async function connect(net: NetworkView, choice?: WalletChoice): Promise<
   });
 
   await assertEoa(net, address);
-  return { address, walletClient, provider, info: picked.info, chainId: net.chain.id };
+  return { address, walletClient, provider, info: picked.info, chainId };
 }
 
 /**
@@ -187,6 +195,27 @@ export async function disconnect(wallet?: ConnectedWallet): Promise<void> {
       params: [{ eth_accounts: {} }],
     });
   } catch { /* unsupported, or refused; local state is the real disconnect */ }
+}
+
+/** The chain the wallet is on. 0 for an answer that cannot be read, which
+ *  every caller treats as "not the chain we need". */
+export async function readChainId(provider: Eip1193Provider): Promise<number> {
+  try {
+    const raw = await provider.request({ method: "eth_chainId" });
+    const id = typeof raw === "string" ? Number.parseInt(raw, 16) : Number(raw);
+    return Number.isNaN(id) ? 0 : id;
+  } catch { return 0; }
+}
+
+/**
+ * Move an already-connected wallet onto Arc, and report where it ended up.
+ * The returned id is read back rather than assumed: a wallet may decline
+ * silently, and a screen that believes a switch it never made would let the
+ * payer sign against the wrong chain.
+ */
+export async function switchChain(wallet: ConnectedWallet, net: NetworkView): Promise<number> {
+  await ensureChain(wallet.provider, net);
+  return readChainId(wallet.provider);
 }
 
 /** Switch the wallet to Arc, adding the network if it has never seen it. */
@@ -246,36 +275,33 @@ export async function assertEoa(net: NetworkView, address: Address): Promise<voi
 }
 
 /**
- * Account and chain changes invalidate everything downstream of connect.
- * Bound to the connected provider: subscribing to the global instead would
- * miss the connected wallet's own changes and fire on a wallet nobody is
- * using.
+ * Reports what the wallet did, rather than that it did something. An account
+ * change and a chain change are different facts with different consequences:
+ * a different account invalidates the connection outright, while a different
+ * chain is a state the screen can show and offer to fix.
  *
- * Both events are read, never merely counted. A wallet emits them to confirm
- * what connect() just did as well as to report a real change, and the
- * confirmation can arrive long after connect resolved — whenever the payer
- * had to approve the network switch by hand. Treating that echo as a change
- * disconnects the wallet a second after it appears.
+ * Bound to the connected provider — subscribing to the global would miss the
+ * connected wallet's own changes and fire on a wallet nobody is using.
  */
-export function watchWallet(wallet: ConnectedWallet, onChange: () => void): () => void {
+export function watchWallet(
+  wallet: ConnectedWallet,
+  on: { accountLost: () => void; chainChanged: (chainId: number) => void },
+): () => void {
   const provider = wallet.provider;
   if (!provider.on || !provider.removeListener) return () => {};
 
   const onAccounts = (...args: unknown[]) => {
     const accounts = Array.isArray(args[0]) ? (args[0] as string[]) : [];
-    // An empty list is the wallet saying it revoked this site, which is a
-    // real disconnection. A list still holding our address is confirmation.
+    // An empty list is the wallet revoking this site. A list still holding
+    // our address is confirmation of the connect, not a change.
     const mine = accounts.some((a) => a?.toLowerCase() === wallet.address.toLowerCase());
-    if (!mine) onChange();
+    if (!mine) on.accountLost();
   };
 
   const onChain = (...args: unknown[]) => {
     const raw = args[0];
     const id = typeof raw === "string" ? Number.parseInt(raw, 16) : Number(raw);
-    // Unreadable means unknown, and unknown has to invalidate: continuing to
-    // sign against a chain we cannot identify is the unsafe direction.
-    if (Number.isNaN(id)) { onChange(); return; }
-    if (id !== wallet.chainId) onChange();
+    on.chainChanged(Number.isNaN(id) ? 0 : id);
   };
 
   provider.on("accountsChanged", onAccounts);
