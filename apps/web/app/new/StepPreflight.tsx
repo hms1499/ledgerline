@@ -32,6 +32,11 @@ export default function StepPreflight({
 
   const prepare = useCallback(async () => {
     setError(undefined);
+    // A retry re-signs, which re-derives the salt, which changes every memoId
+    // and therefore the manifest root. The abandoned attempt's ladder and
+    // identifiers must not linger under the Skeleton describing a commitment
+    // that no longer matches what is about to be signed.
+    setPrepared(undefined);
     setPhase("signing");
     try {
       const items = draft.rows.map(({ invoiceId, token, to, amount }) => ({
