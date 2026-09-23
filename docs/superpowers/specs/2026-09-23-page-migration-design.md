@@ -41,7 +41,7 @@ URL. This is layout, shared presentation components, and one display defect
   the payer's home since part 2, is not linked from it.
 - `Reconciliation.tsx` has `Headline` and `Receipt.tsx` has `Verdict`: the
   same component written twice.
-- Five places render an amount with `decimals ?? 6` (§3.4).
+- Ten places render an amount with a `?? 6` decimals fallback (§3.4).
 
 ## 3. Shared pieces
 
@@ -69,31 +69,48 @@ accepts a node so a tile can colour its value by tone.
 
 One component for the verdict headline, replacing `Headline`
 (`Reconciliation.tsx`) and `Verdict` (`Receipt.tsx`). Props: `tone`
-(`ok` | `error` | `critical` | `degraded` | none), `title`, `body`. It keeps
-the `.verdict` classes, so its look does not change.
+(`ok` | `error` | `critical` | `degraded` | none), `title`, `body`, `level`
+(§3.6). It keeps the `.verdict` classes, so its look does not change.
 
 ### 3.4 Amounts never guess a decimal
 
-Today `formatAmount(value, meta?.decimals ?? 6)` appears in:
+`grep -rn "?? 6"` over `apps/web` finds **ten** fallbacks (a first count in
+design found five):
 
-| File | Line (today) |
-|---|---|
-| `app/(app)/new/StepPreview.tsx` | 90, 112 |
-| `app/(app)/new/Result.tsx` | 78, 104 |
-| `app/(app)/run/[txHash]/Reconciliation.tsx` | the summary line and the table footer |
+| File | Line (2026-09-23) | Reachable? |
+|---|---|---|
+| `app/(app)/run/[txHash]/Reconciliation.tsx` | 430 (`Amount`), 458 (`RowDetail`) | **Yes** — see below |
+| `app/(app)/run/[txHash]/Reconciliation.tsx` | 276, 398 (per-token totals) | No: totals are over payments, whose tokens are always read |
+| `app/(app)/new/StepPreview.tsx` | 90, 112 | No: `resolveRows` rejects a row whose token has no decimals |
+| `app/(app)/new/Result.tsx` | 78 (the exported link list), 104 | No, same reason |
+| `app/(public)/why/Why.tsx` | 164 | No: tokens are read for every total |
+| `lib/funding-view.ts` | 34 | No: lines come from resolved rows |
 
-On `/run/[tx]`, token metadata is read from the chain and can fail. A cirBTC
-(8 decimals) amount then renders 100× too large. That breaks the rule in the
-dashboard spec (§5: "a decimal is never guessed"). In the create flow,
-`resolveRows` needs decimals to parse amounts at all, so the fallback there
-is probably unreachable. It is still a guess written into the code, and
-`Result.tsx:78` feeds the exported receipt list.
+**The reachable case.** `loadRun` reads metadata only for tokens that
+*payments* use. With a run file loaded, a row can be `unpaid` — owed, never
+paid — in a token no payment in the transaction used. Its "owed" amount then
+renders through `?? 6`; for cirBTC (8 decimals) that is 100× too large. If a
+metadata read *fails*, `loadRun` throws and the page shows "Could not reach
+Arc", which is honest; that path does not change.
 
-**Fix:** move `amountText` and `TokenMeta` from `lib/dashboard-view.ts` to
-`lib/token-meta.ts`, and render every amount through it. Without decimals,
-the output is the raw integer and a short token address, as on the
-dashboard. `dashboard-view.ts` re-imports it. No `?? 6` remains anywhere in
-`apps/web` (checked by the guard in §5.3).
+**Fix, in two parts:**
+
+1. `loadRun` reads metadata for every token that appears in `result.rows`
+   or `result.payments`, through a pure `tokensToRead(result)` in
+   `lib/run-view.ts`.
+2. Every amount renders through one convention, moved from
+   `lib/dashboard-view.ts` to `lib/token-meta.ts`:
+   - `amountFigure(value, token, meta)` — the number alone; without
+     decimals, the raw integer and the short token address, e.g.
+     `100000 (0x89B5…D72a)`.
+   - `amountText(value, token, meta)` — the figure and its symbol; without
+     decimals, the same raw text (a raw integer next to a symbol would read
+     as whole tokens).
+   `dashboard-view.ts` re-exports both, so its callers do not change.
+
+No `?? <digit>` remains in `apps/web` (checked by the guard in §5.3). The
+unreachable fallbacks go too: a guess that cannot fire today is one refactor
+away from firing.
 
 ### 3.5 `Grid dense`
 
@@ -103,6 +120,13 @@ sparse placement would push the content onto a second row, so `Grid` gets an
 opt-in `dense` prop that adds `grid-auto-flow: row dense`. Class assembly
 moves into a pure `gridClass({ dense, className })` in `lib/grid.ts`, so it
 is unit-tested like `colVars`. No other grid uses `dense`.
+
+### 3.6 Heading levels
+
+In the app shell the top bar's title is the page's `<h1>`. Every verdict
+inside an app page therefore renders `<h2>`; on public pages, which have no
+title bar, the verdict is the `<h1>`. `Verdict` takes `level: 1 | 2`
+(default 2). `.verdict h1` rules become `.verdict :is(h1, h2)`.
 
 ## 4. The pages
 
@@ -256,8 +280,11 @@ address instead of a wrong decimal.
 ### 7.1 Unit (vitest, part of `pnpm test`)
 
 - `gridClass`: `dense` adds the class; `className` is kept.
-- `amountText` (moved): with decimals, formats; without, raw integer and short
-  address; a cirBTC value with 8 decimals is never formatted as 6.
+- `amountFigure` / `amountText` (moved): with decimals, formats; without, raw
+  integer and short address; a cirBTC value with 8 decimals is never
+  formatted as 6.
+- `tokensToRead`: includes a token that only an `unpaid` row uses.
+- `fundingView`: a line whose token has no decimals shows raw figures.
 - `runSummaryView`: per-token totals in token order and never pooled; at Send
   it uses `prepared.manifest`, not the draft; `runId` appears only after
   Preflight.
@@ -276,8 +303,8 @@ address instead of a wrong decimal.
 - `/new` at 390px: the summary is above the step content. At 1280px: it is
   to the right of it and stays in view while scrolling a long preview.
 - Keyboard: every control inside the new Panels shows a visible focus.
-- With token metadata reads blocked (`route.abort` on `eth_call` for
-  `decimals`), `/run/[tx]` shows raw integers, not wrong decimals.
+- `/run/[tx]` with a run file that adds one unpaid cirBTC line to a real
+  USDC-only run: that row's "owed" figure has 8 decimals, not 6.
 - Screenshots of every route at 390 / 1280 in both themes, kept with the
   verification notes.
 
