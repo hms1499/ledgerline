@@ -196,22 +196,22 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
     {
       key: "standing",
       claim: "That allowance, read from the chain right now",
-      ours: <span style={{ opacity: 0.55 }}>—</span>,
+      ours: <span style={{ color: "var(--text-soft)" }}>—</span>,
       naive: allowanceNow
         ? allowanceNow.value === 0n
           ? <span style={{ color: "var(--tick)" }}>0 — fully spent</span>
           : <span style={{ color: "var(--flag)" }}>{amount(allowanceNow.token, allowanceNow.value)} still standing</span>
-        : <span style={{ opacity: 0.55 }}>not read</span>,
+        : <span style={{ color: "var(--text-soft)" }}>not read</span>,
       source: `allowance(payer, ${allowanceNow ? short(allowanceNow.spender) : "batcher"}) — an eth_call made when this page loaded`,
     },
     {
       key: "from",
       claim: "Who the recipient sees as Transfer.from",
       ours: ours.assessment.payerVisible
-        ? <>the payer, <span className="hex">{short(ours.payer)}</span></>
+        ? <>the payer, <span className="hex addr">{short(ours.payer)}</span></>
         : <span style={{ color: "var(--flag)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
       naive: naive.assessment.payerVisible
-        ? <>the payer, <span className="hex">{short(naive.payer)}</span></>
+        ? <>the payer, <span className="hex addr">{short(naive.payer)}</span></>
         : <span style={{ color: "var(--flag)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
       source: "Transfer.from on every non-system Transfer log",
       same: ours.assessment.payerVisible && naive.assessment.payerVisible,
@@ -310,10 +310,10 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
           <dl className="detail">
             {ours.payments.map((p) => (
               <div key={p.memoId} style={{ display: "contents" }}>
-                <dt className="hex">{short(p.memoId)}</dt>
+                <dt className="hex addr">{short(p.memoId)}</dt>
                 <dd>
                   {amount(p.token, p.value)} to{" "}
-                  <a className="hex" href={`${net.explorer}/address/${p.to}`} target="_blank" rel="noreferrer">
+                  <a className="hex addr" href={`${net.explorer}/address/${p.to}`} target="_blank" rel="noreferrer">
                     {short(p.to)}
                   </a>
                 </dd>
@@ -336,7 +336,7 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
           {approve && (
             <p className="because">
               Preceded by{" "}
-              <a className="hex" href={`${net.explorer}/tx/${approve.hash}`} target="_blank" rel="noreferrer">
+              <a className="hex addr" href={`${net.explorer}/tx/${approve.hash}`} target="_blank" rel="noreferrer">
                 {short(approve.hash)}
               </a>
               , the approval, at {approve.gasUsed.toLocaleString("en-US")} gas.

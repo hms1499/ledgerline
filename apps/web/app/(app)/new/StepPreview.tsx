@@ -79,7 +79,7 @@ export default function StepPreview({
     {
       title: "Recipient", dataIndex: "to",
       render: (to: string) => (
-        <a className="hex" href={`${net.explorer}/address/${to}`} target="_blank" rel="noreferrer" title={to}>
+        <a className="hex addr" href={`${net.explorer}/address/${to}`} target="_blank" rel="noreferrer" title={to}>
           {short(to)}
         </a>
       ),
@@ -137,6 +137,7 @@ export default function StepPreview({
           dataSource={draft.rows.map((r) => ({ ...r, key: r.line }))}
           pagination={draft.rows.length > 25 ? { pageSize: 25 } : false}
           size="middle"
+          scroll={{ x: "max-content" }}
         />
       </div>
 

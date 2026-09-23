@@ -20,7 +20,7 @@ export default function RunHistory() {
   const columns: TableColumnsType<RunRecord> = [
     {
       title: "Run", dataIndex: "runLabel",
-      render: (label: string) => label || <span style={{ opacity: 0.5 }}>unnamed</span>,
+      render: (label: string) => label || <span style={{ color: "var(--text-soft)" }}>unnamed</span>,
     },
     {
       title: "Paid", dataIndex: "itemCount", width: 110,
@@ -71,7 +71,7 @@ export default function RunHistory() {
           <section className="verdict">
             <h1>Nothing recorded for this wallet</h1>
             <p>
-              No runs from <span className="hex">{short(wallet.address)}</span> have been sent
+              No runs from <span className="hex addr">{short(wallet.address)}</span> have been sent
               from this browser — or the list was cleared with the site&apos;s data. Neither
               says anything about the chain: a run you sent elsewhere is still there, and
               opening it needs only its transaction hash.
@@ -107,6 +107,7 @@ export default function RunHistory() {
               dataSource={rows.map((r) => ({ ...r, key: r.txHash }))}
               pagination={rows.length > 25 ? { pageSize: 25 } : false}
               size="middle"
+              scroll={{ x: "max-content" }}
             />
           </div>
         </>

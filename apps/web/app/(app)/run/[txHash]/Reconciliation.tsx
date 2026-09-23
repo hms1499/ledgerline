@@ -211,7 +211,7 @@ function Ready({
     {
       title: "Invoice", dataIndex: "invoiceId", width: 150,
       render: (id?: string) => id ?? (
-        <span style={{ opacity: 0.45 }}>{hasManifest ? "not on the list" : "in the run file"}</span>
+        <span style={{ color: "var(--text-soft)" }}>{hasManifest ? "not on the list" : "in the run file"}</span>
       ),
     },
     {
@@ -232,14 +232,14 @@ function Ready({
             <span className="hex" style={{ display: "block", lineHeight: 1.5 }}>
               <span style={{ color: "var(--flag)" }}>{short(to)}</span>
               <br />
-              <span style={{ opacity: 0.6, fontSize: "0.85em" }}>owed {short(r.expectedTo)}</span>
+              <span style={{ color: "var(--text-soft)", fontSize: "0.85em" }}>owed {short(r.expectedTo)}</span>
             </span>
           );
         }
         const shown = to ?? r.expectedTo;
-        if (!shown) return <span style={{ opacity: 0.45 }}>—</span>;
+        if (!shown) return <span style={{ color: "var(--text-soft)" }}>—</span>;
         return (
-          <a className="hex" href={`${net.explorer}/address/${shown}`} target="_blank" rel="noreferrer" title={shown}>
+          <a className="hex addr" href={`${net.explorer}/address/${shown}`} target="_blank" rel="noreferrer" title={shown}>
             {short(shown)}
           </a>
         );
@@ -255,7 +255,7 @@ function Ready({
         const url = receiptFor(r);
         return url
           ? <a href={url}>Open</a>
-          : <span style={{ opacity: 0.45 }} title={hasManifest ? undefined : "Load the run file to issue receipt links"}>—</span>;
+          : <span style={{ color: "var(--text-soft)" }} title={hasManifest ? undefined : "Load the run file to issue receipt links"}>—</span>;
       },
     },
   ];
@@ -370,7 +370,9 @@ function Ready({
           dataSource={result.rows.map((r, i) => ({ ...r, key: `${r.memoId}-${i}` }))}
           pagination={result.rows.length > 25 ? { pageSize: 25 } : false}
           size="middle"
+          scroll={{ x: "max-content" }}
           expandable={{
+            columnTitle: <span className="sr-only">Details</span>,
             rowExpandable: (r) => r.status !== "matched",
             expandedRowRender: (r) => (
               <RowDetail row={r} net={net} tokens={tokens} receipt={receiptFor(r)}
@@ -435,15 +437,15 @@ function Amount({ row, tokens }: { row: ReconcileRow; tokens: Map<string, TokenM
           ({delta > 0n ? "+" : ""}{formatAmount(delta, d)})
         </span>
         <br />
-        <span style={{ opacity: 0.6, fontSize: "0.85em" }}>owed {formatAmount(row.expected, d)}</span>
+        <span style={{ color: "var(--text-soft)", fontSize: "0.85em" }}>owed {formatAmount(row.expected, d)}</span>
       </span>
     );
   }
   if (row.actual !== undefined) return <span className="hex">{formatAmount(row.actual, d)}</span>;
   if (row.expected !== undefined) {
-    return <span className="hex" style={{ opacity: 0.6 }}>owed {formatAmount(row.expected, d)}</span>;
+    return <span className="hex" style={{ color: "var(--text-soft)" }}>owed {formatAmount(row.expected, d)}</span>;
   }
-  return <span style={{ opacity: 0.45 }}>—</span>;
+  return <span style={{ color: "var(--text-soft)" }}>—</span>;
 }
 
 function RowDetail({
@@ -476,7 +478,7 @@ function RowDetail({
         {receipt ? (
           <a href={receipt}>Open this line&apos;s receipt</a>
         ) : (
-          <span style={{ opacity: 0.6 }}>
+          <span style={{ color: "var(--text-soft)" }}>
             {!row.invoiceId
               ? "Needs the invoice reference and reference code, which only the run file holds."
               : row.actual === undefined
@@ -671,7 +673,7 @@ function RecoverLinks({
       </summary>
 
       <p className="because" style={{ marginTop: 12 }}>
-        For the payer only{anchorPayer ? <> — the wallet at <span className="hex">{short(anchorPayer)}</span></> : null}.
+        For the payer only{anchorPayer ? <> — the wallet at <span className="hex addr">{short(anchorPayer)}</span></> : null}.
         Nothing about this run was stored: the reference code that makes each link
         verifiable comes from that wallet&apos;s signature over the run name, so signing the
         same message again is what brings the links back. Recipients and auditors do not need

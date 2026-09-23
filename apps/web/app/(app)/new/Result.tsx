@@ -97,7 +97,7 @@ export default function Result({
         </span>
       ),
     },
-    { title: "Recipient", dataIndex: "to", width: 140, render: (to: string) => <span className="hex">{short(to)}</span> },
+    { title: "Recipient", dataIndex: "to", width: 140, render: (to: string) => <span className="hex addr">{short(to)}</span> },
     {
       title: "Receipt link", dataIndex: "url",
       render: (url: string, r) => (
@@ -169,7 +169,8 @@ export default function Result({
 
       <div style={{ marginTop: 14 }}>
         <Table<LinkRow> columns={columns} dataSource={rows}
-          pagination={rows.length > 25 ? { pageSize: 25 } : false} size="middle" />
+          pagination={rows.length > 25 ? { pageSize: 25 } : false} size="middle"
+          scroll={{ x: "max-content" }} />
       </div>
 
       <Alert
