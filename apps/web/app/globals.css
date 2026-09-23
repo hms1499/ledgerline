@@ -249,3 +249,24 @@ dl.detail dd { margin: 0; }
 .wallet-list button:hover { border-color: var(--tick); }
 .wallet-list img { border-radius: 6px; }
 .wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--rule); }
+
+/* ── 12-column grid (lib/grid.ts sets the variables) ─────────────────── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+.col { min-width: 0; grid-column: var(--start) / span var(--span); }
+@media (min-width: 1024px) {
+  .col.is-sticky { position: sticky; top: 88px; align-self: start; }
+}
+@media (max-width: 1023px) {
+  .col { grid-column: var(--md-start) / span var(--md-span); }
+}
+@media (max-width: 639px) {
+  .grid { gap: 16px; }
+  .col { grid-column: var(--sm-start) / span var(--sm-span); }
+}
