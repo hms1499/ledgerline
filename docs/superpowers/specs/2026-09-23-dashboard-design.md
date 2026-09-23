@@ -130,9 +130,14 @@ export function summarizeRun(logs: RawLog[], payer: Address): RunSummary;
 export interface TokenTotal { token: Address; value: bigint; payments: number; runs: number }
 
 /** Every token in `tokens` appears, in that order, zero when never paid. */
-export function totalsByToken(summaries: RunSummary[], tokens: Address[]): TokenTotal[];
+export function paidByToken(summaries: RunSummary[], tokens: Address[]): TokenTotal[];
 ```
 
+- Named `paidByToken`, not `totalsByToken`: `totalsByToken` is already taken
+  by `funding.ts`'s pre-payment shortfall calculator (what a run *needs*,
+  before it is sent). Two exported functions with the same name and
+  different meanings would let the dashboard silently import the wrong one
+  from `@ledgerline/core`.
 - `summarizeRun` is built on `joinPayments(logs)`. It counts only
   memo-linked payments whose `payer` equals the connected wallet
   (case-insensitive) and whose `identityBroken` is false. It takes no
@@ -149,7 +154,7 @@ export function totalsByToken(summaries: RunSummary[], tokens: Address[]): Token
 | `lib/token-meta.ts` | **Moved** out of `CreateRun.tsx` (`readTokenMeta`), so the create flow and the dashboard share one reader of `decimals`/`symbol`. CreateRun imports it from here |
 | `lib/run-reads.ts` | `readRuns(records, net, opts)` fetches each receipt by txHash, **at most 4 at a time**, with a **10 s timeout** each. It returns one `RunRead` per record. It also exports the pure `describeCoverage(reads)` used by §3.3 |
 | `app/(app)/dashboard/page.tsx` | Server component. Sets metadata and renders `<Dashboard />` |
-| `app/(app)/dashboard/Dashboard.tsx` | Client. Gets `useWallet()` and `runsFor(...)`, calls `readRuns`, `summarizeRun` and `totalsByToken`, and renders. It decides nothing that is not in the functions above |
+| `app/(app)/dashboard/Dashboard.tsx` | Client. Gets `useWallet()` and `runsFor(...)`, calls `readRuns`, `summarizeRun` and `paidByToken`, and renders. It decides nothing that is not in the functions above |
 
 ```ts
 type RunRead =
@@ -203,7 +208,7 @@ type RunRead =
     measurement.
 - `summarizeRun` ignores payments from another payer, and does not sum
   `identityBroken` payments while counting them.
-- `totalsByToken` lists every token in order, zero when never paid, and
+- `paidByToken` lists every token in order, zero when never paid, and
   counts runs per token correctly.
 - `readRuns`:
   - never has more than 4 reads in flight;

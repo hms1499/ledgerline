@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { summarizeRun, totalsByToken, type RunSummary } from "../src/summary.js";
+import { summarizeRun, paidByToken, type RunSummary } from "../src/summary.js";
 import type { Address, RawLog } from "../src/types.js";
 import mainnet from "./fixtures/mainnet-2pay.json" with { type: "json" };
 import testnet from "./fixtures/testnet-usdc-eurc.json" with { type: "json" };
@@ -45,7 +45,7 @@ describe("summarizeRun — what one run paid, from its own logs", () => {
   });
 });
 
-describe("totalsByToken — the tiles", () => {
+describe("paidByToken — the tiles", () => {
   const run = (entries: [Address, bigint, number][], broken = 0): RunSummary => ({
     paid: new Map(entries.map(([t, value, payments]) => [t, { value, payments }])),
     payments: entries.reduce((n, [, , p]) => n + p, 0),
@@ -53,14 +53,14 @@ describe("totalsByToken — the tiles", () => {
   });
 
   it("lists every token in the order given, zero when never paid", () => {
-    const totals = totalsByToken([run([[USDC, 5n, 1]])], [USDC, EURC_T, CIRBTC_T]);
+    const totals = paidByToken([run([[USDC, 5n, 1]])], [USDC, EURC_T, CIRBTC_T]);
     expect(totals.map((t) => t.token)).toEqual([USDC, EURC_T, CIRBTC_T]);
     expect(totals[1]).toEqual({ token: EURC_T, value: 0n, payments: 0, runs: 0 });
     expect(totals[2]).toEqual({ token: CIRBTC_T, value: 0n, payments: 0, runs: 0 });
   });
 
   it("sums values and payments, and counts a run once per token it paid", () => {
-    const totals = totalsByToken(
+    const totals = paidByToken(
       [run([[USDC, 5n, 2], [EURC_T, 7n, 1]]), run([[USDC, 1n, 1]]), run([])],
       [USDC, EURC_T],
     );
@@ -69,13 +69,13 @@ describe("totalsByToken — the tiles", () => {
   });
 
   it("matches tokens given in any case", () => {
-    const totals = totalsByToken([run([[EURC_T, 7n, 1]])], [EURC_T.toLowerCase() as Address]);
+    const totals = paidByToken([run([[EURC_T, 7n, 1]])], [EURC_T.toLowerCase() as Address]);
     expect(totals[0]!.value).toBe(7n);
     expect(totals[0]!.token).toBe(EURC_T);
   });
 
   it("totals a real mainnet run", () => {
-    const [usdc] = totalsByToken([summarizeRun(mainnetLogs, MAINNET_PAYER)], [USDC]);
+    const [usdc] = paidByToken([summarizeRun(mainnetLogs, MAINNET_PAYER)], [USDC]);
     expect(usdc).toEqual({ token: USDC, value: 3_500_000n, payments: 2, runs: 1 });
   });
 });

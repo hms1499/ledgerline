@@ -43,7 +43,7 @@ export interface TokenTotal { token: Address; value: bigint; payments: number; r
 
 /** Every token in `tokens` appears, in that order, zero when never paid.
  *  Tokens are never pooled: there is no total across them. */
-export function totalsByToken(summaries: RunSummary[], tokens: Address[]): TokenTotal[] {
+export function paidByToken(summaries: RunSummary[], tokens: Address[]): TokenTotal[] {
   return tokens.map((t) => {
     const token = getAddress(t);
     let value = 0n;
