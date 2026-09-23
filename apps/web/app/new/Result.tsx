@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
 import type { RunOutcome } from "@ledgerline/core";
-import { encodeProof, formatAmount, short, type NetworkView } from "@/lib/chain";
+import { formatAmount, receiptUrl, short, type NetworkView } from "@/lib/chain";
 import type { PreparedRun } from "./StepPreflight";
 import type { RunDraft } from "./CreateRun";
 
@@ -31,10 +31,10 @@ export default function Result({
     to: item.to,
     token: item.token,
     amount: item.amount,
-    url: `${origin}/r/${outcome.txHash}?i=${encodeURIComponent(item.invoiceId)}`
-      + `&s=${prepared.manifest.runSalt}`
-      + `&p=${encodeProof(prepared.built.proofs[i]!)}`
-      + `&n=${net.name}`,
+    url: receiptUrl({
+      origin, txHash: outcome.txHash, invoiceId: item.invoiceId,
+      runSalt: prepared.manifest.runSalt, proof: prepared.built.proofs[i]!, network: net.name,
+    }),
   }));
 
   const downloadManifest = () => {

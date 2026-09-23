@@ -5,12 +5,12 @@ import { createPublicClient, http, type Address } from "viem";
 import { Alert, Button, Input, Skeleton, Table, Tag, Upload, type TableColumnsType } from "antd";
 import {
   reconcile, assessCompleteness, checkManifestAgainstRoot, RUN_COMMITTED_TOPIC,
-  saltMessageFor, saltFromSignature, memoIdFor, buildTree, leafFor,
+  saltMessageFor, saltFromSignature, memoIdFor, proofsFromChain,
   type ReconcileResult, type ReconcileRow, type ReconcileStatus,
   type Manifest, type RawLog, type Hex, type Completeness, type ManifestCheck,
   type PaymentRecord,
 } from "@ledgerline/core";
-import { networkFor, short, formatAmount, encodeProof, type NetworkView } from "@/lib/chain";
+import { networkFor, short, formatAmount, receiptUrl, type NetworkView } from "@/lib/chain";
 import { connect, knownWallets, watchWalletList, type WalletChoice } from "@/lib/wallet";
 import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
@@ -121,6 +121,7 @@ export default function Reconciliation({
       {phase === "ready" && data && (
         <Ready
           data={data} net={net} txHash={txHash} hasManifest={!!manifest}
+          runSalt={(runSalt as Hex | null) ?? manifest?.runSalt}
           manifestName={manifestName} runLabel={runLabel}
           onManifest={(m, name) => { setManifest(m); setManifestName(name); }}
         />
@@ -149,9 +150,12 @@ function Headline({ tone, title, body }: { tone: string; title: string; body: st
 }
 
 function Ready({
-  data, net, txHash, hasManifest, manifestName, runLabel, onManifest,
+  data, net, txHash, hasManifest, runSalt, manifestName, runLabel, onManifest,
 }: {
   data: Loaded; net: NetworkView; txHash: string; hasManifest: boolean;
+  /** Without it no receipt link can be issued — the page would only hand the
+   *  recipient an "incomplete" one. */
+  runSalt?: Hex;
   manifestName?: string;
   runLabel?: string | null;
   onManifest: (m: Manifest, name: string) => void;
@@ -171,6 +175,18 @@ function Ready({
     }
     return t;
   }, [result.payments]);
+
+  // A link is offered only when every piece of its evidence is in hand and
+  // the proofs rebuild the anchored root. Anything less opens as incomplete.
+  const proofs = useMemo(
+    () => proofsFromChain(result.payments, data.anchoredRoot),
+    [result.payments, data.anchoredRoot],
+  );
+  const receiptFor = (r: ReconcileRow): string | undefined => {
+    const proof = proofs?.(r.memoId);
+    if (!r.invoiceId || !runSalt || !proof) return undefined;
+    return receiptUrl({ txHash, invoiceId: r.invoiceId, runSalt, proof, network: net.name });
+  };
 
   // Without a manifest every payment is `unexpected` by definition — there is
   // no intent to compare against. Counting those as things to review would
@@ -232,6 +248,15 @@ function Ready({
     {
       title: "Amount", dataIndex: "actual", align: "right",
       render: (_: unknown, r) => <Amount row={r} tokens={tokens} />,
+    },
+    {
+      title: "Receipt", key: "receipt", width: 110,
+      render: (_: unknown, r) => {
+        const url = receiptFor(r);
+        return url
+          ? <a href={url}>Open</a>
+          : <span style={{ opacity: 0.45 }} title={hasManifest ? undefined : "Load the manifest to issue receipt links"}>—</span>;
+      },
     },
   ];
 
@@ -348,7 +373,7 @@ function Ready({
           expandable={{
             rowExpandable: (r) => r.status !== "matched",
             expandedRowRender: (r) => (
-              <RowDetail row={r} net={net} txHash={txHash} tokens={tokens}
+              <RowDetail row={r} net={net} tokens={tokens} receipt={receiptFor(r)}
                 note={statusView(r.status, hasManifest).note ?? r.note} />
             ),
           }}
@@ -362,7 +387,7 @@ function Ready({
                   {[...counts.entries()].sort((a, b) => SEVERITY[a[0]] - SEVERITY[b[0]])
                     .map(([s, n]) => `${n} ${statusView(s, hasManifest).label.toLowerCase()}`).join(", ")}
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={4} align="right" colSpan={2}>
+                <Table.Summary.Cell index={4} align="right" colSpan={3}>
                   <ul className="totals totals--tight">
                     {[...perToken.entries()].map(([t, total]) => {
                       const m = tokens.get(t);
@@ -422,10 +447,11 @@ function Amount({ row, tokens }: { row: ReconcileRow; tokens: Map<string, TokenM
 }
 
 function RowDetail({
-  row, net, txHash, tokens, note,
+  row, net, tokens, note, receipt,
 }: {
-  row: ReconcileRow; net: NetworkView; txHash: string; tokens: Map<string, TokenMeta>;
+  row: ReconcileRow; net: NetworkView; tokens: Map<string, TokenMeta>;
   note?: string;
+  receipt?: string;
 }) {
   const d = tokens.get(row.token.toLowerCase())?.decimals ?? 6;
   return (
@@ -447,12 +473,16 @@ function RowDetail({
       {row.payer && (<><dt>Payer</dt><dd className="hex">{row.payer}</dd></>)}
       <dt>Receipt</dt>
       <dd>
-        {row.invoiceId ? (
-          <a href={`/r/${txHash}?i=${encodeURIComponent(row.invoiceId)}&n=${net.name}`}>
-            Open this line&apos;s receipt
-          </a>
+        {receipt ? (
+          <a href={receipt}>Open this line&apos;s receipt</a>
         ) : (
-          <span style={{ opacity: 0.6 }}>Needs the invoice reference, which only the manifest holds.</span>
+          <span style={{ opacity: 0.6 }}>
+            {!row.invoiceId
+              ? "Needs the invoice reference and run salt, which only the manifest holds."
+              : row.actual === undefined
+                ? "No receipt: nothing on chain carries this reference, so there is no payment to prove."
+                : "No receipt: the anchored root could not be read or rebuilt, so no proof can be issued for this line."}
+          </span>
         )}
       </dd>
     </dl>
@@ -611,18 +641,10 @@ function RecoverLinks({
         return;
       }
 
-      // The tree must be rebuilt from EVERY payment in the run, in the order
-      // the run built them — a tree over only the invoices someone happened to
-      // type produces different proofs that verify against nothing. The value
-      // is the emitted one, never a remembered request, which is also what the
-      // reconciler does.
-      const leaves = payments.map((p) => leafFor(p.memoId, p.token, p.to, p.value));
-      const { root, proofFor } = buildTree(leaves);
-
-      // Check 2: and the ordering assumption is not assumed. If the rebuilt
-      // root is the one the anchor committed, the leaves are in the right
-      // order and every proof below is valid. If it is not, say nothing.
-      if (!anchoredRoot || root.toLowerCase() !== anchoredRoot.toLowerCase()) {
+      // Check 2: the tree rebuilt from every payment in the run must produce
+      // the root the anchor committed. If it does not, say nothing.
+      const proofs = proofsFromChain(payments, anchoredRoot);
+      if (!proofs) {
         setState("mismatch");
         setLinks([]);
         return;
@@ -630,10 +652,10 @@ function RecoverLinks({
 
       setLinks(derived.map((d) => ({
         invoiceId: d.invoiceId,
-        url: `${window.location.origin}/r/${txHash}?i=${encodeURIComponent(d.invoiceId)}`
-          + `&s=${runSalt}`
-          + `&p=${encodeProof(proofFor(payments.findIndex((p) => p.memoId.toLowerCase() === d.memoId.toLowerCase())))}`
-          + `&n=${net.name}`,
+        url: receiptUrl({
+          origin: window.location.origin, txHash, invoiceId: d.invoiceId,
+          runSalt, proof: proofs(d.memoId)!, network: net.name,
+        }),
       })));
       setState("ok");
     } catch (err) {

@@ -92,6 +92,28 @@ export function encodeProof(proof: readonly `0x${string}`[]): string {
     .replace(/=+$/, "");
 }
 
+/**
+ * A receipt link carries everything the recipient's page needs to verify on
+ * its own: the invoice, the run salt that turns it into a reference, and the
+ * Merkle proof for the anchor. Built in one place, because a link missing any
+ * of them opens as "incomplete" in front of the person being paid.
+ */
+export function receiptUrl({
+  origin = "", txHash, invoiceId, runSalt, proof, network,
+}: {
+  origin?: string;
+  txHash: string;
+  invoiceId: string;
+  runSalt: `0x${string}`;
+  proof: readonly `0x${string}`[];
+  network: NetworkView["name"];
+}): string {
+  return `${origin}/r/${txHash}?i=${encodeURIComponent(invoiceId)}`
+    + `&s=${runSalt}`
+    + `&p=${encodeProof(proof)}`
+    + `&n=${network}`;
+}
+
 export function short(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
 }
