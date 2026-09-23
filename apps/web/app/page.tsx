@@ -84,8 +84,8 @@ export default function Home() {
         </ol>
         <p className="how-note">
           Your wallet signs directly, so it must be an ordinary wallet such as MetaMask or
-          Rabby. Safe and other smart-contract wallets can&apos;t pay through Arc&apos;s memo
-          contract.
+          Rabby. Safe and other smart-contract wallets can&apos;t pay this way on
+          Arc.
         </p>
       </section>
 

@@ -10,9 +10,9 @@ const noBalance = encodeErrorResult({
 const outcome = (success: boolean, returnData: Hex = "0x") => ({ success, returnData });
 
 describe("preflightRows — one line per call in the simulated run", () => {
-  it("labels call zero as the anchor commit and the rest by invoice", () => {
+  it("labels call zero as recording the list and the rest by invoice", () => {
     const rows = preflightRows([outcome(true), outcome(true)], ["INV-1"]);
-    expect(rows.map((r) => r.label)).toEqual(["Anchor commit", "INV-1"]);
+    expect(rows.map((r) => r.label)).toEqual(["Record the list on chain", "INV-1"]);
     expect(rows.every((r) => r.ok && !r.reason)).toBe(true);
   });
 

@@ -10,7 +10,7 @@ const LABEL: Record<ReconcileStatus, string> = {
   unpaid: "Not paid",
   recipient_mismatch: "Wrong recipient",
   amount_mismatch: "Wrong amount",
-  unexpected: "Not in manifest",
+  unexpected: "Not on the list",
   matched: "Matched",
 };
 
@@ -38,7 +38,7 @@ export function statusView(status: ReconcileStatus, hasManifest: boolean): Statu
     return {
       label: "Paid",
       color: "default",
-      note: "On chain under this reference. Load the manifest to see which invoice it pays and check it against what was owed.",
+      note: "On chain under this reference. Load the run file to see which invoice it pays and check it against what was owed.",
     };
   }
   return { label: LABEL[status], color: COLOR[status] };

@@ -11,7 +11,7 @@ import {
 import {
   networkFor, decodeProof, short, formatAmount, formatHeadline, type NetworkView,
 } from "@/lib/chain";
-import { absentHeadline } from "@/lib/receipt-view";
+import { absentHeadline, RECEIPT_COPY } from "@/lib/receipt-view";
 
 const anchorAbi = [
   { type: "function", name: "verifyItem", stateMutability: "view",
@@ -147,50 +147,11 @@ function Verdict({ tone, headline, body }: { tone: string; headline: string; bod
   );
 }
 
-const COPY: Record<string, { headline: string; body: string; tone: string }> = {
-  verified: {
-    tone: "ok", headline: "Verified",
-    body: "Five checks against the chain, all passed. Nothing here depends on Ledgerline.",
-  },
-  verified_unanchored: {
-    tone: "degraded", headline: "Payment verified",
-    body: "The payment is real and carries this invoice reference. One thing was not checked: whether it belonged to a committed payout run, because this link carries no anchor proof.",
-  },
-  not_anchored: {
-    tone: "degraded", headline: "Payment verified",
-    body: "The payment is real. The payer never anchored a manifest for this run, so there is no committed list to check it against.",
-  },
-  proof_invalid: {
-    tone: "error", headline: "Paid, but not in the manifest",
-    body: "The payment happened. It was not part of the payout run the payer committed to, so it is unaccounted for.",
-  },
-  run_reverted: {
-    tone: "error", headline: "This payout did not execute",
-    body: "The transaction reverted. No money moved and nothing was paid.",
-  },
-  memo_absent: {
-    tone: "error", headline: "No payment for this invoice",
-    body: "The transaction exists, but nothing in it carries this invoice reference. The link may be for a different invoice or a different run.",
-  },
-  unlinked: {
-    tone: "critical", headline: "Anomaly: reference with no payment",
-    body: "This invoice reference is on chain, but no payment satisfies it. Keep this link and contact the payer.",
-  },
-  identity_broken: {
-    tone: "critical", headline: "Sender does not match the payer",
-    body: "The address on record as the payer is not the address the funds came from. Do not treat this as settled.",
-  },
-  bad_link: {
-    tone: "error", headline: "This link is incomplete",
-    body: "Some of the evidence is missing from the address bar, so the checks cannot run. Ask the payer to resend the link.",
-  },
-};
-
 function Ready({
   data, net, txHash, invoiceId,
 }: { data: Loaded; net: NetworkView; txHash: string; invoiceId: string | null }) {
   const { result, decimals, symbol } = data;
-  const copy = COPY[result.state] ?? COPY.bad_link!;
+  const copy = RECEIPT_COPY[result.state];
   const p = result.payment;
   const void_ = result.severity === "error" || result.severity === "critical";
 

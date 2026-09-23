@@ -101,7 +101,7 @@ export default function Reconciliation({
       {phase === "run_reverted" && (
         <>
           <Headline tone="error" title="This payout run did not execute"
-            body="The transaction reverted. No money moved, nothing was paid, and no anchor was written. The run is safe to send again." />
+            body="The transaction reverted. No money moved, nothing was paid, and nothing was recorded. The run is safe to send again." />
           <p style={{ marginTop: "1.5rem" }}>
             <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">
               Inspect the failed transaction
@@ -211,7 +211,7 @@ function Ready({
     {
       title: "Invoice", dataIndex: "invoiceId", width: 150,
       render: (id?: string) => id ?? (
-        <span style={{ opacity: 0.45 }}>{hasManifest ? "not in manifest" : "see manifest"}</span>
+        <span style={{ opacity: 0.45 }}>{hasManifest ? "not on the list" : "in the run file"}</span>
       ),
     },
     {
@@ -255,7 +255,7 @@ function Ready({
         const url = receiptFor(r);
         return url
           ? <a href={url}>Open</a>
-          : <span style={{ opacity: 0.45 }} title={hasManifest ? undefined : "Load the manifest to issue receipt links"}>—</span>;
+          : <span style={{ opacity: 0.45 }} title={hasManifest ? undefined : "Load the run file to issue receipt links"}>—</span>;
       },
     },
   ];
@@ -294,7 +294,7 @@ function Ready({
           : completeness.verdict === "unknown" ? "var(--pending)" : "var(--flag)" }}>
           {completeness.verdict === "complete" ? "Complete run"
             : completeness.verdict === "incomplete" ? `${completeness.missing} missing`
-            : completeness.verdict === "over" ? `${completeness.surplus} beyond the manifest`
+            : completeness.verdict === "over" ? `${completeness.surplus} not on the list`
             : "Completeness unknown"}
         </h1>
         <p>{completeness.note}</p>
@@ -304,12 +304,12 @@ function Ready({
         <Alert
           style={{ marginTop: 22 }}
           type="info"
-          title="Reading without a manifest"
+          title="Reading without the run file"
           description={
             <>
-              Every payment below is read from the chain. Without the payer&apos;s manifest
-              there is no record of intent, so amounts cannot be checked against what was
-              owed — only against what the anchor committed to.{" "}
+              Every payment below is read from the chain. Without the payer&apos;s run file
+              there is no record of what each invoice was owed, so amounts can only be checked
+              against the list the payer recorded on chain.{" "}
               <Upload
                 accept=".json"
                 showUploadList={false}
@@ -328,9 +328,9 @@ function Ready({
                   return false;
                 }}
               >
-                <button className="linkish">Load a manifest</button>
+                <button className="linkish">Load the run file</button>
               </Upload>{" "}
-              to compare intent against what happened. It is read in your browser and never uploaded.
+              to compare what was owed with what was paid. It is read in your browser and never uploaded.
             </>
           }
         />
@@ -343,9 +343,9 @@ function Ready({
             : data.manifestCheck.matches === false ? "error" : "warning"}
           showIcon
           title={
-            data.manifestCheck.matches === true ? "This manifest is the one that was committed"
-              : data.manifestCheck.matches === false ? "This manifest was not the one committed"
-              : "This manifest could not be checked"
+            data.manifestCheck.matches === true ? "This run file matches the recorded list"
+              : data.manifestCheck.matches === false ? "This run file does not match the recorded list"
+              : "This run file could not be checked"
           }
           description={
             <>
@@ -353,9 +353,9 @@ function Ready({
               {manifestName && <> Read from <strong>{manifestName}</strong> in your browser, never uploaded.</>}
               {data.manifestCheck.matches === false && data.manifestCheck.computedRoot && (
                 <dl className="detail" style={{ marginTop: 10 }}>
-                  <dt>Committed on chain</dt>
+                  <dt>Recorded on chain</dt>
                   <dd className="hex">{data.manifestCheck.anchoredRoot}</dd>
-                  <dt>This file rebuilds</dt>
+                  <dt>This file&apos;s fingerprint</dt>
                   <dd className="hex">{data.manifestCheck.computedRoot}</dd>
                 </dl>
               )}
@@ -478,10 +478,10 @@ function RowDetail({
         ) : (
           <span style={{ opacity: 0.6 }}>
             {!row.invoiceId
-              ? "Needs the invoice reference and run salt, which only the manifest holds."
+              ? "Needs the invoice reference and reference code, which only the run file holds."
               : row.actual === undefined
                 ? "No receipt: nothing on chain carries this reference, so there is no payment to prove."
-                : "No receipt: the anchored root could not be read or rebuilt, so no proof can be issued for this line."}
+                : "No receipt: the recorded list could not be read or matched, so no proof can be issued for this line."}
           </span>
         )}
       </dd>
@@ -623,7 +623,7 @@ function RecoverLinks({
       if (anchorPayer && address.toLowerCase() !== anchorPayer.toLowerCase()) {
         throw new Error(
           `This run was paid by ${anchorPayer}, but the wallet you connected is ${address}. ` +
-          `Only the paying wallet can rebuild these links, because the salt is derived from its signature.`,
+          `Only the paying wallet can rebuild these links, because their reference code comes from its signature.`,
         );
       }
 
@@ -672,9 +672,9 @@ function RecoverLinks({
 
       <p className="because" style={{ marginTop: 12 }}>
         For the payer only{anchorPayer ? <> — the wallet at <span className="hex">{short(anchorPayer)}</span></> : null}.
-        Nothing about this run was stored: the salt that makes each link verifiable is
-        derived from that wallet&apos;s signature over the run name, so signing the same
-        message again is what brings the links back. Recipients and auditors do not need
+        Nothing about this run was stored: the reference code that makes each link
+        verifiable comes from that wallet&apos;s signature over the run name, so signing the
+        same message again is what brings the links back. Recipients and auditors do not need
         this — the link they were given already verifies on its own.
       </p>
 
@@ -703,7 +703,7 @@ function RecoverLinks({
       {state === "mismatch" && (
         <Alert style={{ marginTop: 16 }} type="error" showIcon
           title="These do not match what is on chain"
-          description="Either the references derived from that signature are not the ones this transaction carries, or the rebuilt manifest root is not the one the anchor committed. That covers a run name typed differently, an invoice reference spelled differently, a wallet that does not reproduce its signatures, and an anchor that could not be read. Use the manifest you downloaded — no links are shown, because an unverified link is worse than none." />
+          description="The reference codes from that signature are not the ones this transaction carries, or they do not rebuild the list the payer recorded. Usually the run name was typed differently, an invoice reference is spelled differently, the wallet does not produce the same signature twice, or the recorded list could not be read. Use the run file you downloaded — no links are shown, because a link that cannot verify is worse than none." />
       )}
 
       {state === "error" && error && (
@@ -714,7 +714,7 @@ function RecoverLinks({
         <>
           <Alert style={{ marginTop: 16 }} type="success" showIcon
             title="Rebuilt and checked against the chain"
-            description="Every reference below was derived from your signature and then found in this transaction's logs, and the tree they came from rebuilds the root the anchor committed." />
+            description="Every reference below came from your signature, was found in this transaction, and together they rebuild the list the payer recorded on chain." />
           <dl className="detail" style={{ marginTop: 14 }}>
             {links.map((l) => (
               <div key={l.invoiceId} style={{ display: "contents" }}>

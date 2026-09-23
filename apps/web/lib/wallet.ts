@@ -148,7 +148,7 @@ export async function connect(net: NetworkView, choice?: WalletChoice): Promise<
   const picked = choice ?? knownWallets()[0];
   if (!picked) {
     throw new Error(
-      "No wallet found. Ledgerline needs a browser wallet such as MetaMask or Rabby, and the payer must sign directly — Arc's Memo contract rejects smart-contract wallets.",
+      "No wallet found. Ledgerline needs a browser wallet such as MetaMask or Rabby, and the payer must sign directly — Arc rejects smart-contract wallets for these payments.",
     );
   }
   const provider = picked.provider;
@@ -288,7 +288,7 @@ export async function assertEoa(net: NetworkView, address: Address): Promise<voi
   if (code.toLowerCase().startsWith("0xef0100")) return;
 
   throw new EoaRequiredError(
-    "This address is a smart-contract wallet. Arc's Memo contract requires the payer to be the transaction's origin, so Safe, ERC-4337 and similar wallets cannot sign a Ledgerline run. Connect an ordinary EOA instead.",
+    "This address is a smart-contract wallet. Arc requires the payer to sign the transaction directly, so Safe, ERC-4337 and similar wallets cannot sign a Ledgerline run. Connect an ordinary EOA instead.",
   );
 }
 

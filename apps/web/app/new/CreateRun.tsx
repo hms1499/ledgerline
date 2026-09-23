@@ -268,8 +268,8 @@ export default function CreateRun({ networkName }: { networkName: string | null 
         style={{ marginTop: 28 }}
         current={step}
         items={[
-          { title: "Upload" }, { title: "Preview" },
-          { title: "Preflight" }, { title: "Sign" }, { title: "Receipts" },
+          { title: "Upload" }, { title: "Review" },
+          { title: "Check" }, { title: "Pay" }, { title: "Receipts" },
         ]}
       />
 

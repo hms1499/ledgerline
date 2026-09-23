@@ -154,7 +154,7 @@ export default function StepPreview({
                   <span>
                     <strong>{r.need} {r.symbol}</strong> needed
                     {r.state === "unknown"
-                      ? " — the balance could not be read, so preflight will check it"
+                      ? " — the balance could not be read, so the next step will check it"
                       : <> · wallet holds <span className="hex">{r.hold}</span></>}
                     {r.shortBy && <> · <strong>short by {r.shortBy} {r.symbol}</strong></>}
                   </span>
@@ -199,7 +199,7 @@ export default function StepPreview({
       </div>
 
       <p className="because" style={{ marginTop: 18 }}>
-        Arc&apos;s Memo contract requires the payer to sign directly, so Safe, ERC-4337 and
+        Arc requires the payer to sign directly, so Safe, ERC-4337 and
         other smart-contract wallets are not supported. Nothing has been signed or sent yet.
       </p>
     </>

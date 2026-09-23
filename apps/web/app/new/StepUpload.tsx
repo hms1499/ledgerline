@@ -44,9 +44,9 @@ export default function StepUpload({
       <section className="verdict">
         <h1>A run starts with a file and a name</h1>
         <p>
-          The name is what lets the same payroll run again next month — the anchor rejects
-          a repeat of the identical list under the identical name, which is how double
-          payment is blocked at the contract rather than in this screen.
+          The name is what lets the same payroll run again next month. Paying the same
+          list twice under the same name is refused on chain, so a double-click or a retry
+          can never pay anyone twice.
         </p>
       </section>
 

@@ -140,7 +140,7 @@ export default function Result({
         style={{ marginTop: 24 }}
         type={manifestSaved ? "success" : "warning"}
         showIcon
-        title={manifestSaved ? "Manifest saved" : "Save the manifest before you leave"}
+        title={manifestSaved ? "Run file saved" : "Save the run file before you leave"}
         description={
           <>
             <p style={{ marginTop: 0 }}>
@@ -149,7 +149,7 @@ export default function Result({
                 : "It is the only record of what each invoice was owed — the chain holds what was paid, not what was meant. Load it on the run page later to check one against the other. Nothing is stored by us, so this is your copy."}
             </p>
             <Button type={manifestSaved ? "default" : "primary"} onClick={downloadManifest}>
-              {manifestSaved ? "Download it again" : "Download the manifest"}
+              {manifestSaved ? "Download it again" : "Download the run file"}
             </Button>
           </>
         }

@@ -11,7 +11,7 @@ import type { PreparedRun } from "./StepPreflight";
 
 const STAGE_LABEL: Record<RunStage, string> = {
   balances: "Checking balances",
-  preflight: "Simulating every payment",
+  preflight: "Trying every payment against the chain",
   fees: "Setting the fee floor",
   signing: "Waiting for your signature",
   broadcast: "Reading back what was broadcast",
@@ -97,8 +97,8 @@ export default function StepSend({
             <a href={`${net.explorer}/address/${prepared.manifest.payer}`} target="_blank" rel="noreferrer">
               your address on the explorer
             </a>{" "}
-            before running this again — if the run did land, the anchor is write-once and a
-            second attempt is refused at preflight, but confirm rather than assume.
+            before running this again. If the run did land, a second attempt is refused
+            before anything is signed — but confirm rather than assume.
           </p>
         </section>
         <Alert style={{ marginTop: 20 }} type="warning" showIcon title={crash} />
@@ -112,7 +112,7 @@ export default function StepSend({
         <section className="verdict">
           <h1>Ready to send</h1>
           <p>
-            One transaction pays every line and commits the manifest root. Your wallet will
+            One transaction pays every line and records the list on chain. Your wallet will
             ask about fees — <strong>do not lower them below 25 Gwei</strong>. Arc discards
             transactions priced under 20 Gwei without a receipt, an error or a revert.
           </p>
@@ -137,7 +137,7 @@ export default function StepSend({
                       The wait above will keep running, because a transaction in the mempool
                       is not proof of a dead one. If no receipt arrives, this ends as
                       &ldquo;sent, but not yet in a block&rdquo; — no money will have moved
-                      and no anchor will have been written, so the same run can be sent
+                      and nothing will have been recorded, so the same run can be sent
                       again at the proper fee.
                     </p>
                   </>
@@ -185,7 +185,7 @@ function OutcomeView({
     dropped: {
       tone: "error",
       title: "Arc never saw this transaction",
-      body: "The node has no record of the hash your wallet returned. On Arc that means the mempool discarded it, which happens silently for transactions priced below 20 Gwei. No money moved. It is safe to run again — the anchor is write-once, so if it somehow did land, the next attempt is blocked at preflight.",
+      body: "The node has no record of the hash your wallet returned. On Arc that means the mempool discarded it, which happens silently for transactions priced below 20 Gwei. No money moved. It is safe to run again — if it somehow did land, the next attempt is refused before anything is signed.",
     },
     pending: {
       tone: "degraded",
@@ -195,7 +195,7 @@ function OutcomeView({
     reverted: {
       tone: "error",
       title: "The run reverted",
-      body: "It reached a block and failed. No money moved and no anchor was written, so the run is safe to send again.",
+      body: "It reached a block and failed. No money moved and nothing was recorded, so the run is safe to send again.",
     },
   };
 

@@ -67,7 +67,7 @@ export default function StepPreflight({
         items,
       };
 
-      if (!net.anchor) throw new Error(`No PayoutAnchor is configured for Arc ${net.name}.`);
+      if (!net.anchor) throw new Error(`This app is not set up to record runs on Arc ${net.name} yet.`);
 
       setPhase("checking");
       const built = buildRun(manifest, net.anchor);
@@ -101,15 +101,15 @@ export default function StepPreflight({
           {phase === "idle" ? "Check the run before any money moves"
             : phase === "signing" ? "Waiting for your signature"
             : phase === "checking" ? "Checking every payment against the chain"
-            : allOk ? "Every payment simulates cleanly"
+            : allOk ? "Every payment would go through"
             : "This run would not go through"}
         </h1>
         <p>
           {phase === "idle"
             ? "Your wallet will ask you to sign a short message. It is free and moves no money — it creates this run's reference code, which ties each payment to its invoice. Then every payment is tried against the live chain, so problems show up here instead of after you pay."
             : phase === "signing"
-            ? "Your wallet is asking you to sign a short message. This is not the payment — it derives this run's reference salt, and it costs nothing."
-            : "Each payment is simulated against live chain state before anything is signed. This is also the only way to see Arc's runtime blocklist, which has no pre-check."}
+            ? "Your wallet is asking you to sign a short message. This is not the payment — it creates this run's reference code, and it costs nothing."
+            : "Each payment is tried against the live chain before you pay, so a problem shows up here rather than after money moves."}
         </p>
       </section>
 
@@ -145,11 +145,10 @@ export default function StepPreflight({
             <>
               {error ??
                 "One or more payments would fail if sent to Arc — each failing row above says why. " +
-                  "This is a live simulation against current chain state, which is also the only " +
-                  "way to see Arc's runtime blocklist; it exposes no pre-check function."}
+                  "Fix those and check again; nothing has been paid."}
               <p style={{ marginTop: 10, marginBottom: 0 }}>
                 {signed
-                  ? "Your wallet did sign the short message a moment ago. That one only derives this run's salt — it costs nothing, moves nothing, and is not a payment. Nothing else has been signed."
+                  ? "Your wallet did sign the short message a moment ago. That one only created this run's reference code — it costs nothing, moves nothing, and is not a payment. Nothing else has been signed."
                   : "Your wallet has not been asked to sign anything for this attempt."}
               </p>
             </>
@@ -158,15 +157,15 @@ export default function StepPreflight({
 
       {prepared && (
         <dl className="detail" style={{ marginTop: 26 }}>
-          <dt>Run id</dt>
+          <dt>Run ID</dt>
           <dd className="hex">{runIdFor(prepared.manifest.payer, prepared.manifest.clientRunId)}</dd>
-          <dt>Manifest root</dt>
+          <dt>List fingerprint</dt>
           <dd className="hex">{prepared.built.root}</dd>
         </dl>
       )}
 
       <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <Button onClick={onBack}>Back to the preview</Button>
+        <Button onClick={onBack}>Back to the review</Button>
         {/* Started by this click, never by an effect: the first thing it does
             is open the wallet, and a prompt nobody asked for is how people
             learn to approve without reading — the send step's rule too. */}
