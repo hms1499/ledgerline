@@ -12,6 +12,7 @@ const pay = (n: number): PaymentRecord => ({
   memoData: "0x",
   memoIndex: BigInt(n),
   identityBroken: false,
+  transferFrom: "0x1111111111111111111111111111111111111111",
 });
 
 const payments = [pay(1), pay(2), pay(3)];
