@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import type { Address, Completeness, PaymentRecord, ReconcileRow } from "@ledgerline/core";
-import { tokensToRead, runStatsView, reviewCount, STAT_LABELS } from "@/lib/run-view";
+import {
+  tokensToRead, runStatsView, reviewCount, STAT_LABELS, perTokenTotals, statusBreakdown,
+} from "@/lib/run-view";
 
 const USDC = "0x3600000000000000000000000000000000000000" as Address;
 const CIRBTC = "0x171a4217b86a807a64eb94757db6849fb4bdbaa0" as Address;
@@ -67,12 +69,34 @@ describe("runStatsView — the run page's four tiles", () => {
 
   it("Review: without a run file nothing is 'to review' — every payment is simply read from chain", () => {
     const r = stats({ hasManifest: false, rows: [row("unexpected", USDC), row("unexpected", USDC)] })[2]!;
-    expect(r).toMatchObject({ value: "Read from chain", tone: undefined });
+    expect(r).toMatchObject({ value: "Read from chain", tone: undefined, sub: ["2 paid"] });
     expect(reviewCount([row("unexpected", USDC)], false)).toBe(0);
     expect(reviewCount([row("unexpected", USDC)], true)).toBe(1);
   });
 
   it("Recorded: the block, formatted", () => {
     expect(stats()[3]).toMatchObject({ value: "Block 1,234,567" });
+  });
+});
+
+describe("perTokenTotals — the one sum the tiles and the table footer both read", () => {
+  it("merges case variants of the same token, keeping the first-seen spelling and order", () => {
+    const out = perTokenTotals([
+      paid(CIRBTC, 1_000n),
+      paid(USDC, 100_000n),
+      paid(USDC.toLowerCase() as Address, 200_000n),
+      paid(CIRBTC.toUpperCase() as Address, 500n),
+    ]);
+    expect(out).toEqual([
+      { token: CIRBTC, total: 1_500n },
+      { token: USDC, total: 300_000n },
+    ]);
+  });
+});
+
+describe("statusBreakdown — the one breakdown text the tiles and the table footer both read", () => {
+  it("returns \"\" for no rows", () => {
+    expect(statusBreakdown([], true)).toBe("");
+    expect(statusBreakdown([], false)).toBe("");
   });
 });

@@ -37,25 +37,40 @@ export function reviewCount(rows: ReconcileRow[], hasManifest: boolean): number 
   return rows.filter((r) => r.status !== "matched" && !(r.status === "unexpected" && !hasManifest)).length;
 }
 
+/**
+ * Emitted Transfer values, per token, never pooled (invariant 5). The one sum
+ * the tiles and the table footer both read — computed once so a later edit to
+ * either display cannot make the page disagree with itself.
+ */
+export function perTokenTotals(payments: PaymentRecord[]): { token: string; total: bigint }[] {
+  const seen = new Map<string, { token: string; total: bigint }>();
+  for (const p of payments) {
+    const k = p.token.toLowerCase();
+    const entry = seen.get(k);
+    if (entry) entry.total += p.value;
+    else seen.set(k, { token: p.token, total: p.value });
+  }
+  return [...seen.values()];
+}
+
+/** The one status breakdown text the tiles and the table footer both read. */
+export function statusBreakdown(rows: ReconcileRow[], hasManifest: boolean): string {
+  const counts = new Map<ReconcileStatus, number>();
+  for (const r of rows) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => SEVERITY[a[0]] - SEVERITY[b[0]])
+    .map(([s, n]) => `${n} ${statusView(s, hasManifest).label.toLowerCase()}`)
+    .join(", ");
+}
+
 export function runStatsView({
   payments, rows, completeness: c, hasManifest, blockNumber, meta,
 }: {
   payments: PaymentRecord[]; rows: ReconcileRow[]; completeness: Completeness;
   hasManifest: boolean; blockNumber: bigint; meta: Map<string, TokenMeta>;
 }): StatView[] {
-  // Emitted Transfer values, per token, never pooled (invariant 5).
-  const perToken = new Map<string, { token: string; total: bigint }>();
-  for (const p of payments) {
-    const k = p.token.toLowerCase();
-    perToken.set(k, { token: p.token, total: (perToken.get(k)?.total ?? 0n) + p.value });
-  }
-
-  const counts = new Map<ReconcileStatus, number>();
-  for (const r of rows) counts.set(r.status, (counts.get(r.status) ?? 0) + 1);
-  const breakdown = [...counts.entries()]
-    .sort((a, b) => SEVERITY[a[0]] - SEVERITY[b[0]])
-    .map(([s, n]) => `${n} ${statusView(s, hasManifest).label.toLowerCase()}`)
-    .join(", ");
+  const totals = perTokenTotals(payments);
+  const breakdown = statusBreakdown(rows, hasManifest);
 
   const completeness: Record<Completeness["verdict"], { value: string; tone: StatTone }> = {
     complete: { value: "Complete", tone: "success" },
@@ -69,8 +84,7 @@ export function runStatsView({
   return [
     {
       key: "payments", label: STAT_LABELS[0], value: String(payments.length),
-      sub: [...perToken.values()].map(({ token, total }) =>
-        amountText(total, token, meta.get(token.toLowerCase()) ?? {})),
+      sub: totals.map(({ token, total }) => amountText(total, token, meta.get(token.toLowerCase()) ?? {})),
     },
     { key: "completeness", label: STAT_LABELS[1], ...completeness[c.verdict], sub: [] },
     {

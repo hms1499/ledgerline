@@ -16,7 +16,9 @@ import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
 import { SEVERITY, statusView } from "@/lib/reconcile-view";
 import { amountFigure, amountText, type TokenMeta } from "@/lib/token-meta";
-import { tokensToRead, runStatsView, STAT_LABELS } from "@/lib/run-view";
+import {
+  tokensToRead, runStatsView, STAT_LABELS, perTokenTotals, statusBreakdown,
+} from "@/lib/run-view";
 import { Grid, Col } from "@/components/grid/Grid";
 import Panel from "@/components/ui/Panel";
 import StatTile from "@/components/ui/StatTile";
@@ -163,13 +165,9 @@ function Ready({
     return c;
   }, [result.rows]);
 
-  const perToken = useMemo(() => {
-    const t = new Map<string, bigint>();
-    for (const p of result.payments) {
-      t.set(p.token.toLowerCase(), (t.get(p.token.toLowerCase()) ?? 0n) + p.value);
-    }
-    return t;
-  }, [result.payments]);
+  // The one sum the tiles (via runStatsView) and this table's footer both
+  // read, so an edit to one can never make the page disagree with itself.
+  const tokenTotals = useMemo(() => perTokenTotals(result.payments), [result.payments]);
 
   // A link is offered only when every piece of its evidence is in hand and
   // the proofs rebuild the anchored root. Anything less opens as incomplete.
@@ -209,8 +207,8 @@ function Ready({
     },
     {
       title: "Token", dataIndex: "token", width: 110,
-      filters: [...perToken.keys()].map((t) => ({
-        text: tokens.get(t)?.symbol ?? short(t), value: t,
+      filters: tokenTotals.map(({ token: t }) => ({
+        text: tokens.get(t.toLowerCase())?.symbol ?? short(t), value: t.toLowerCase(),
       })),
       onFilter: (v, r) => r.token.toLowerCase() === v,
       render: (t: Address) => tokens.get(t.toLowerCase())?.symbol ?? short(t),
@@ -357,19 +355,15 @@ function Ready({
                     <strong>{result.rows.length} rows</strong>
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={2} colSpan={2}>
-                    {[...counts.entries()].sort((a, b) => SEVERITY[a[0]] - SEVERITY[b[0]])
-                      .map(([s, n]) => `${n} ${statusView(s, hasManifest).label.toLowerCase()}`).join(", ")}
+                    {statusBreakdown(result.rows, hasManifest)}
                   </Table.Summary.Cell>
                   <Table.Summary.Cell index={4} align="right" colSpan={3}>
                     <ul className="totals totals--tight">
-                      {[...perToken.entries()].map(([t, total]) => {
-                        const m = tokens.get(t);
-                        return (
-                          <li key={t}>
-                            <span className="hex">{amountText(total, t, m ?? {})}</span>
-                          </li>
-                        );
-                      })}
+                      {tokenTotals.map(({ token: t, total }) => (
+                        <li key={t}>
+                          <span className="hex">{amountText(total, t, tokens.get(t.toLowerCase()) ?? {})}</span>
+                        </li>
+                      ))}
                     </ul>
                   </Table.Summary.Cell>
                 </Table.Summary.Row>
