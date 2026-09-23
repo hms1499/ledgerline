@@ -161,14 +161,10 @@ a:hover { text-decoration-color: currentColor; }
   color: var(--ink-soft);
 }
 
-.how { margin-top: 3rem; }
-.how h2 { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 0.8rem; }
-.how ol { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
-.how li { display: grid; grid-template-columns: 2.4rem 1fr; gap: 0 0.6rem; padding: 1rem 0; border-bottom: 1px solid var(--rule); }
-/* The step number sits where a ledger puts its line number. */
-.how-step { font-family: var(--font-mono), ui-monospace, monospace; font-size: 1.35rem; line-height: 1.2; color: var(--tick); }
-.how h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem; }
-.how li p { margin: 0; max-width: var(--measure); color: var(--ink-soft); font-size: 0.93rem; }
+.how-card .how-step { display: block; margin-bottom: 8px; font-family: var(--font-mono), ui-monospace, monospace; font-size: 1.35rem; line-height: 1.2; color: var(--success); }
+.how-card h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.35rem; }
+.how-card p { margin: 0; color: var(--text-soft); font-size: 0.93rem; }
+.hero { padding-top: 0.4rem; }
 .how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--ink-soft); max-width: var(--measure); }
 
 .home-footer { display: flex; flex-direction: column; gap: 0.35rem; }
