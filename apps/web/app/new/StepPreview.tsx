@@ -1,10 +1,38 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
-import type { ResolvedRow } from "@ledgerline/core";
+import { createPublicClient, http, type Address } from "viem";
+import { fundingFor, tokensForChain, totalsByToken, type ResolvedRow } from "@ledgerline/core";
 import { formatAmount, short, type NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { ConnectError, RunDraft } from "./CreateRun";
+import { fundingView } from "@/lib/funding-view";
+
+const balanceOfAbi = [
+  { type: "function", name: "balanceOf", stateMutability: "view",
+    inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] },
+] as const;
+
+/**
+ * Every token the run pays, plus USDC, which pays Arc's network fee even when
+ * the run pays none. A token whose balance cannot be read is left out, so it
+ * shows as unknown rather than as an empty wallet.
+ */
+async function readBalances(
+  net: NetworkView, owner: Address, tokens: Address[],
+): Promise<Record<string, bigint>> {
+  const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
+  const out: Record<string, bigint> = {};
+  await Promise.all(tokens.map(async (token) => {
+    try {
+      out[token.toLowerCase()] = await client.readContract({
+        address: token, abi: balanceOfAbi, functionName: "balanceOf", args: [owner],
+      });
+    } catch { /* unknown, not zero */ }
+  }));
+  return out;
+}
 
 export default function StepPreview({
   draft, net, onBack, onNext, wallet, walletError, onConnect, wrongChain,
@@ -16,6 +44,29 @@ export default function StepPreview({
   wrongChain?: boolean;
 }) {
   const blocking = draft.issues.length + draft.errors.length;
+
+  // Read for the wallet on screen and dropped the moment it changes, so a
+  // switched account never inherits the last one's balances.
+  const usdc = tokensForChain(net.chain.id).USDC as Address;
+  const [balances, setBalances] = useState<Record<string, bigint>>();
+  const owner = wallet && !wrongChain ? wallet.address : undefined;
+  useEffect(() => {
+    setBalances(undefined);
+    if (!owner) return;
+    let current = true;
+    const tokens = [...new Set([usdc, ...totalsByToken(draft.rows).map((t) => t.token)]
+      .map((t) => t.toLowerCase()))] as Address[];
+    void readBalances(net, owner, tokens).then((b) => { if (current) setBalances(b); });
+    return () => { current = false; };
+  }, [owner, net, draft.rows, usdc]);
+
+  const funding = balances && fundingView({
+    lines: fundingFor(draft.rows, balances),
+    usdc, usdcHold: balances[usdc.toLowerCase()],
+    decimals: draft.decimals, symbols: draft.symbols,
+  });
+  const checkingFunds = !!owner && !balances;
+  const shortTokens = funding?.short ?? 0;
 
   const columns: TableColumnsType<ResolvedRow> = [
     { title: "Line", dataIndex: "line", width: 70 },
@@ -88,6 +139,36 @@ export default function StepPreview({
         />
       </div>
 
+      {owner && (
+        <section className="funding" aria-live="polite">
+          <h2>Can this wallet pay it?</h2>
+          {checkingFunds ? (
+            <p className="because">Reading the wallet&apos;s balances on Arc {net.name}…</p>
+          ) : (
+            <ul>
+              {funding!.rows.map((r) => (
+                <li key={r.key} className={`funding-${r.state}`}>
+                  <span className="mark" aria-hidden>
+                    {r.state === "ok" ? "✓" : r.state === "short" ? "✗" : "–"}
+                  </span>
+                  <span>
+                    <strong>{r.need} {r.symbol}</strong> needed
+                    {r.state === "unknown"
+                      ? " — the balance could not be read, so preflight will check it"
+                      : <> · wallet holds <span className="hex">{r.hold}</span></>}
+                    {r.shortBy && <> · <strong>short by {r.shortBy} {r.symbol}</strong></>}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {funding?.feeWarning && (
+            <Alert style={{ marginTop: 14 }} type="warning" showIcon
+              title="Nothing left for the network fee" description={funding.feeWarning} />
+          )}
+        </section>
+      )}
+
       {walletError && (
         <Alert style={{ marginTop: 18 }} type={walletError.type} showIcon
           title={walletError.title} description={walletError.description} />
@@ -96,12 +177,21 @@ export default function StepPreview({
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Button onClick={onBack}>Choose another file</Button>
         {wallet ? (
-          <Button type="primary" disabled={blocking > 0 || wrongChain} onClick={onNext}>
+          <Button
+            type="primary"
+            disabled={blocking > 0 || wrongChain || checkingFunds || shortTokens > 0}
+            loading={checkingFunds}
+            onClick={onNext}
+          >
             {wrongChain
               ? "Switch to Arc first"
               : blocking > 0
                 ? `${blocking} problem${blocking === 1 ? "" : "s"} to fix first`
-                : "Check it against the chain"}
+                : checkingFunds
+                  ? "Checking balances"
+                  : shortTokens > 0
+                    ? `Top up ${shortTokens === 1 ? "the short token" : `${shortTokens} tokens`} first`
+                    : "Check it against the chain"}
           </Button>
         ) : (
           <Button type="primary" onClick={onConnect}>Connect a wallet to continue</Button>
