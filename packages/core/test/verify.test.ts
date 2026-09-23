@@ -73,6 +73,22 @@ describe("verifyReceipt — each failure names its rung", () => {
     expect(verifyReceipt(input({ runSalt: undefined })).state).toBe("bad_link");
   });
 
+  it("bad_link still reports the transaction it did find", () => {
+    // The link lacks the salt, not the transaction. Leaving rung 1 unchecked
+    // tells a recipient the payment may not exist, which the chain disproves.
+    const r = verifyReceipt(input({ runSalt: undefined }));
+    expect(r.state).toBe("bad_link");
+    expect(rung(r, "tx_found").status).toBe("pass");
+    expect(rung(r, "tx_found").detail).toMatch(/missing the run salt/);
+  });
+
+  it("run_reverted wins over an incomplete link — nothing was paid either way", () => {
+    const r = verifyReceipt(input({ runSalt: undefined, receiptStatus: "reverted" }));
+    expect(r.state).toBe("run_reverted");
+    expect(rung(r, "tx_found").status).toBe("fail");
+    expect(r.derivedMemoId).toBeUndefined();
+  });
+
   it("run_reverted, and says nothing was paid", () => {
     const r = verifyReceipt(input({ receiptStatus: "reverted" }));
     expect(r.state).toBe("run_reverted");

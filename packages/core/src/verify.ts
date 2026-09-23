@@ -110,19 +110,15 @@ export function verifyReceipt(input: ReceiptInput): ReceiptResult {
     derivedMemoId,
   });
 
-  // ── rung 0: is the link even usable ────────────────────────────────────
-  if (!input.invoiceId || !input.runSalt) {
-    const missing = [
-      !input.invoiceId ? "invoice reference" : null,
-      !input.runSalt ? "run salt" : null,
-    ].filter(Boolean).join(" and ");
-    at("tx_found").detail = `This link is incomplete — it is missing the ${missing}.`;
-    return done("bad_link");
-  }
-
-  const derivedMemoId = memoIdFor(input.runSalt, input.invoiceId);
+  const derivedMemoId = input.invoiceId && input.runSalt
+    ? memoIdFor(input.runSalt, input.invoiceId)
+    : undefined;
 
   // ── rung 1: the transaction exists and executed ────────────────────────
+  // Decided before the link is judged, because it needs nothing from the
+  // link: a reverted run paid nobody whatever the link carries, and a
+  // successful one must not be shown as unchecked just because the link is
+  // short of the evidence for the rungs after it.
   if (input.receiptStatus === "reverted") {
     at("tx_found").status = "fail";
     at("tx_found").detail =
@@ -130,6 +126,16 @@ export function verifyReceipt(input: ReceiptInput): ReceiptResult {
     return done("run_reverted", undefined, derivedMemoId);
   }
   at("tx_found").status = "pass";
+
+  // ── is the link usable for the rest ────────────────────────────────────
+  if (!derivedMemoId) {
+    const missing = [
+      !input.invoiceId ? "invoice reference" : null,
+      !input.runSalt ? "run salt" : null,
+    ].filter(Boolean).join(" and ");
+    at("tx_found").detail = `This link is incomplete — it is missing the ${missing}.`;
+    return done("bad_link");
+  }
 
   const { payments, unlinkedMemoIds } = joinPayments(input.logs);
 
