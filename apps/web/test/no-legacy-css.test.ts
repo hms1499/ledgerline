@@ -25,5 +25,6 @@ function hits(re: RegExp): string[] {
 describe("guards that keep fixed mistakes fixed", () => {
   it("no amount guesses its token's decimals", () => {
     expect(hits(/decimals[^\n]{0,40}\?\?\s*\d/)).toEqual([]);
+    expect(hits(/\bdecimals\s*=\s*\d/)).toEqual([]);
   });
 });

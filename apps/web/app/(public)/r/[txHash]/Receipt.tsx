@@ -9,9 +9,13 @@ import {
   type ReceiptResult, type RawLog, type Hex,
 } from "@ledgerline/core";
 import {
-  networkFor, decodeProof, short, formatAmount, formatHeadline, type NetworkView,
+  networkFor, decodeProof, short, formatHeadline, type NetworkView,
 } from "@/lib/chain";
 import { absentHeadline, RECEIPT_COPY } from "@/lib/receipt-view";
+import { Grid, Col } from "@/components/grid/Grid";
+import Panel from "@/components/ui/Panel";
+import Verdict from "@/components/ui/Verdict";
+import { amountText } from "@/lib/token-meta";
 
 const anchorAbi = [
   { type: "function", name: "verifyItem", stateMutability: "view",
@@ -40,7 +44,7 @@ type Phase = "loading" | "ready" | "tx_not_found" | "rpc_unreachable";
 
 interface Loaded {
   result: ReceiptResult;
-  decimals: number;
+  decimals?: number;
   symbol: string;
   blockNumber: bigint;
   logs: RawLog[];
@@ -79,71 +83,60 @@ export default function Receipt(props: Props) {
   }, [run, rpc]);
 
   return (
-    <div className="sheet">
-      <div className="masthead">
-        <strong>Payment advice</strong>
-        <span>
-          Arc {net.name}
-          {data ? ` at block ${data.blockNumber.toLocaleString("en-US")}` : ""}
-        </span>
-      </div>
+    <Grid>
+      <Col start={4} span={6} md={{ start: 2, span: 10 }}>
+        <Panel
+          head={
+            <>
+              <strong>Payment advice</strong>
+              <span>
+                Arc {net.name}
+                {data ? ` at block ${data.blockNumber.toLocaleString("en-US")}` : ""}
+              </span>
+            </>
+          }
+        >
+          {phase === "loading" && <Skeleton active paragraph={{ rows: 6 }} style={{ marginTop: 20 }} />}
 
-      {phase === "loading" && <Skeleton active paragraph={{ rows: 6 }} style={{ marginTop: 32 }} />}
-
-      {phase === "tx_not_found" && (
-        <Verdict
-          tone="error"
-          headline="No such transaction on Arc"
-          body={`Nothing on Arc ${net.name} matches this hash. If the payer sent it on a different network, ask them for the right link.`}
-        />
-      )}
-
-      {phase === "rpc_unreachable" && (
-        <>
-          <Verdict
-            tone="degraded"
-            headline="Could not reach Arc"
-            body="This says nothing about the payment — only that the checks could not run. Try again, or point the page at another endpoint below."
-          />
-          {error && (
-            <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} />
+          {phase === "tx_not_found" && (
+            <Verdict level={1} tone="error" title="No such transaction on Arc"
+              body={`Nothing on Arc ${net.name} matches this hash. If the payer sent it on a different network, ask them for the right link.`} />
           )}
-        </>
-      )}
 
-      {phase === "ready" && data && (
-        <Ready data={data} net={net} txHash={props.txHash} invoiceId={props.invoiceId} />
-      )}
+          {phase === "rpc_unreachable" && (
+            <>
+              <Verdict level={1} tone="degraded" title="Could not reach Arc"
+                body="This says nothing about the payment — only that the checks could not run. Try again, or point the page at another endpoint below." />
+              {error && <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} />}
+            </>
+          )}
 
-      <footer className="footer">
-        <div>
-          Checked against <span className="endpoint">{rpc}</span>{" "}
-          <button
-            className="linkish"
-            onClick={() => {
-              const next = window.prompt("Arc RPC endpoint to verify against", rpc);
-              if (next) setRpc(next.trim());
-            }}
-          >
-            change
-          </button>
-        </div>
-        <p style={{ maxWidth: "62ch", marginTop: "0.6rem" }}>
-          Every check above reads the chain directly. Point this page at your own node and
-          it will reach the same answer, or a different one — either way you are not taking
-          Ledgerline&apos;s word for it.
-        </p>
-      </footer>
-    </div>
-  );
-}
+          {phase === "ready" && data && (
+            <Ready data={data} net={net} txHash={props.txHash} invoiceId={props.invoiceId} />
+          )}
+        </Panel>
 
-function Verdict({ tone, headline, body }: { tone: string; headline: string; body: string }) {
-  return (
-    <section className={`verdict ${tone}`}>
-      <h1>{headline}</h1>
-      <p>{body}</p>
-    </section>
+        <footer className="footer">
+          <div>
+            Checked against <span className="endpoint">{rpc}</span>{" "}
+            <button
+              className="linkish"
+              onClick={() => {
+                const next = window.prompt("Arc RPC endpoint to verify against", rpc);
+                if (next) setRpc(next.trim());
+              }}
+            >
+              change
+            </button>
+          </div>
+          <p style={{ maxWidth: "62ch", marginTop: "0.6rem" }}>
+            Every check above reads the chain directly. Point this page at your own node and
+            it will reach the same answer, or a different one — either way you are not taking
+            Ledgerline&apos;s word for it.
+          </p>
+        </footer>
+      </Col>
+    </Grid>
   );
 }
 
@@ -162,7 +155,7 @@ function Ready({
           {p ? (
             <>
               <p className="amount">
-                {formatHeadline(p.value, decimals)}
+                {decimals === undefined ? p.value.toString() : formatHeadline(p.value, decimals)}
                 <span className="unit">{symbol}</span>
               </p>
               <p className="payee">to {short(p.to)}</p>
@@ -178,7 +171,7 @@ function Ready({
         )}
       </section>
 
-      <Verdict tone={copy.tone} headline={copy.headline} body={copy.body} />
+      <Verdict level={1} tone={copy.tone} title={copy.headline} body={copy.body} />
 
       <ol className="ladder">
         {result.rungs.map((r, i) => (
@@ -218,11 +211,11 @@ function Ready({
                       <dd className="hex">{p.to}</dd>
                       <dt>Token</dt>
                       <dd className="hex">
-                        {symbol} — {p.token} ({decimals} decimals, read from chain)
+                        {symbol} — {p.token} ({decimals ?? "unknown"} decimals, read from chain)
                       </dd>
                       <dt>Amount</dt>
                       <dd>
-                        {formatAmount(p.value, decimals)} {symbol} ({p.value.toString()} raw)
+                        {amountText(p.value, p.token, { decimals, symbol })} ({p.value.toString()} raw)
                       </dd>
                     </>
                   )}
@@ -281,7 +274,7 @@ async function verifyAgainst(
     logs,
   });
 
-  let decimals = 6;
+  let decimals: number | undefined;
   let symbol = "";
   if (first.payment) {
     const [d, s] = await Promise.all([
