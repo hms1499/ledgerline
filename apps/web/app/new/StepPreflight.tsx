@@ -11,11 +11,12 @@ import {
 import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
+import { preflightRows, type PreflightRow } from "@/lib/preflight-view";
 
 export interface PreparedRun {
   manifest: Manifest;
   built: BuiltRun;
-  outcomes: { label: string; ok: boolean }[];
+  outcomes: PreflightRow[];
 }
 
 type Phase = "idle" | "signing" | "checking" | "ready" | "failed";
@@ -76,10 +77,10 @@ export default function StepPreflight({
         to: built.to,
         data: buildPreflightData(manifest, net.anchor),
       });
-      const outcomes = decodePreflightResult(sim.data ?? "0x").map((o, i) => ({
-        ok: o.success,
-        label: i === 0 ? "Anchor commit" : manifest.items[i - 1]!.invoiceId,
-      }));
+      const outcomes = preflightRows(
+        decodePreflightResult(sim.data ?? "0x"),
+        manifest.items.map((i) => i.invoiceId),
+      );
 
       const next = { manifest, built, outcomes };
       setPrepared(next);
@@ -121,6 +122,12 @@ export default function StepPreflight({
             <li key={o.label} className={`rung ${o.ok ? "pass" : "fail"}`}>
               <span className="mark">{o.ok ? "✓" : "✗"}</span>
               <span className="claim">{o.label}</span>
+              {o.reason && (
+                <span className="because">
+                  {o.reason}
+                  {o.detail && <span className="raw-reason">{o.detail}</span>}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -136,7 +143,7 @@ export default function StepPreflight({
           description={
             <>
               {error ??
-                "One or more payments would fail if sent to Arc — see the failing rows above. " +
+                "One or more payments would fail if sent to Arc — each failing row above says why. " +
                   "This is a live simulation against current chain state, which is also the only " +
                   "way to see Arc's runtime blocklist; it exposes no pre-check function."}
               <p style={{ marginTop: 10, marginBottom: 0 }}>
