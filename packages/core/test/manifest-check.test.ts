@@ -54,7 +54,7 @@ describe("checkManifestAgainstRoot", () => {
   it("cannot conclude when no root was anchored", () => {
     const c = checkManifestAgainstRoot(manifest, undefined);
     expect(c.matches).toBeUndefined();
-    expect(c.note).toMatch(/no anchored root/i);
+    expect(c.note).toMatch(/no recorded list/i);
   });
 
   it("never throws on a malformed manifest — the page must still render", () => {

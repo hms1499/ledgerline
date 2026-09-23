@@ -18,14 +18,14 @@ const KNOWN: Record<string, { name: string; message: string }> = {
   [RUN_EXISTS_SELECTOR]: {
     name: "RunExists",
     message:
-      "This payout list has already been committed by this payer under this run label, " +
-      "so it was refused. Double payment is blocked at the contract layer, not in the UI. " +
-      "If this is a later period paying the same amounts, give it its own run label. " +
-      "If you are correcting the list, changing any line already makes it a new run.",
+      "This exact list has already been paid by this wallet under this run name, so it " +
+      "was refused — a repeat payment is blocked on chain, not just on this screen. If this " +
+      "is a later period paying the same amounts, give it its own run name. If you are " +
+      "correcting the list, changing any line already makes it a new run.",
   },
   [EMPTY_RUN_SELECTOR]: {
     name: "EmptyRun",
-    message: "The run committed an empty Merkle root or zero items.",
+    message: "The run has no payments to record.",
   },
 };
 

@@ -41,7 +41,7 @@ export function assessCompleteness(input: CompletenessInput): Completeness {
       found: paymentsFound,
       missing: 0,
       surplus: 0,
-      note: "No anchored run was found for this transaction, so there is no committed total to check the payments against.",
+      note: "No recorded list was found for this transaction, so there is no total to check the payments against.",
     };
   }
 
@@ -59,7 +59,7 @@ export function assessCompleteness(input: CompletenessInput): Completeness {
       found: paymentsFound,
       missing,
       surplus: 0,
-      note: `The payer committed to ${anchoredItemCount} payments and ${paymentsFound} are present, so ${missing} ${missing === 1 ? "is" : "are"} missing.${unlinkedNote}`,
+      note: `The payer recorded ${anchoredItemCount} payments and ${paymentsFound} are present, so ${missing} ${missing === 1 ? "is" : "are"} missing.${unlinkedNote}`,
     };
   }
 
@@ -70,7 +70,7 @@ export function assessCompleteness(input: CompletenessInput): Completeness {
       found: paymentsFound,
       missing: 0,
       surplus,
-      note: `${paymentsFound} payments are present but only ${anchoredItemCount} were committed to, so ${surplus} ${surplus === 1 ? "is" : "are"} outside the manifest.${unlinkedNote}`,
+      note: `${paymentsFound} payments are present but only ${anchoredItemCount} were recorded, so ${surplus} ${surplus === 1 ? "is" : "are"} not on the list.${unlinkedNote}`,
     };
   }
 
@@ -80,7 +80,7 @@ export function assessCompleteness(input: CompletenessInput): Completeness {
     found: paymentsFound,
     missing: 0,
     surplus: 0,
-    note: `All ${anchoredItemCount} committed payments are present.${unlinkedNote}`,
+    note: `All ${anchoredItemCount} recorded payments are present.${unlinkedNote}`,
   };
 }
 
@@ -114,7 +114,7 @@ export function checkManifestAgainstRoot(
 ): ManifestCheck {
   if (!anchoredRoot || /^0x0*$/.test(anchoredRoot)) {
     return {
-      note: "No anchored root was found for this run, so this manifest cannot be checked against what was committed.",
+      note: "No recorded list was found for this run, so this run file cannot be checked against it.",
     };
   }
 
@@ -122,7 +122,7 @@ export function checkManifestAgainstRoot(
     return {
       matches: false,
       anchoredRoot,
-      note: "This manifest lists no payments, so it cannot be the one that was committed.",
+      note: "This run file lists no payments, so it cannot be the one that was recorded.",
     };
   }
 
@@ -139,14 +139,14 @@ export function checkManifestAgainstRoot(
       computedRoot,
       anchoredRoot,
       note: matches
-        ? "This manifest rebuilds the root committed on chain, so it is the list the payer committed to."
-        : "This manifest does not rebuild the root committed on chain. It is not the list that was committed — a line, an amount or the salt differs.",
+        ? "This run file matches the list recorded on chain, so it is the list the payer recorded."
+        : "This run file does not match the list recorded on chain. A line, an amount or the reference code differs.",
     };
   } catch {
     return {
       matches: false,
       anchoredRoot,
-      note: "This manifest could not be read well enough to rebuild a root.",
+      note: "This run file could not be read well enough to check it.",
     };
   }
 }

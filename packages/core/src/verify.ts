@@ -64,7 +64,7 @@ const LABELS: Record<RungId, string> = {
   payment_found: "A payment to you is present",
   invoice_match: "The payment belongs to this invoice",
   identity_intact: "The payer signed this transaction directly",
-  anchored: "The payment was in the committed payout run",
+  anchored: "The payment is on the payer's recorded list",
 };
 
 const SEVERITY: Record<ReceiptState, Severity> = {
@@ -131,9 +131,9 @@ export function verifyReceipt(input: ReceiptInput): ReceiptResult {
   if (!derivedMemoId) {
     const missing = [
       !input.invoiceId ? "invoice reference" : null,
-      !input.runSalt ? "run salt" : null,
+      !input.runSalt ? "reference code" : null,
     ].filter(Boolean).join(" and ");
-    at("tx_found").detail = `This link is incomplete — it is missing the ${missing}.`;
+    at("tx_found").detail = `This link is incomplete — it is missing its ${missing}.`;
     return done("bad_link");
   }
 
@@ -177,20 +177,20 @@ export function verifyReceipt(input: ReceiptInput): ReceiptResult {
   // ── rung 5: membership of the committed manifest ───────────────────────
   if (input.runCommitted === false) {
     at("anchored").detail =
-      "Payment verified against the chain, but this run was never anchored, so there is no committed manifest to check it against.";
+      "Payment verified against the chain, but the payer never recorded a list for this run, so there is no list to check it against.";
     return done("not_anchored", payment, derivedMemoId);
   }
 
   if (input.anchorProofValid === undefined) {
     at("anchored").detail =
-      "Not checked — this link carries no anchor proof. The payment itself is verified.";
+      "Not checked — this link does not carry the proof for the payer's recorded list. The payment itself is verified.";
     return done("verified_unanchored", payment, derivedMemoId);
   }
 
   if (!input.anchorProofValid) {
     at("anchored").status = "fail";
     at("anchored").detail =
-      "This payment is real, but it was not part of the committed manifest for this run.";
+      "This payment is real, but it is not on the list the payer recorded for this run.";
     return done("proof_invalid", payment, derivedMemoId);
   }
 

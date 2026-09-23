@@ -98,6 +98,6 @@ function unexpectedRow(p: PaymentRecord): ReconcileRow {
     payer: p.payer,
     to: p.to,
     actual: p.value,
-    note: "On chain, but not present in the manifest.",
+    note: "On chain, but not on the payer's list.",
   };
 }

@@ -43,8 +43,8 @@ describe("explainRevert", () => {
   it("names RunExists and says what it means", () => {
     const r = explainRevert({ cause: { data: "0xc0d6b579" } });
     expect(r.name).toBe("RunExists");
-    expect(r.message).toMatch(/already been committed/i);
-    expect(r.message).toMatch(/run label/i);
+    expect(r.message).toMatch(/already been paid/i);
+    expect(r.message).toMatch(/run name/i);
   });
 
   it("names EmptyRun", () => {
@@ -95,7 +95,7 @@ describe("explainCallFailure — why one payment in a preflight failed", () => {
   });
 
   it("explains the anchor's own errors", () => {
-    expect(explainCallFailure(RUN_EXISTS_SELECTOR).message).toMatch(/already been committed/);
+    expect(explainCallFailure(RUN_EXISTS_SELECTOR).message).toMatch(/already been paid/);
   });
 
   it("says so when there is no reason at all", () => {

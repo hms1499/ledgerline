@@ -25,7 +25,7 @@ describe("assessCompleteness — without a manifest", () => {
   it("cannot conclude anything when no run was anchored", () => {
     const c = assessCompleteness({ anchoredItemCount: undefined, paymentsFound: 3 });
     expect(c.verdict).toBe("unknown");
-    expect(c.note).toMatch(/no anchored/i);
+    expect(c.note).toMatch(/no recorded list/i);
   });
 
   it("treats a zero anchored count as no anchor, not as a complete empty run", () => {

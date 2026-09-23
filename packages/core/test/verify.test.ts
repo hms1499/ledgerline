@@ -54,7 +54,7 @@ describe("verifyReceipt — honest degradation", () => {
 
   it("says plainly what was not checked", () => {
     const r = verifyReceipt(input());
-    expect(rung(r, "anchored").detail).toMatch(/no anchor proof/i);
+    expect(rung(r, "anchored").detail).toMatch(/does not carry the proof/i);
   });
 
   it("degrades rather than fails when the run was never anchored", () => {
@@ -79,7 +79,7 @@ describe("verifyReceipt — each failure names its rung", () => {
     const r = verifyReceipt(input({ runSalt: undefined }));
     expect(r.state).toBe("bad_link");
     expect(rung(r, "tx_found").status).toBe("pass");
-    expect(rung(r, "tx_found").detail).toMatch(/missing the run salt/);
+    expect(rung(r, "tx_found").detail).toMatch(/missing its reference code/);
   });
 
   it("run_reverted wins over an incomplete link — nothing was paid either way", () => {
