@@ -6,7 +6,7 @@ import { createPublicClient, http, type Address } from "viem";
 import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue, type RunOutcome } from "@ledgerline/core";
 import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
-import { shouldResetPrepared } from "@/lib/wallet-session";
+import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
 import StepPreflight, { type PreparedRun } from "./StepPreflight";
@@ -57,7 +57,7 @@ export default function CreateRun() {
   const [draft, setDraft] = useState<RunDraft>();
   const [prepared, setPrepared] = useState<PreparedRun>();
   const [outcome, setOutcome] = useState<Extract<RunOutcome, { state: "confirmed" }>>();
-  const { net, wallet, wrongChain, held, error: walletError, connect, setHold } = useWallet();
+  const { net, wallet, wrongChain, held, error: walletError, switchError, connect, setHold } = useWallet();
 
   // A prepared run belongs to one account on one chain; the provider tells us
   // when either changes. A confirmed run, or one being sent, is kept.
@@ -81,7 +81,14 @@ export default function CreateRun() {
           type="warning"
           showIcon
           title={`This wallet is not on Arc ${net.name}`}
-          description={`Ledgerline pays on Arc ${net.name}, chain ${net.chain.id}. Your wallet is on chain ${wallet.chainId || "an unreadable network"}. Use "Switch to Arc ${net.name}" at the top of the page — your wallet will ask you to confirm.`}
+          description={
+            <>
+              <p style={{ margin: 0 }}>
+                {`Ledgerline pays on Arc ${net.name}, chain ${net.chain.id}. Your wallet is on chain ${wallet.chainId || "an unreadable network"}. Use "Switch to Arc ${net.name}" at the top of the page — your wallet will ask you to confirm.`}
+              </p>
+              {switchError && <p role="status" style={{ margin: "12px 0 0" }}>{switchError}</p>}
+            </>
+          }
         />
       )}
 
@@ -105,7 +112,7 @@ export default function CreateRun() {
             onReady={(p) => { setPrepared(p); setStep(3); }}
           />
         )}
-        {step === 3 && prepared && wallet && !wrongChain && (
+        {step === 3 && prepared && wallet && sendStaysOnScreen({ wrongChain, held }) && (
           <StepSend
             prepared={prepared} net={net} wallet={wallet}
             onDone={(o) => {

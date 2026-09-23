@@ -58,3 +58,24 @@ export function shouldResetPrepared(
   if (!next) return true;
   return prev.address.toLowerCase() !== next.address.toLowerCase() || prev.chainId !== next.chainId;
 }
+
+/**
+ * What leaving the create flow would lose, in words for a confirm prompt, or
+ * nothing. Shell links navigate client-side, which never fires beforeunload,
+ * so they ask this instead.
+ */
+export function leaveWarning(ctx: { held: boolean; unsavedRun: boolean }): string | undefined {
+  if (ctx.held) {
+    return "A payment is being sent. Leaving takes its transaction hash off this screen before there is a receipt. Leave anyway?";
+  }
+  if (ctx.unsavedRun) {
+    return "You have not saved the run file. It is the only record of what each invoice was owed. Leave without it?";
+  }
+  return undefined;
+}
+
+/** The send screen hides on the wrong chain — except while it holds a
+ *  transaction hash, which it must keep showing whatever the wallet does. */
+export function sendStaysOnScreen(ctx: { wrongChain: boolean; held: boolean }): boolean {
+  return !ctx.wrongChain || ctx.held;
+}

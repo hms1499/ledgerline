@@ -7,6 +7,7 @@ import { formatAmount, receiptUrl, short, type NetworkView } from "@/lib/chain";
 import type { PreparedRun } from "./StepPreflight";
 import type { RunDraft } from "./CreateRun";
 import { fileSlug, receiptLinksCsv, receiptLinksText, type ReceiptLinkRow } from "@/lib/receipt-export";
+import { useWallet } from "@/components/wallet/WalletProvider";
 
 /** Hand the payer a file. The object URL is revoked a tick later, not
  *  straight after click(): some browsers start the download asynchronously
@@ -41,6 +42,14 @@ export default function Result({
   // The manifest is the only record of what each invoice was owed; the chain
   // holds what was paid. Until it is saved, leaving asks first. Receipt links
   // are not guarded the same way: they can be rebuilt by signing again.
+  // The shell's own links navigate client-side and never see beforeunload;
+  // they read this instead.
+  const { setUnsavedRun } = useWallet();
+  useEffect(() => {
+    setUnsavedRun(!manifestSaved);
+    return () => setUnsavedRun(false);
+  }, [manifestSaved, setUnsavedRun]);
+
   useEffect(() => {
     if (manifestSaved) return;
     const hold = (e: BeforeUnloadEvent) => { e.preventDefault(); };

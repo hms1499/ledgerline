@@ -1,9 +1,14 @@
 import Link from "next/link";
 import { Grid, Col } from "@/components/grid/Grid";
+import { withNet } from "@/lib/nav";
 
 export const metadata = { title: "Dashboard — Ledgerline" };
 
-export default function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const n = (await searchParams)["n"];
+  const search = { get: (k: string) => (k === "n" && typeof n === "string" ? n : null) };
   return (
     <Grid>
       <Col span={8} md={12}>
@@ -14,8 +19,8 @@ export default function DashboardPage() {
           </p>
         </section>
         <p style={{ marginTop: 16, display: "flex", gap: 16 }}>
-          <Link href="/new">Create a payout run</Link>
-          <Link href="/runs">Runs you have sent</Link>
+          <Link href={withNet("/new", search)}>Create a payout run</Link>
+          <Link href={withNet("/runs", search)}>Runs you have sent</Link>
         </p>
       </Col>
     </Grid>

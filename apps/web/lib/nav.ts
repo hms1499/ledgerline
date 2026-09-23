@@ -31,3 +31,10 @@ export function pageTitle(pathname: string): string {
     default: return "Ledgerline";
   }
 }
+
+/** A shell link keeps the page's ?n=, or a payer on mainnet would land on
+ *  the default network one click later, with their runs apparently gone. */
+export function withNet(href: string, search: { get(k: string): string | null } | null): string {
+  const n = search?.get("n");
+  return n ? `${href}?n=${encodeURIComponent(n)}` : href;
+}

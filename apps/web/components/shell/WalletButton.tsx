@@ -20,6 +20,12 @@ export default function WalletButton() {
     });
   }, [w.error, toast]);
 
+  // A failed network switch is said out loud, not left in a tooltip that
+  // touch screens and most screen readers never show.
+  useEffect(() => {
+    if (w.switchError) void toast.open({ type: "warning", content: w.switchError, duration: 8 });
+  }, [w.switchError, toast]);
+
   if (!w.wallet) {
     return (
       <>

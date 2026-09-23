@@ -8,7 +8,7 @@ import {
 } from "@/lib/wallet";
 import { describeError, errorCode } from "@/lib/errors";
 import { describeConnectError, type ConnectError } from "@/lib/connect-error";
-import { initialSession, sessionReducer } from "@/lib/wallet-session";
+import { initialSession, leaveWarning, sessionReducer } from "@/lib/wallet-session";
 import { useNetwork } from "@/lib/use-network";
 import type { NetworkView } from "@/lib/chain";
 import WalletPicker from "@/components/WalletPicker";
@@ -27,6 +27,10 @@ export interface WalletApi {
   switchToArc(): Promise<void>;
   /** Set by the send screen while it holds the only copy of a tx hash. */
   setHold(on: boolean): void;
+  /** Set by the result screen until the run file is saved. */
+  setUnsavedRun(on: boolean): void;
+  /** What leaving the page would lose right now, or nothing. */
+  leaveWarning?: string;
 }
 
 const WalletContext = createContext<WalletApi | null>(null);
@@ -35,6 +39,16 @@ export function useWallet(): WalletApi {
   const api = useContext(WalletContext);
   if (!api) throw new Error("useWallet must be used inside WalletProvider");
   return api;
+}
+
+/** An onClick for shell links. Client-side navigation never fires
+ *  beforeunload, so a link that would lose a payment's hash or an unsaved run
+ *  file asks first. Outside the app shell there is nothing to lose. */
+export function useLeaveGuard(): (e: React.MouseEvent) => void {
+  const warning = useContext(WalletContext)?.leaveWarning;
+  return useCallback((e: React.MouseEvent) => {
+    if (warning && !window.confirm(warning)) e.preventDefault();
+  }, [warning]);
 }
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
@@ -46,6 +60,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<ConnectError>();
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string>();
+  const [unsavedRun, setUnsavedRun] = useState(false);
   const wallet = session.wallet;
 
   // Wallets announce themselves asynchronously; one that wakes late must
@@ -114,7 +129,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     wrongChain: !!wallet && wallet.chainId !== net.chain.id,
     held: session.held,
     connecting, error, switching, switchError,
-    connect, disconnect, switchToArc, setHold,
+    connect, disconnect, switchToArc, setHold, setUnsavedRun,
+    leaveWarning: leaveWarning({ held: session.held, unsavedRun }),
   };
 
   return (

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { APP_NAV, LEARN_NAV, activeHref, pageTitle } from "@/lib/nav";
+import { APP_NAV, LEARN_NAV, activeHref, pageTitle, withNet } from "@/lib/nav";
 
 describe("navigation", () => {
   it("lists the app's three destinations in order, then How it works", () => {
@@ -24,5 +24,20 @@ describe("navigation", () => {
     expect(pageTitle("/new")).toBe("New payout run");
     expect(pageTitle("/runs")).toBe("Your payout runs");
     expect(pageTitle("/run/0xabc")).toBe("Payout run");
+  });
+});
+
+describe("withNet — shell links keep the network the payer is on", () => {
+  const q = (s: string) => new URLSearchParams(s);
+  it("carries ?n= across", () => {
+    expect(withNet("/runs", q("n=mainnet"))).toBe("/runs?n=mainnet");
+    expect(withNet("/dashboard", q("n=testnet&x=1"))).toBe("/dashboard?n=testnet");
+  });
+  it("adds nothing when the page has no ?n=", () => {
+    expect(withNet("/runs", q(""))).toBe("/runs");
+    expect(withNet("/runs", null)).toBe("/runs");
+  });
+  it("encodes whatever it carries", () => {
+    expect(withNet("/why", q("n=a%26b"))).toBe("/why?n=a%26b");
   });
 });

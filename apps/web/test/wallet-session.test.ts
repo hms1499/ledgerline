@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { initialSession, sessionReducer, shouldResetPrepared, type SessionWallet } from "@/lib/wallet-session";
+import { initialSession, sessionReducer, shouldResetPrepared, leaveWarning, sendStaysOnScreen, type SessionWallet } from "@/lib/wallet-session";
 
 const A: SessionWallet = { address: "0xaaa", chainId: 5042002 };
 const B: SessionWallet = { address: "0xbbb", chainId: 5042002 };
@@ -77,5 +77,32 @@ describe("shouldResetPrepared — when a prepared run no longer belongs to the w
   it("never resets a confirmed run or one being sent", () => {
     expect(shouldResetPrepared(A, B, { confirmed: true, held: false })).toBe(false);
     expect(shouldResetPrepared(A, B, { confirmed: false, held: true })).toBe(false);
+  });
+});
+
+describe("leaveWarning — what leaving the create flow would lose", () => {
+  it("warns while a payment is being sent", () => {
+    expect(leaveWarning({ held: true, unsavedRun: false })).toMatch(/being sent/);
+  });
+  it("warns while the run file is unsaved", () => {
+    expect(leaveWarning({ held: false, unsavedRun: true })).toMatch(/run file/);
+  });
+  it("prefers the payment warning when both hold", () => {
+    expect(leaveWarning({ held: true, unsavedRun: true })).toMatch(/being sent/);
+  });
+  it("says nothing when leaving loses nothing", () => {
+    expect(leaveWarning({ held: false, unsavedRun: false })).toBeUndefined();
+  });
+});
+
+describe("sendStaysOnScreen — the send screen outlives a chain change while held", () => {
+  it("shows on the right chain", () => {
+    expect(sendStaysOnScreen({ wrongChain: false, held: false })).toBe(true);
+  });
+  it("hides on the wrong chain before anything is signed", () => {
+    expect(sendStaysOnScreen({ wrongChain: true, held: false })).toBe(false);
+  });
+  it("stays while it holds a transaction hash, whatever the chain", () => {
+    expect(sendStaysOnScreen({ wrongChain: true, held: true })).toBe(true);
   });
 });
