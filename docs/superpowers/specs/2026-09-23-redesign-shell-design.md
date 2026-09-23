@@ -225,7 +225,9 @@ On `sm` the gutter is 16px. `sticky` applies only at `lg`.
 - **640–1023px** — sidebar collapses to 64px icons; labels as tooltips on
   hover and as visible text on keyboard focus.
 - **< 640px** — no sidebar; a **bottom tab bar** with Dashboard, New payout,
-  Runs. "How it works" and the theme toggle move into the wallet menu.
+  Runs. "How it works" and the theme choice move into a "⋯" menu in the top
+  bar. (An earlier draft put them in the wallet menu, which does not exist
+  before a wallet connects — a first-time visitor could not change theme.)
 - The current route carries `aria-current="page"`, not colour alone.
 - On `/new` at `< 640px` the step bar becomes one line: "Step 2 of 5 · Review".
 
@@ -244,7 +246,7 @@ Page title left. Right: `NetworkBadge` (warning colour on testnet) and
 - Not connected: "Connect wallet" (opens the picker when more than one wallet
   is installed).
 - Connected: the shortened address; its menu offers copy address, view on
-  explorer, disconnect, and on mobile "How it works" and the theme toggle.
+  explorer and disconnect.
 - On the wrong chain: the button takes the warning colour and reads "Switch to
   Arc testnet"; clicking it switches. This replaces the audit's two
   simultaneous primary buttons.
