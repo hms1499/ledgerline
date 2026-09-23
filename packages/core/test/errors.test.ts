@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { extractRevertData, explainRevert, RUN_EXISTS_SELECTOR, EMPTY_RUN_SELECTOR } from "../src/errors.js";
+import { encodeErrorResult } from "viem";
+import {
+  extractRevertData, explainRevert, explainCallFailure, RUN_EXISTS_SELECTOR, EMPTY_RUN_SELECTOR,
+} from "../src/errors.js";
 
 describe("selectors", () => {
   it("matches the selectors the chain actually returns", () => {
@@ -56,5 +59,55 @@ describe("explainRevert", () => {
 
   it("falls back to the error message when there is no revert data", () => {
     expect(explainRevert(new Error("network down")).message).toMatch(/network down/);
+  });
+});
+
+describe("explainCallFailure — why one payment in a preflight failed", () => {
+  // Measured on Arc testnet 2026-09-23: a run simulated from an unfunded
+  // payer. Memo reverts with MemoFailed(bytes) wrapping the token's own
+  // Error(string).
+  const MEASURED_NO_BALANCE =
+    "0xed1966a200000000000000000000000000000000000000000000000000000000000000" +
+    "20000000000000000000000000000000000000000000000000000000000000008408c379" +
+    "a00000000000000000000000000000000000000000000000000000000000000020000000" +
+    "000000000000000000000000000000000000000000000000000000002645524332303a20" +
+    "7472616e7366657220616d6f756e7420657863656564732062616c616e63650000000000" +
+    "000000000000000000000000000000000000000000000000000000000000000000000000" +
+    "00000000000000000000000000";
+
+  it("reads an insufficient balance through Memo's wrapper", () => {
+    const r = explainCallFailure(MEASURED_NO_BALANCE as `0x${string}`);
+    expect(r.message).toMatch(/does not hold enough/i);
+    expect(r.detail).toBe("ERC20: transfer amount exceeds balance");
+  });
+
+  it("passes an unrecognised token reason through verbatim rather than guessing", () => {
+    const data = encodeErrorResult({
+      abi: [{ type: "error", name: "MemoFailed", inputs: [{ type: "bytes" }] }],
+      errorName: "MemoFailed",
+      args: [encodeErrorResult({
+        abi: [{ type: "error", name: "Error", inputs: [{ type: "string" }] }],
+        errorName: "Error", args: ["some new reason"],
+      })],
+    });
+    const r = explainCallFailure(data);
+    expect(r.message).toBe("The token refused this transfer: some new reason");
+  });
+
+  it("explains the anchor's own errors", () => {
+    expect(explainCallFailure(RUN_EXISTS_SELECTOR).message).toMatch(/already been committed/);
+  });
+
+  it("says so when there is no reason at all", () => {
+    expect(explainCallFailure("0x").message).toMatch(/without giving a reason/);
+  });
+
+  it("does not throw on a wrapper whose payload is cut short", () => {
+    // One undecodable row must not take the whole preflight screen with it.
+    expect(explainCallFailure("0xed1966a2deadbeef").message).toMatch(/0xed1966a2/);
+  });
+
+  it("names an unknown selector instead of inventing a reason", () => {
+    expect(explainCallFailure("0xdeadbeef").message).toMatch(/0xdeadbeef/);
   });
 });

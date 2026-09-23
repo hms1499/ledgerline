@@ -1,7 +1,7 @@
 import { TransactionNotFoundError } from "viem";
 import { buildRun, type BuiltRun } from "./build.js";
 import { MIN_MAX_FEE_WEI, tokensForChain } from "./constants.js";
-import { explainRevert } from "./errors.js";
+import { explainCallFailure, explainRevert } from "./errors.js";
 import { buildPreflightData, decodePreflightResult, gasPolicy } from "./preflight.js";
 import type { Address, Hex, Manifest, RawLog } from "./types.js";
 
@@ -198,13 +198,17 @@ export async function executeRun({
       };
     }
     const failed = outcomes
-      .map((o, i) => ({ ok: o.success, label: i === 0 ? "the anchor commit" : manifest.items[i - 1]!.invoiceId }))
+      .map((o, i) => ({
+        ok: o.success,
+        label: i === 0 ? "the anchor commit" : manifest.items[i - 1]!.invoiceId,
+        why: o.success ? "" : explainCallFailure(o.returnData).message,
+      }))
       .filter((o) => !o.ok);
     if (failed.length > 0) {
       return {
         state: "blocked",
         reason: "preflight",
-        details: `Simulation failed for ${failed.map((f) => f.label).join(", ")}. Nothing was signed.`,
+        details: `Simulation failed — ${failed.map((f) => `${f.label}: ${f.why}`).join(" ")} Nothing was signed.`,
       };
     }
   } catch (err) {

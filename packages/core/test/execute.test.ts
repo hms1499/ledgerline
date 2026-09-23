@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { encodeAbiParameters, keccak256, toHex } from "viem";
+import { encodeAbiParameters, encodeErrorResult, keccak256, toHex } from "viem";
 import { executeRun, type ExecuteIO, type ExecuteRunArgs } from "../src/execute.js";
 import { clientRunIdFor } from "../src/build.js";
 import { EURC_TESTNET_ADDRESS } from "../src/constants.js";
@@ -32,10 +32,10 @@ const USDC_NEEDED_TOTAL = 100_000n + GAS_COST_USDC_UNITS; // payout + gas = 107_
 
 /** aggregate3 returns (bool success, bytes returnData)[] — one per call, and
  *  call 0 is the anchor commit. */
-function preflight(flags: boolean[]): Hex {
+function preflight(flags: boolean[], failure: Hex = "0x"): Hex {
   return encodeAbiParameters(
     [{ type: "tuple[]", components: [{ type: "bool" }, { type: "bytes" }] }],
-    [flags.map((ok) => [ok, "0x"] as const)],
+    [flags.map((ok) => [ok, ok ? "0x" : failure] as const)],
   );
 }
 
@@ -90,6 +90,15 @@ describe("executeRun", () => {
       expect(out.details).toMatch(/INV-1/);
     }
     expect(send).not.toHaveBeenCalled();
+  });
+
+  it("says why a preflight row failed, not only which", async () => {
+    const reverted = encodeErrorResult({
+      abi: [{ type: "error", name: "Error", inputs: [{ type: "string" }] }],
+      errorName: "Error", args: ["ERC20: transfer amount exceeds balance"],
+    });
+    const out = await run({ simulate: async () => preflight([true, false], reverted) });
+    if (out.state === "blocked") expect(out.details).toMatch(/INV-1: The paying wallet does not hold enough/);
   });
 
   it("names the anchor commit, not an invoice, when call zero fails", async () => {
