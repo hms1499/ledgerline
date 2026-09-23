@@ -15,7 +15,7 @@ import { withNet } from "@/lib/nav";
 
 const RECENT = 5;
 
-interface Loaded { records: RunRecord[]; reads: RunRead[]; meta: Record<string, TokenMeta> }
+interface Loaded { records: RunRecord[]; reads: RunRead[]; meta: Record<string, TokenMeta>; attempt: number }
 
 export default function Dashboard() {
   const { net, wallet, connect } = useWallet();
@@ -50,7 +50,7 @@ export default function Dashboard() {
           ) as Record<string, TokenMeta>)
           .catch(() => ({} as Record<string, TokenMeta>)),
       ]);
-      if (!cancelled) setLoaded({ records, reads, meta });
+      if (!cancelled) setLoaded({ records, reads, meta, attempt });
     })();
     return () => { cancelled = true; };
   }, [records, net, attempt]);
@@ -96,6 +96,11 @@ export default function Dashboard() {
   // Only a result read for this render's own `records` is trusted — one read
   // for a different wallet or network is never painted, even for one frame.
   const current = loaded && loaded.records === records ? loaded : undefined;
+  // A Retry bumps `attempt` and re-runs the effect above, but `loaded` keeps
+  // showing the previous attempt's (stale) result until the new read
+  // settles — up to ~130s of silence otherwise (Important 3). `retrying`
+  // catches that window so the Retry button and tiles can say so.
+  const retrying = !!current && current.attempt !== attempt;
 
   const byHash = new Map((current?.reads ?? []).map((r) => [r.txHash.toLowerCase(), r]));
   const summaries: RunSummary[] = (current?.reads ?? []).flatMap((r) =>
@@ -149,10 +154,10 @@ export default function Dashboard() {
         return (
           <Col key={t.token} span={4} md={12} as="section" className="stat-tile">
             <p className="stat-label">{m.symbol || t.token.slice(0, 10)}</p>
-            {!current
+            {!current || retrying
               ? <Skeleton.Input active />
               : <p className="stat-value">{coverage?.tilesBlank ? "—" : amountText(t.value, t.token, m)}</p>}
-            {current && !coverage?.tilesBlank && (
+            {current && !retrying && !coverage?.tilesBlank && (
               <p className="stat-sub">
                 {t.payments} payment{t.payments === 1 ? "" : "s"} · {t.runs} run{t.runs === 1 ? "" : "s"}
               </p>
@@ -165,7 +170,9 @@ export default function Dashboard() {
         {coverage?.tone === "plain" && <p className="coverage-line">{coverage.text}</p>}
         {coverage?.tone === "warning" && (
           <Alert type="warning" showIcon title={coverage.text}
-            action={coverage.retry ? <Button size="small" onClick={retry}>Retry</Button> : undefined} />
+            action={coverage.retry
+              ? <Button size="small" loading={retrying} onClick={retry}>Retry</Button>
+              : undefined} />
         )}
         {coverage?.attentionNote && (
           <p className="coverage-line">
