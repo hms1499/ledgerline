@@ -38,3 +38,14 @@ export function colVars(p: ColProps): Record<string, string> {
     "--sm-span": ss, "--sm-start": sst,
   };
 }
+
+/**
+ * `dense` lets a column placed to the right with `start` share a row with a
+ * column that comes after it in the DOM. /new needs that: its summary comes
+ * first in reading order (so a phone shows it before the Send button) but
+ * sits on the right at lg. Opt-in, because dense packing can reorder
+ * anything that leaves a hole.
+ */
+export function gridClass({ dense, className }: { dense?: boolean; className?: string }): string {
+  return ["grid", dense ? "is-dense" : "", className ?? ""].filter(Boolean).join(" ");
+}

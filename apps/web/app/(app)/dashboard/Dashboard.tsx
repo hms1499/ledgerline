@@ -7,6 +7,7 @@ import { Alert, Button, Skeleton, Table, Tag, type TableColumnsType } from "antd
 import { tokensForChain, paidByToken, type Address, type RunSummary } from "@ledgerline/core";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
+import StatTile from "@/components/ui/StatTile";
 import { runsFor, type RunRecord } from "@/lib/history";
 import { readRuns, describeCoverage, type RunRead } from "@/lib/run-reads";
 import { readTokenMeta } from "@/lib/token-meta";
@@ -62,7 +63,7 @@ export default function Dashboard() {
       <Grid>
         <Col span={8} md={12}>
           <section className="verdict">
-            <h1>Your payouts at a glance</h1>
+            <h2>Your payouts at a glance</h2>
             <p>
               Connect the wallet that paid them. This overview is built from runs sent from
               this browser and re-read from the chain.
@@ -79,7 +80,7 @@ export default function Dashboard() {
       <Grid>
         <Col span={12}>
           <section className="verdict">
-            <h1>Nothing sent from this browser yet</h1>
+            <h2>Nothing sent from this browser yet</h2>
             <p>
               A run sent from another browser is still on chain. Open it from the explorer or by
               its transaction hash.
@@ -152,16 +153,16 @@ export default function Dashboard() {
       {totals.map((t) => {
         const m = meta[t.token.toLowerCase()] ?? {};
         return (
-          <Col key={t.token} span={4} md={12} as="section" className="stat-tile">
-            <p className="stat-label">{m.symbol || t.token.slice(0, 10)}</p>
-            {!current || retrying
-              ? <Skeleton.Input active />
-              : <p className="stat-value">{coverage?.tilesBlank ? "—" : amountText(t.value, t.token, m)}</p>}
-            {current && !retrying && !coverage?.tilesBlank && (
-              <p className="stat-sub">
-                {t.payments} payment{t.payments === 1 ? "" : "s"} · {t.runs} run{t.runs === 1 ? "" : "s"}
-              </p>
-            )}
+          <Col key={t.token} span={4} md={12}>
+            <StatTile
+              label={m.symbol || t.token.slice(0, 10)}
+              value={!current || retrying
+                ? <Skeleton.Input active />
+                : coverage?.tilesBlank ? "—" : amountText(t.value, t.token, m)}
+              sub={current && !retrying && !coverage?.tilesBlank
+                ? `${t.payments} payment${t.payments === 1 ? "" : "s"} · ${t.runs} run${t.runs === 1 ? "" : "s"}`
+                : undefined}
+            />
           </Col>
         );
       })}

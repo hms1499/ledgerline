@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { colVars } from "@/lib/grid";
+import { colVars, gridClass } from "@/lib/grid";
 
 describe("colVars — a column's placement at each breakpoint", () => {
   it("defaults to a full-width row", () => {
@@ -26,5 +26,18 @@ describe("colVars — a column's placement at each breakpoint", () => {
     expect(() => colVars({ span: 13 })).toThrow(RangeError);
     expect(() => colVars({ span: 0 })).toThrow(RangeError);
     expect(() => colVars({ start: 10, span: 4 })).toThrow(RangeError);
+  });
+});
+
+describe("gridClass — the grid container's classes", () => {
+  it("is just the grid by default", () => {
+    expect(gridClass({})).toBe("grid");
+  });
+  it("adds dense packing only when asked", () => {
+    expect(gridClass({ dense: true })).toBe("grid is-dense");
+    expect(gridClass({ dense: false })).toBe("grid");
+  });
+  it("keeps a caller's class", () => {
+    expect(gridClass({ dense: true, className: "x" })).toBe("grid is-dense x");
   });
 });

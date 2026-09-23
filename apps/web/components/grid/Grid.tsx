@@ -1,8 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
-import { colVars, type ColProps } from "@/lib/grid";
+import { colVars, gridClass, type ColProps } from "@/lib/grid";
 
-export function Grid({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={className ? `grid ${className}` : "grid"}>{children}</div>;
+export function Grid({ children, className, dense }: { children: ReactNode; className?: string; dense?: boolean }) {
+  return <div className={gridClass({ dense, className })}>{children}</div>;
 }
 
 export function Col({
