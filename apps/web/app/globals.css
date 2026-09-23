@@ -124,6 +124,43 @@ a:hover { text-decoration-color: currentColor; }
   @keyframes settle { from { opacity: 0; } to { opacity: 1; } }
 }
 
+/* ── home ──────────────────────────────────────────────────────────── */
+/* Which chain is live is the first thing a payer must know: amber on
+   testnet, the colour this page already uses for "not final". */
+.network--test { color: var(--pending); font-weight: 600; }
+
+.home-actions { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; margin-top: 1.6rem; }
+.button-primary {
+  display: inline-block;
+  padding: 0.6rem 1.15rem;
+  background: var(--tick);
+  color: var(--ground);
+  font-weight: 500;
+  text-decoration: none;
+}
+.button-primary:hover { background: var(--ink); color: var(--ground); }
+
+.testnet-note {
+  margin: 1.8rem 0 0;
+  padding: 0.75rem 0 0.75rem 0.9rem;
+  border-left: 3px solid var(--pending);
+  max-width: var(--measure);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.how { margin-top: 3rem; }
+.how h2 { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.01em; margin: 0 0 0.8rem; }
+.how ol { list-style: none; margin: 0; padding: 0; border-top: 2px solid var(--ink); }
+.how li { display: grid; grid-template-columns: 2.4rem 1fr; gap: 0 0.6rem; padding: 1rem 0; border-bottom: 1px solid var(--rule); }
+/* The step number sits where a ledger puts its line number. */
+.how-step { font-family: var(--font-mono), ui-monospace, monospace; font-size: 1.35rem; line-height: 1.2; color: var(--tick); }
+.how h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.25rem; }
+.how li p { margin: 0; max-width: var(--measure); color: var(--ink-soft); font-size: 0.93rem; }
+.how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--ink-soft); max-width: var(--measure); }
+
+.home-footer { display: flex; flex-direction: column; gap: 0.35rem; }
+
 /* ── trust footer ─────────────────────────────────────────────────────── */
 .footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.84rem; color: var(--ink-soft); }
 .footer .endpoint { font-family: var(--font-mono), ui-monospace, monospace; }
