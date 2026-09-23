@@ -64,7 +64,9 @@ export default function StepUpload({
         </span>
       </label>
 
-      <div style={{ marginTop: 24, opacity: labelReady ? 1 : 0.45, pointerEvents: labelReady ? "auto" : "none" }}>
+      {/* Disabled until the run is named, but never faded: the words say what
+          comes next, so they stay readable (soft colour, not opacity). */}
+      <div style={{ marginTop: 24, pointerEvents: labelReady ? "auto" : "none" }}>
         <Upload.Dragger
           accept=".csv,text/csv"
           showUploadList={false}
@@ -76,7 +78,7 @@ export default function StepUpload({
             return false;
           }}
         >
-          <p style={{ margin: "1.4rem 0 0.4rem", fontWeight: 500 }}>
+          <p style={{ margin: "1.4rem 0 0.4rem", fontWeight: 500, color: labelReady ? "var(--text)" : "var(--text-soft)" }}>
             Drop a CSV, or click to choose one
           </p>
           <p className="because" style={{ margin: "0 0 1.4rem" }}>
