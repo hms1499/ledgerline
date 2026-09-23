@@ -1,15 +1,4 @@
-/* The pages built before the redesign use these names. They alias the new
-   tokens (lib/theme-tokens.ts) until part 3 migrates each page, then go. */
 :root {
-  --ground: var(--bg);
-  --raised: var(--surface);
-  --ink: var(--text);
-  --ink-soft: var(--text-soft);
-  --rule: var(--border);
-  --ruleStrong: var(--text);
-  --tick: var(--success);
-  --flag: var(--danger);
-  --pending: var(--warning);
   --measure: 62ch;
 }
 
@@ -18,47 +7,27 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--ground);
-  color: var(--ink);
+  background: var(--bg);
+  color: var(--text);
   font-family: var(--font-sans), system-ui, sans-serif;
   /* The whole page is figures; tabular by default keeps columns honest. */
   font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
 }
 
-a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--rule); }
+a { color: inherit; text-underline-offset: 3px; text-decoration-color: currentColor; }
 a:hover { text-decoration-color: currentColor; }
 
-:focus-visible { outline: 2px solid var(--tick); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--success); outline-offset: 2px; }
 /* antd draws its own 3px ring in colorPrimaryBorder — 1.6:1 on the dark
    background, under the 3:1 a focus indicator needs. One ring everywhere.
    The segmented control focuses a zero-width radio, so ring its label. */
 .ant-btn:not(:disabled):focus-visible,
 .ant-segmented:focus-visible,
 .ant-segmented-item:has(input:focus-visible) {
-  outline: 2px solid var(--tick) !important;
+  outline: 2px solid var(--success) !important;
   outline-offset: 2px !important;
 }
-
-.sheet {
-  max-width: 44rem;
-  margin: 0 auto;
-  padding: clamp(2rem, 6vw, 4.5rem) 16px clamp(3rem, 8vw, 6rem);
-}
-
-/* ── the masthead ─────────────────────────────────────────────────────── */
-.masthead {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 1rem;
-  padding-bottom: 0.7rem;
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.82rem;
-  color: var(--ink-soft);
-  flex-wrap: wrap;
-}
-.masthead strong { color: var(--ink); font-weight: 600; letter-spacing: -0.01em; }
 
 /* ── the ledger line: the product, in one line ────────────────────────── */
 .line {
@@ -68,7 +37,7 @@ a:hover { text-decoration-color: currentColor; }
   gap: 1.5rem;
   flex-wrap: wrap;
   padding: 2.2rem 0 1.4rem;
-  border-bottom: 2px solid var(--ruleStrong, var(--ink));
+  border-bottom: 2px solid var(--text);
 }
 .amount {
   font-family: var(--font-mono), ui-monospace, monospace;
@@ -79,14 +48,14 @@ a:hover { text-decoration-color: currentColor; }
   margin: 0;
 }
 .amount .unit { font-size: 0.42em; font-weight: 400; margin-left: 0.5em; letter-spacing: 0; }
-.payee { margin: 0.55rem 0 0; font-size: 0.87rem; color: var(--ink-soft); }
+.payee { margin: 0.55rem 0 0; font-size: 0.87rem; color: var(--text-soft); }
 .reference {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 1rem;
   padding-bottom: 0.3rem;
-  border-bottom: 2px solid var(--tick);
+  border-bottom: 2px solid var(--success);
 }
-.reference.is-void { border-bottom-color: var(--flag); }
+.reference.is-void { border-bottom-color: var(--danger); }
 
 /* ── verdict ──────────────────────────────────────────────────────────── */
 .verdict { padding: 1.9rem 0 0.4rem; }
@@ -106,9 +75,9 @@ a:hover { text-decoration-color: currentColor; }
 .rung {
   position: relative;
   padding: 0.62rem 0 0.62rem 2rem;
-  border-top: 1px solid var(--rule);
+  border-top: 1px solid var(--border);
 }
-.rung:last-child { border-bottom: 1px solid var(--rule); }
+.rung:last-child { border-bottom: 1px solid var(--border); }
 .mark {
   position: absolute;
   left: 0;
@@ -117,16 +86,16 @@ a:hover { text-decoration-color: currentColor; }
   font-size: 1rem;
   line-height: 1.6;
 }
-.rung.pass .mark { color: var(--tick); }
-.rung.fail .mark { color: var(--flag); }
-.rung.skipped .mark { color: var(--pending); }
-.rung.skipped .claim { color: var(--ink-soft); }
+.rung.pass .mark { color: var(--success); }
+.rung.fail .mark { color: var(--danger); }
+.rung.skipped .mark { color: var(--warning); }
+.rung.skipped .claim { color: var(--text-soft); }
 .claim { display: block; }
 .because {
   display: block;
   margin-top: 0.18rem;
   font-size: 0.85rem;
-  color: var(--ink-soft);
+  color: var(--text-soft);
   max-width: var(--measure);
 }
 
@@ -137,49 +106,45 @@ a:hover { text-decoration-color: currentColor; }
 }
 
 /* ── home ──────────────────────────────────────────────────────────── */
-/* Which chain is live is the first thing a payer must know: amber on
-   testnet, the colour this page already uses for "not final". */
-.network--test { color: var(--pending); font-weight: 600; }
-
 .home-actions { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; margin-top: 1.6rem; }
 .button-primary {
   display: inline-block;
   padding: 0.6rem 1.15rem;
-  background: var(--tick);
-  color: var(--ground);
+  background: var(--accent);
+  color: var(--on-accent);
   font-weight: 500;
   text-decoration: none;
 }
-.button-primary:hover { background: var(--ink); color: var(--ground); }
+.button-primary:hover { background: var(--link); color: var(--on-accent); }
 
 .testnet-note {
   margin: 1.8rem 0 0;
   padding: 0.75rem 0 0.75rem 0.9rem;
-  border-left: 3px solid var(--pending);
+  border-left: 3px solid var(--warning);
   max-width: var(--measure);
   font-size: 0.9rem;
-  color: var(--ink-soft);
+  color: var(--text-soft);
 }
 
 .how-card .how-step { display: block; margin-bottom: 8px; font-family: var(--font-mono), ui-monospace, monospace; font-size: 1.35rem; line-height: 1.2; color: var(--success); }
 .how-card h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.35rem; }
 .how-card p { margin: 0; color: var(--text-soft); font-size: 0.93rem; }
 .hero { padding-top: 0.4rem; }
-.how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--ink-soft); max-width: var(--measure); }
+.how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--text-soft); max-width: var(--measure); }
 
 .home-footer { display: flex; flex-direction: column; gap: 0.35rem; }
 
 /* ── trust footer ─────────────────────────────────────────────────────── */
-.footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.84rem; color: var(--ink-soft); }
+.footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.84rem; color: var(--text-soft); }
 .footer .endpoint { font-family: var(--font-mono), ui-monospace, monospace; }
-.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--tick); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--link); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .hex { font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.85em; word-break: break-all; }
 /* A reason in a token's own words: monospace like a hex, but prose, so it
    wraps at spaces rather than mid-word. */
 .raw-reason { display: block; font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.92em; }
 
 dl.detail { margin: 0; display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: 0.45rem 1.4rem; font-size: 0.88rem; }
-dl.detail dt { color: var(--ink-soft); }
+dl.detail dt { color: var(--text-soft); }
 dl.detail dd { margin: 0; }
 
 /* Announced to screen readers, never painted. */
@@ -197,63 +162,40 @@ dl.detail dd { margin: 0; }
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: clamp(1.3rem, 4vw, 1.75rem);
   font-weight: 500;
-  color: var(--ink-soft);
+  color: var(--text-soft);
   letter-spacing: -0.02em;
 }
 
-/* The reconciliation table needs room the receipt does not. */
-.sheet--wide { max-width: 68rem; }
 .line--summary .amount .unit { font-size: 0.34em; }
 
-.totals { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; list-style: none; margin: 0.55rem 0 0; padding: 0; font-size: 0.87rem; color: var(--ink-soft); }
+.totals { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; list-style: none; margin: 0.55rem 0 0; padding: 0; font-size: 0.87rem; color: var(--text-soft); }
 .totals--tight { justify-content: flex-end; margin: 0; }
 
 /* ── preview: can this wallet pay it? ─────────────────────────────────── */
 .funding { margin-top: 26px; }
 .funding h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem; }
 .funding ul { list-style: none; margin: 0; padding: 0; }
-.funding li { display: flex; gap: 0.7rem; padding: 0.4rem 0; border-top: 1px solid var(--rule); font-size: 0.9rem; }
-.funding li:last-child { border-bottom: 1px solid var(--rule); }
+.funding li { display: flex; gap: 0.7rem; padding: 0.4rem 0; border-top: 1px solid var(--border); font-size: 0.9rem; }
+.funding li:last-child { border-bottom: 1px solid var(--border); }
 .funding .mark { position: static; width: 1rem; flex: none; line-height: inherit; }
-.funding-ok .mark { color: var(--tick); }
-.funding-short .mark, .funding-short strong:last-child { color: var(--flag); }
-.funding-unknown .mark { color: var(--pending); }
-
-/* ── /why: two transactions, side by side ─────────────────────────────── */
-.compare {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-  gap: 1px;
-  margin-top: 26px;
-  background: var(--rule);
-  border: 1px solid var(--rule);
-}
-.card { background: var(--raised); padding: 1.3rem 1.4rem 1.5rem; }
-.card-title {
-  margin: 0 0 0.4rem;
-  font-size: 0.82rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-}
-.card .hex { word-break: break-all; }
-.card dl.detail { grid-template-columns: minmax(6rem, auto) 1fr; }
+.funding-ok .mark { color: var(--success); }
+.funding-short .mark, .funding-short strong:last-child { color: var(--danger); }
+.funding-unknown .mark { color: var(--warning); }
 
 /* A disconnect that is temporarily unsafe still has to look like a control,
    not like a link that stopped working. */
-.linkish:disabled { color: var(--ink-soft); cursor: not-allowed; text-decoration: none; }
+.linkish:disabled { color: var(--text-soft); cursor: not-allowed; text-decoration: none; }
 
 .wallet-list { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
 .wallet-list button {
   width: 100%; display: flex; align-items: center; gap: 0.75rem;
   padding: 0.7rem 0.85rem; font: inherit; text-align: left; cursor: pointer;
-  background: var(--raised); color: var(--ink);
-  border: 1px solid var(--rule); border-radius: 10px;
+  background: var(--raised); color: var(--text);
+  border: 1px solid var(--control); border-radius: 10px;
 }
-.wallet-list button:hover { border-color: var(--tick); }
+.wallet-list button:hover { border-color: var(--link); }
 .wallet-list img { border-radius: 6px; }
-.wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--rule); }
+.wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--border); }
 
 /* ── 12-column grid (lib/grid.ts sets the variables) ─────────────────── */
 .grid {
@@ -364,8 +306,9 @@ a { color: var(--link); }
 /* A lone block fills its column, so panels in one row share a height. */
 .col > .panel:only-child, .col > .stat-tile:only-child { height: 100%; }
 
-/* The side summary is 4 columns wide: long names and run IDs wrap inside it. */
-dl.detail.run-summary { grid-template-columns: minmax(6rem, auto) 1fr; }
+/* The side summary and /why's transaction panels are narrower than the
+   default detail list, so their term column can be tighter. */
+.panel dl.detail, dl.detail.run-summary { grid-template-columns: minmax(6rem, auto) 1fr; }
 dl.detail.run-summary dd { overflow-wrap: anywhere; }
 .grid.is-dense { grid-auto-flow: row dense; }
 

@@ -27,4 +27,9 @@ describe("guards that keep fixed mistakes fixed", () => {
     expect(hits(/decimals[^\n]{0,40}\?\?\s*\d/)).toEqual([]);
     expect(hits(/\bdecimals\s*=\s*\d/)).toEqual([]);
   });
+
+  it("no page uses a pre-redesign colour name", () => {
+    // --raised is a real token (raised), not one of these aliases.
+    expect(hits(/--(ground|ink|ink-soft|rule|ruleStrong|tick|flag|pending)(?![\w-])/)).toEqual([]);
+  });
 });
