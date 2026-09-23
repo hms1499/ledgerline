@@ -11,6 +11,7 @@ import {
 import {
   networkFor, decodeProof, short, formatAmount, formatHeadline, type NetworkView,
 } from "@/lib/chain";
+import { absentHeadline } from "@/lib/receipt-view";
 
 const anchorAbi = [
   { type: "function", name: "verifyItem", stateMutability: "view",
@@ -208,7 +209,7 @@ function Ready({
           ) : (
             /* A bare em dash at headline size reads as a redaction, not an
                absence. Say what is missing instead. */
-            <p className="amount is-absent">No payment found</p>
+            <p className="amount is-absent">{absentHeadline(result)}</p>
           )}
         </div>
         {invoiceId && (
