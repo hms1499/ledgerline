@@ -1,0 +1,77 @@
+import { describe, it, expect } from "vitest";
+import { theme as antd } from "antd";
+import { resolveTheme, antdTheme, BOOT_SCRIPT, themeCookie } from "@/lib/theme";
+import { palettes } from "@/lib/theme-tokens";
+
+describe("resolveTheme", () => {
+  it("honours an explicit choice whatever the system says", () => {
+    expect(resolveTheme("light", "dark")).toEqual({ choice: "light", mode: "light" });
+    expect(resolveTheme("dark", "light")).toEqual({ choice: "dark", mode: "dark" });
+  });
+  it("follows the recorded system value when the choice is system or missing", () => {
+    expect(resolveTheme("system", "light")).toEqual({ choice: "system", mode: "light" });
+    expect(resolveTheme(undefined, "light")).toEqual({ choice: "system", mode: "light" });
+  });
+  it("renders dark on a first visit, before the system value is known", () => {
+    expect(resolveTheme(undefined, undefined)).toEqual({ choice: "system", mode: "dark" });
+  });
+  it("treats a garbage or hostile cookie as system, never echoing it", () => {
+    const r = resolveTheme("</script><script>alert(1)", "<b>");
+    expect(r).toEqual({ choice: "system", mode: "dark" });
+  });
+});
+
+describe("antdTheme", () => {
+  it("uses the dark algorithm and the dark palette in dark mode", () => {
+    const t = antdTheme("dark");
+    expect(t.algorithm).toBe(antd.darkAlgorithm);
+    expect(t.token?.colorPrimary).toBe(palettes.dark.accent);
+    expect(t.token?.colorLink).toBe(palettes.dark.link);
+    expect(t.token?.colorBgBase).toBe(palettes.dark.bg);
+    expect(t.token?.colorTextSecondary).toBe(palettes.dark.textSoft);
+    expect(t.token?.colorSuccessBg).toBe(palettes.dark.successBg);
+  });
+  it("uses the default algorithm and the light palette in light mode", () => {
+    const t = antdTheme("light");
+    expect(t.algorithm).toBe(antd.defaultAlgorithm);
+    expect(t.token?.colorText).toBe(palettes.light.text);
+  });
+});
+
+/** Runs the boot script against stub globals, as a browser would before paint. */
+function boot(choice: string, matchMedia?: (q: string) => { matches: boolean }) {
+  const attrs: Record<string, string> = { "data-theme-choice": choice, "data-theme": "dark" };
+  const doc = {
+    cookie: "",
+    documentElement: {
+      getAttribute: (k: string) => attrs[k] ?? null,
+      setAttribute: (k: string, v: string) => { attrs[k] = v; },
+    },
+  };
+  const win = matchMedia ? { matchMedia } : {};
+  new Function("document", "window", BOOT_SCRIPT)(doc, win);
+  return { attrs, cookie: doc.cookie };
+}
+
+describe("BOOT_SCRIPT", () => {
+  it("applies and records a light system preference when the choice is system", () => {
+    const { attrs, cookie } = boot("system", () => ({ matches: true }));
+    expect(attrs["data-theme"]).toBe("light");
+    expect(cookie).toContain("theme-system=light");
+  });
+  it("leaves an explicit choice alone", () => {
+    const { attrs, cookie } = boot("dark", () => ({ matches: true }));
+    expect(attrs["data-theme"]).toBe("dark");
+    expect(cookie).toBe("");
+  });
+  it("does nothing and throws nothing without matchMedia", () => {
+    expect(() => boot("system")).not.toThrow();
+    expect(boot("system").attrs["data-theme"]).toBe("dark");
+  });
+});
+
+describe("themeCookie", () => {
+  it("is site-wide, a year long and lax", () => {
+    expect(themeCookie("theme", "light")).toBe("theme=light; path=/; max-age=31536000; samesite=lax");
+  });
+});
