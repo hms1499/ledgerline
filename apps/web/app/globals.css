@@ -30,6 +30,15 @@ a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--rul
 a:hover { text-decoration-color: currentColor; }
 
 :focus-visible { outline: 2px solid var(--tick); outline-offset: 2px; }
+/* antd draws its own 3px ring in colorPrimaryBorder — 1.6:1 on the dark
+   background, under the 3:1 a focus indicator needs. One ring everywhere.
+   The segmented control focuses a zero-width radio, so ring its label. */
+.ant-btn:not(:disabled):focus-visible,
+.ant-segmented:focus-visible,
+.ant-segmented-item:has(input:focus-visible) {
+  outline: 2px solid var(--tick) !important;
+  outline-offset: 2px !important;
+}
 
 .sheet {
   max-width: 44rem;
