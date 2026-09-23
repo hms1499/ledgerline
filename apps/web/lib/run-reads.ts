@@ -17,10 +17,15 @@ export type GetReceipt = (txHash: Hex) => Promise<ReceiptLike | null>;
 export interface ReadOptions { getReceipt?: GetReceipt; concurrency?: number; timeoutMs?: number }
 
 type Summarize = (logs: RawLog[], payer: Address) => RunSummary;
-type Rec = Pick<RunRecord, "txHash" | "payer">;
+type Rec = Pick<RunRecord, "txHash">;
 
 function receiptReader(net: NetworkView): GetReceipt {
-  const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
+  // retryCount: 0 — viem's own retries must not outlive READ_TIMEOUT_MS;
+  // withTimeout below is the only retry/timeout policy that governs a read.
+  const client = createPublicClient({
+    chain: net.chain,
+    transport: http(net.defaultRpc, { timeout: READ_TIMEOUT_MS, retryCount: 0 }),
+  });
   return async (hash) => {
     try {
       const r = await client.getTransactionReceipt({ hash });
@@ -44,9 +49,11 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-/** Exported for tests: the pool, with the receipt reader and summariser injected. */
+/** Exported for tests: the pool, with the receipt reader and summariser injected.
+ *  `payer` is always the connected wallet, passed explicitly (M1) — never a
+ *  record's own stored `payer`, which is untrusted localStorage. */
 export async function readRunsWith(
-  records: Rec[], getReceipt: GetReceipt, summarize: Summarize,
+  records: Rec[], payer: Address, getReceipt: GetReceipt, summarize: Summarize,
   concurrency = READ_CONCURRENCY, timeoutMs = READ_TIMEOUT_MS,
 ): Promise<RunRead[]> {
   // history.ts dedupes on record, but a read must not trust that.
@@ -63,13 +70,13 @@ export async function readRunsWith(
   const worker = async () => {
     while (next < unique.length) {
       const i = next++;
-      const { txHash, payer } = unique[i]!;
+      const { txHash } = unique[i]!;
       try {
         const receipt = await withTimeout(getReceipt(txHash as Hex), timeoutMs);
         if (!receipt) out[i] = { txHash, state: "not_found" };
         else if (receipt.status === "reverted") out[i] = { txHash, state: "reverted" };
         else {
-          const summary = summarize(receipt.logs, payer as Address);
+          const summary = summarize(receipt.logs, payer);
           out[i] = { txHash, state: summary.identityBroken > 0 ? "attention" : "read", summary };
         }
       } catch (err) {
@@ -81,10 +88,12 @@ export async function readRunsWith(
   return out;
 }
 
-/** Each run's receipt, fetched by its known hash. Never searches history. */
-export function readRuns(records: Rec[], net: NetworkView, opts: ReadOptions = {}): Promise<RunRead[]> {
+/** Each run's receipt, fetched by its known hash. Never searches history.
+ *  `payer` is the connected wallet (spec §4.1) — the caller passes it
+ *  explicitly rather than this reading it off each record. */
+export function readRuns(records: Rec[], payer: Address, net: NetworkView, opts: ReadOptions = {}): Promise<RunRead[]> {
   return readRunsWith(
-    records, opts.getReceipt ?? receiptReader(net), summarizeRun,
+    records, payer, opts.getReceipt ?? receiptReader(net), summarizeRun,
     opts.concurrency ?? READ_CONCURRENCY, opts.timeoutMs ?? READ_TIMEOUT_MS,
   );
 }

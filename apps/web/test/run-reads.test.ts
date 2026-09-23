@@ -6,20 +6,33 @@ import mainnet from "../../../packages/core/test/fixtures/mainnet-2pay.json" wit
 
 const net = networkFor("testnet");
 const PAYER = "0x1111111111111111111111111111111111111111";
+// A record's stored `payer` must never be trusted (M1): every `rec()` here
+// carries a decoy value that does not match any payment in the fixture, so a
+// test only passes if `readRuns`/`readRunsWith` use the payer passed in
+// explicitly rather than `record.payer`.
+const DECOY_PAYER = "0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead";
 const logs = mainnet.logs as unknown as RawLog[];
-const rec = (txHash: string, payer = PAYER) => ({ txHash, payer });
+const rec = (txHash: string) => ({ txHash, payer: DECOY_PAYER });
 const ok: GetReceipt = async () => ({ status: "success", logs });
 
 describe("readRuns — one state per recorded run", () => {
-  it("summarises a successful receipt", async () => {
-    const [r] = await readRuns([rec("0xa")], net, { getReceipt: ok });
+  it("summarises a successful receipt, using the payer passed explicitly", async () => {
+    const [r] = await readRuns([rec("0xa")], PAYER, net, { getReceipt: ok });
     expect(r!.state).toBe("read");
     expect(r!.state === "read" && r!.summary.payments).toBe(2);
   });
 
+  it("ignores a record's stored payer entirely (M1)", async () => {
+    // Passing the decoy as the payer must summarise as nobody's, even
+    // though the record itself already carries that same decoy value.
+    const [r] = await readRuns([rec("0xa")], DECOY_PAYER, net, { getReceipt: ok });
+    expect(r!.state).toBe("read");
+    expect(r!.state === "read" && r!.summary.payments).toBe(0);
+  });
+
   it("maps a reverted receipt to reverted, and a missing one to not_found", async () => {
     const getReceipt: GetReceipt = async (h) => (h === "0xr" ? { status: "reverted", logs: [] } : null);
-    const reads = await readRuns([rec("0xr"), rec("0xm")], net, { getReceipt });
+    const reads = await readRuns([rec("0xr"), rec("0xm")], PAYER, net, { getReceipt });
     expect(reads.map((r) => r.state)).toEqual(["reverted", "not_found"]);
   });
 
@@ -27,6 +40,7 @@ describe("readRuns — one state per recorded run", () => {
     // No real receipt has a broken identity, so the summariser is injected.
     const reads = await readRunsWith(
       [rec("0xa")],
+      PAYER,
       async () => ({ status: "success", logs }),
       () => ({ paid: new Map(), payments: 0, identityBroken: 1 }),
     );
@@ -35,13 +49,13 @@ describe("readRuns — one state per recorded run", () => {
 
   it("turns a thrown error into unreadable with its message", async () => {
     const getReceipt: GetReceipt = async () => { throw new Error("rpc down"); };
-    const [r] = await readRuns([rec("0xa")], net, { getReceipt });
+    const [r] = await readRuns([rec("0xa")], PAYER, net, { getReceipt });
     expect(r).toEqual({ txHash: "0xa", state: "unreadable", reason: "rpc down" });
   });
 
   it("gives up on a read that outlives the timeout", async () => {
     const getReceipt: GetReceipt = () => new Promise(() => {});
-    const [r] = await readRuns([rec("0xa")], net, { getReceipt, timeoutMs: 20 });
+    const [r] = await readRuns([rec("0xa")], PAYER, net, { getReceipt, timeoutMs: 20 });
     expect(r!.state).toBe("unreadable");
   });
 
@@ -55,7 +69,7 @@ describe("readRuns — one state per recorded run", () => {
       return { status: "success", logs };
     };
     const records = Array.from({ length: 12 }, (_, i) => rec(`0x${i.toString(16)}`));
-    const reads = await readRuns(records, net, { getReceipt, concurrency: 4 });
+    const reads = await readRuns(records, PAYER, net, { getReceipt, concurrency: 4 });
     expect(reads).toHaveLength(12);
     expect(peak).toBe(4);
   });
@@ -63,7 +77,7 @@ describe("readRuns — one state per recorded run", () => {
   it("keeps input order and reads a repeated hash once", async () => {
     const seen: string[] = [];
     const getReceipt: GetReceipt = async (h) => { seen.push(h); return { status: "success", logs }; };
-    const reads = await readRuns([rec("0xB"), rec("0xa"), rec("0xb")], net, { getReceipt });
+    const reads = await readRuns([rec("0xB"), rec("0xa"), rec("0xb")], PAYER, net, { getReceipt });
     expect(reads.map((r) => r.txHash)).toEqual(["0xB", "0xa"]);
     expect(seen).toHaveLength(2);
   });

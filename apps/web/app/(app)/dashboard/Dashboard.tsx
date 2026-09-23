@@ -36,11 +36,14 @@ export default function Dashboard() {
   // frame (a route/search-param change is a transition, and effects after a
   // transition flush after paint — clearing state here would be too late).
   useEffect(() => {
-    if (records.length === 0) { setLoaded(undefined); return; }
+    // records is only ever non-empty when wallet was connected (useMemo
+    // above), but TS can't see that cross-variable invariant — guard here.
+    if (records.length === 0 || !wallet) { setLoaded(undefined); return; }
+    const payer = wallet.address as Address;
     let cancelled = false;
     void (async () => {
       const [reads, meta] = await Promise.all([
-        readRuns(records, net),
+        readRuns(records, payer, net),
         readTokenMeta(net.defaultRpc, net.chain, net.chain.id)
           .then(({ decimals, symbols }) => Object.fromEntries(
             Object.keys(decimals).map((k) => [k, { decimals: decimals[k], symbol: symbols[k] }]),
