@@ -1,11 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { coverageView, RUN_STATUS, amountText, paidLine } from "@/lib/dashboard-view";
+import { coverageView, excludedNote, RUN_STATUS, amountText, paidLine } from "@/lib/dashboard-view";
 
 describe("coverageView — the line under the tiles", () => {
   it("all read: plain text naming the network", () => {
     const v = coverageView({ total: 12, covered: 12, missing: [], attention: [] }, "testnet");
     expect(v).toMatchObject({ tone: "plain", retry: false, tilesBlank: false });
     expect(v.text).toBe("From 12 of 12 runs sent from this browser, read from Arc testnet.");
+  });
+
+  it("all read, exactly one run: singular phrasing (M5)", () => {
+    const v = coverageView({ total: 1, covered: 1, missing: [], attention: [] }, "testnet");
+    expect(v).toMatchObject({ tone: "plain", retry: false, tilesBlank: false });
+    expect(v.text).toBe("From the 1 run sent from this browser, read from Arc testnet.");
   });
 
   it("some missing: a warning with Retry, figures still shown", () => {
@@ -20,11 +26,21 @@ describe("coverageView — the line under the tiles", () => {
     expect(v.text).toBe("None of the 3 runs could be read, so there are no totals to show.");
   });
 
-  it("a run needing a look adds a note, in the singular and the plural", () => {
+  it("a run needing a look adds a note, in the singular and the plural (Important 1)", () => {
     expect(coverageView({ total: 2, covered: 2, missing: [], attention: ["0x1"] }, "testnet").attentionNote)
-      .toBe("1 run has a payment that needs a look. It is left out of the totals.");
+      .toBe("1 run has a payment that needs a look. That payment is left out of the totals; the run's other payments are counted.");
     expect(coverageView({ total: 3, covered: 3, missing: [], attention: ["0x1", "0x2"] }, "testnet").attentionNote)
-      .toBe("2 runs have a payment that needs a look. They are left out of the totals.");
+      .toBe("2 runs have a payment that needs a look. Those payments are left out of the totals; the runs' other payments are counted.");
+  });
+});
+
+describe("excludedNote — the Paid cell's note for an attention run (Important 2)", () => {
+  it("singular", () => {
+    expect(excludedNote(1)).toBe("1 payment excluded");
+  });
+
+  it("plural", () => {
+    expect(excludedNote(2)).toBe("2 payments excluded");
   });
 });
 

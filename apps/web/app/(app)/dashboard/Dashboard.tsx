@@ -10,7 +10,7 @@ import { Grid, Col } from "@/components/grid/Grid";
 import { runsFor, type RunRecord } from "@/lib/history";
 import { readRuns, describeCoverage, type RunRead } from "@/lib/run-reads";
 import { readTokenMeta } from "@/lib/token-meta";
-import { coverageView, RUN_STATUS, amountText, paidLine, type TokenMeta } from "@/lib/dashboard-view";
+import { coverageView, excludedNote, RUN_STATUS, amountText, paidLine, type TokenMeta } from "@/lib/dashboard-view";
 import { withNet } from "@/lib/nav";
 
 const RECENT = 5;
@@ -121,9 +121,15 @@ export default function Dashboard() {
       render: (_, r) => {
         const read = byHash.get(r.txHash.toLowerCase());
         if (!read) return <Skeleton.Input active size="small" />;
-        return read.state === "read" || read.state === "attention"
-          ? paidLine(read.summary.paid, tokens, meta)
-          : <span style={{ color: "var(--text-soft)" }}>—</span>;
+        if (read.state === "read") return paidLine(read.summary.paid, tokens, meta);
+        // Dashboard vs /run/[tx] disagree on an attention run (M2/Important
+        // 2): both sum the same joinPayments, but the dashboard counts only
+        // clean payer payments. Label what was left out rather than
+        // silently showing a lower figure than the run page.
+        if (read.state === "attention") {
+          return `${paidLine(read.summary.paid, tokens, meta)} · (${excludedNote(read.summary.identityBroken)})`;
+        }
+        return <span style={{ color: "var(--text-soft)" }}>—</span>;
       } },
     { title: "Status", key: "status", width: 130,
       render: (_, r) => {

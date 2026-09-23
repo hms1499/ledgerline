@@ -82,15 +82,21 @@ the same order.
 Directly under the tiles:
 
 - **All read:** "From 12 of 12 runs sent from this browser, read from Arc
-  testnet." This is plain soft text.
+  testnet." This is plain soft text. For exactly one run, the count reads
+  naturally instead of "1 of 1 runs": "From the 1 run sent from this
+  browser, read from Arc testnet."
 - **Some not read:** a warning `Alert`: "Totals cover 11 of 12 runs. 1 could
   not be read." It carries a **Retry** button that reads every recorded run
   again, in one action. Receipts do not change once final, so re-reading the
   ones already read costs a few calls and saves merging two result sets.
-- **Some need attention:** in addition to the above, a note: "1 run has a
-  payment that needs a look. It is left out of the totals." This links to
-  that run's `/run/[tx]`. If there are several such runs, the note links to
-  `/runs`.
+- **Some need attention:** in addition to the above, a note. An attention
+  run's clean payments are still counted; only its broken payment is left
+  out (§4.2), and the copy says so rather than implying the whole run is
+  excluded: singular "1 run has a payment that needs a look. That payment is
+  left out of the totals; the run's other payments are counted."; plural "N
+  runs have a payment that needs a look. Those payments are left out of the
+  totals; the runs' other payments are counted." This links to that run's
+  `/run/[tx]`. If there are several such runs, the note links to `/runs`.
 
 ### 3.4 Recent runs table
 
@@ -103,7 +109,7 @@ Directly under the tiles:
 |---|---|
 | Run | `runLabel`, or "unnamed" in `--text-soft` |
 | Sent | `seenAt` in local time. Labelled as this browser's clock; it is a label, not evidence |
-| Paid | Per-token amounts from the chain, e.g. `0.1 USDC · 0.1 EURC`. Tokens in the table's own order |
+| Paid | Per-token amounts from the chain, e.g. `0.1 USDC · 0.1 EURC`. Tokens in the table's own order. For an `attention` run, the dashboard sums only its clean payments (§4.2); the cell says how many were left out, e.g. `0.1 USDC · (1 payment excluded)`, so it never silently disagrees with `/run/[tx]` |
 | Status | `Tag`: **Read**, **Needs a look**, **Not found**, **Reverted**, **Couldn't read** |
 | (action) | **Open** → `/run/[txHash]?n=…&label=…`, exactly as `/runs` builds it |
 
@@ -222,8 +228,11 @@ type RunRead =
 - axe with no serious or critical issues in both themes, in the empty state
   and in the populated state.
 - Horizontal overflow is 0 at 390, 768 and 1280.
-- With the test wallet on testnet, each run's per-token amount on the
-  dashboard equals the amount on that run's `/run/[tx]` page.
+- With the test wallet on testnet, each `read` run's per-token amount on the
+  dashboard equals the amount on that run's `/run/[tx]` page. An `attention`
+  run's dashboard figure is `/run/[tx]`'s minus its excluded payment(s), by
+  design (§8) — the Paid cell's "N payment(s) excluded" note accounts for
+  the difference.
 - With the RPC blocked (Playwright `route.abort`), the coverage line warns,
   the tiles show "—", and Retry after unblocking fills them.
 
@@ -252,5 +261,5 @@ type RunRead =
 | Risk | Mitigation |
 |---|---|
 | 50 receipt reads load the public RPC slowly | Concurrency 4, timeout 10 s, skeletons meanwhile; Retry covers failures. The cap of 50 is already enforced by `history.ts` |
-| A figure appears that the run page disagrees with | Both come from the same `joinPayments` over the same receipt; §6.2 compares them run by run |
+| A figure appears that the run page disagrees with | Both come from the same `joinPayments` over the same receipt, but for an `attention` run the dashboard sums only clean payer payments while `/run/[tx]` sums every payment (§4.2, by design) — the Paid cell labels how many were excluded rather than silently differing; §6.2 compares them run by run |
 | Totals read as "everything I ever paid" | The coverage line always says "runs sent from this browser" |

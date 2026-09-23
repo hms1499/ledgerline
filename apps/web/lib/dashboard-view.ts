@@ -13,14 +13,19 @@ export interface CoverageView {
 const runs = (n: number) => `${n} run${n === 1 ? "" : "s"}`;
 
 export function coverageView(c: Coverage, networkName: string): CoverageView {
+  // An attention run's clean payments are still counted — only its broken
+  // payment is left out (spec §4.2). The copy must not read as "the whole
+  // run is excluded" (Important 1).
   const attentionNote = c.attention.length === 0 ? undefined
     : c.attention.length === 1
-      ? "1 run has a payment that needs a look. It is left out of the totals."
-      : `${c.attention.length} runs have a payment that needs a look. They are left out of the totals.`;
+      ? "1 run has a payment that needs a look. That payment is left out of the totals; the run's other payments are counted."
+      : `${c.attention.length} runs have a payment that needs a look. Those payments are left out of the totals; the runs' other payments are counted.`;
 
   if (c.missing.length === 0) {
-    return { tone: "plain", retry: false, tilesBlank: false, attentionNote,
-      text: `From ${c.covered} of ${c.total} runs sent from this browser, read from Arc ${networkName}.` };
+    const text = c.total === 1
+      ? `From the 1 run sent from this browser, read from Arc ${networkName}.`
+      : `From ${c.covered} of ${c.total} runs sent from this browser, read from Arc ${networkName}.`;
+    return { tone: "plain", retry: false, tilesBlank: false, attentionNote, text };
   }
   if (c.covered === 0) {
     return { tone: "warning", retry: true, tilesBlank: true, attentionNote,
@@ -28,6 +33,13 @@ export function coverageView(c: Coverage, networkName: string): CoverageView {
   }
   return { tone: "warning", retry: true, tilesBlank: false, attentionNote,
     text: `Totals cover ${c.covered} of ${c.total} runs. ${c.missing.length} could not be read.` };
+}
+
+/** For an `attention` run's Paid cell (Important 2): how many payments were
+ *  left out of that run's own line, since the dashboard and `/run/[tx]`
+ *  otherwise disagree on the figure with no explanation. */
+export function excludedNote(n: number): string {
+  return `${n} payment${n === 1 ? "" : "s"} excluded`;
 }
 
 export const RUN_STATUS: Record<RunRead["state"], { label: string; color: "success" | "warning" | "error" | "default" }> = {
