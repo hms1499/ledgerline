@@ -1,12 +1,15 @@
+/* The pages built before the redesign use these names. They alias the new
+   tokens (lib/theme-tokens.ts) until part 3 migrates each page, then go. */
 :root {
-  --ground: #f2f5f0;
-  --raised: #fafbf9;
-  --ink: #1a2a28;
-  --ink-soft: #53625f;
-  --rule: #c8d4cb;
-  --tick: #0b6e4f;
-  --flag: #a62639;
-  --pending: #b26b00;
+  --ground: var(--bg);
+  --raised: var(--surface);
+  --ink: var(--text);
+  --ink-soft: var(--text-soft);
+  --rule: var(--border);
+  --ruleStrong: var(--text);
+  --tick: var(--success);
+  --flag: var(--danger);
+  --pending: var(--warning);
   --measure: 62ch;
 }
 
@@ -173,19 +176,6 @@ a:hover { text-decoration-color: currentColor; }
 dl.detail { margin: 0; display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: 0.45rem 1.4rem; font-size: 0.88rem; }
 dl.detail dt { color: var(--ink-soft); }
 dl.detail dd { margin: 0; }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --ground: #121917;
-    --raised: #182220;
-    --ink: #e6ece9;
-    --ink-soft: #9aaba6;
-    --rule: #2c3b37;
-    --tick: #4cc08d;
-    --flag: #e2707f;
-    --pending: #d9a441;
-  }
-}
 
 /* Announced to screen readers, never painted. */
 .sr-only {
