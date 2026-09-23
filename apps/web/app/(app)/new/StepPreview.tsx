@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { fundingFor, tokensForChain, totalsByToken, type ResolvedRow } from "@ledgerline/core";
-import { formatAmount, short, type NetworkView } from "@/lib/chain";
+import { short, type NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
 import { fundingView } from "@/lib/funding-view";
+import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
 
 const balanceOfAbi = [
   { type: "function", name: "balanceOf", stateMutability: "view",
@@ -87,7 +88,7 @@ export default function StepPreview({
     {
       title: "Amount", dataIndex: "amount", align: "right",
       render: (a: bigint, r) => (
-        <span className="hex">{formatAmount(a, draft.decimals[r.token.toLowerCase()] ?? 6)}</span>
+        <span className="hex">{amountFigure(a, r.token, metaFor(r.token, draft.decimals, draft.symbols))}</span>
       ),
     },
   ];
@@ -109,8 +110,7 @@ export default function StepPreview({
           <ul className="totals">
             {[...totals.entries()].map(([t, v]) => (
               <li key={t}>
-                <span className="hex">{formatAmount(v, draft.decimals[t] ?? 6)}</span>{" "}
-                {draft.symbols[t] ?? short(t)}
+                <span className="hex">{amountText(v, t, metaFor(t, draft.decimals, draft.symbols))}</span>
               </li>
             ))}
           </ul>

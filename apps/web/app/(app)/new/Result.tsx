@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
 import type { RunOutcome } from "@ledgerline/core";
-import { formatAmount, receiptUrl, short, type NetworkView } from "@/lib/chain";
+import { receiptUrl, short, type NetworkView } from "@/lib/chain";
 import type { PreparedRun } from "./StepPreflight";
 import type { RunDraft } from "./CreateRun";
 import { fileSlug, receiptLinksCsv, receiptLinksText, type ReceiptLinkRow } from "@/lib/receipt-export";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
 
 /** Hand the payer a file. The object URL is revoked a tick later, not
  *  straight after click(): some browsers start the download asynchronously
@@ -75,7 +76,7 @@ export default function Result({
   const exportRows: ReceiptLinkRow[] = rows.map((r) => ({
     invoiceId: r.invoiceId,
     recipient: r.to,
-    amount: formatAmount(r.amount, draft.decimals[r.token.toLowerCase()] ?? 6),
+    amount: amountFigure(r.amount, r.token, metaFor(r.token, draft.decimals, draft.symbols)),
     symbol: draft.symbols[r.token.toLowerCase()] ?? r.token,
     url: r.url,
   }));
@@ -101,8 +102,7 @@ export default function Result({
       title: "Paid", dataIndex: "amount", width: 150,
       render: (a: bigint, r) => (
         <span className="hex">
-          {formatAmount(a, draft.decimals[r.token.toLowerCase()] ?? 6)}{" "}
-          {draft.symbols[r.token.toLowerCase()] ?? ""}
+          {amountText(a, r.token, metaFor(r.token, draft.decimals, draft.symbols))}
         </span>
       ),
     },

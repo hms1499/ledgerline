@@ -1,5 +1,8 @@
-import { formatAmount, short } from "@/lib/chain";
 import type { Coverage, RunRead } from "@/lib/run-reads";
+import { amountText, type TokenMeta } from "@/lib/token-meta";
+
+export { amountText };
+export type { TokenMeta };
 
 export interface CoverageView {
   tone: "plain" | "warning";
@@ -49,14 +52,6 @@ export const RUN_STATUS: Record<RunRead["state"], { label: string; color: "succe
   reverted: { label: "Reverted", color: "error" },
   unreadable: { label: "Couldn't read", color: "warning" },
 };
-
-export interface TokenMeta { decimals?: number; symbol?: string }
-
-/** Decimals come from the chain or not at all — a guess is how 10^12 errors happen. */
-export function amountText(value: bigint, token: string, meta: TokenMeta): string {
-  if (meta.decimals === undefined) return `${value} (${short(token)})`;
-  return `${formatAmount(value, meta.decimals)} ${meta.symbol || short(token)}`;
-}
 
 export function paidLine(
   paid: Map<string, { value: bigint }>, order: string[], meta: Record<string, TokenMeta>,

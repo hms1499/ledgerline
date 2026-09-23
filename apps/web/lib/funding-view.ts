@@ -1,5 +1,6 @@
 import type { Address, FundingLine } from "@ledgerline/core";
-import { formatAmount, short } from "@/lib/chain";
+import { short } from "@/lib/chain";
+import { amountFigure } from "@/lib/token-meta";
 
 export interface FundingRow {
   key: string;
@@ -31,15 +32,15 @@ export function fundingView({
 }): { rows: FundingRow[]; short: number; feeWarning?: string } {
   const rows = lines.map((l): FundingRow => {
     const key = l.token.toLowerCase();
-    const d = decimals[key] ?? 6;
+    const m = { decimals: decimals[key] };
     const row: FundingRow = {
       key,
       symbol: symbols[key] || short(l.token),
-      need: formatAmount(l.need, d),
-      hold: l.hold === undefined ? undefined : formatAmount(l.hold, d),
+      need: amountFigure(l.need, l.token, m),
+      hold: l.hold === undefined ? undefined : amountFigure(l.hold, l.token, m),
       state: l.hold === undefined ? "unknown" : l.short > 0n ? "short" : "ok",
     };
-    if (l.short > 0n) row.shortBy = formatAmount(l.short, d);
+    if (l.short > 0n) row.shortBy = amountFigure(l.short, l.token, m);
     return row;
   });
 

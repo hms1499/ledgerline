@@ -55,4 +55,13 @@ describe("fundingView — the preview's balance check", () => {
     expect(view([{ token: USDC, amount: 1n }], { [USDC.toLowerCase()]: 2n }).feeWarning).toBeUndefined();
     expect(view([{ token: EURC, amount: 1n }], { [EURC.toLowerCase()]: 5n }).feeWarning).toBeUndefined();
   });
+
+  it("shows raw figures, not guessed ones, for a token with no decimals read", () => {
+    const CIRBTC = "0x171a4217b86a807a64eb94757db6849fb4bdbaa0" as Address;
+    const v = fundingView({
+      lines: fundingFor([{ token: CIRBTC, amount: 12_345_678n }], { [CIRBTC.toLowerCase()]: 1n }),
+      usdc: USDC, usdcHold: undefined, decimals: {}, symbols: {},
+    });
+    expect(v.rows[0]).toMatchObject({ need: "12345678 (0x171a…baa0)", hold: "1 (0x171a…baa0)" });
+  });
 });

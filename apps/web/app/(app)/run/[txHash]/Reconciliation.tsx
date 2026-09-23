@@ -10,11 +10,13 @@ import {
   type Manifest, type RawLog, type Hex, type Completeness, type ManifestCheck,
   type PaymentRecord,
 } from "@ledgerline/core";
-import { networkFor, short, formatAmount, receiptUrl, type NetworkView } from "@/lib/chain";
+import { networkFor, short, receiptUrl, type NetworkView } from "@/lib/chain";
 import { connect, knownWallets, watchWalletList, type WalletChoice } from "@/lib/wallet";
 import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
 import { SEVERITY, statusView } from "@/lib/reconcile-view";
+import { amountFigure, amountText } from "@/lib/token-meta";
+import { tokensToRead } from "@/lib/run-view";
 
 const anchorAbi = [
   { type: "function", name: "runs", stateMutability: "view",
@@ -273,8 +275,7 @@ function Ready({
               const m = tokens.get(t);
               return (
                 <li key={t}>
-                  <span className="hex">{formatAmount(total, m?.decimals ?? 6)}</span>{" "}
-                  {m?.symbol ?? short(t)}
+                  <span className="hex">{amountText(total, t, m ?? {})}</span>
                 </li>
               );
             })}
@@ -395,8 +396,7 @@ function Ready({
                       const m = tokens.get(t);
                       return (
                         <li key={t}>
-                          <span className="hex">{formatAmount(total, m?.decimals ?? 6)}</span>{" "}
-                          {m?.symbol ?? ""}
+                          <span className="hex">{amountText(total, t, m ?? {})}</span>
                         </li>
                       );
                     })}
@@ -427,23 +427,24 @@ function Ready({
 }
 
 function Amount({ row, tokens }: { row: ReconcileRow; tokens: Map<string, TokenMeta> }) {
-  const d = tokens.get(row.token.toLowerCase())?.decimals ?? 6;
+  const m = tokens.get(row.token.toLowerCase()) ?? {};
+  const f = (v: bigint) => amountFigure(v, row.token, m);
   if (row.status === "amount_mismatch" && row.expected !== undefined && row.actual !== undefined) {
     const delta = row.actual - row.expected;
     return (
       <span className="hex">
-        {formatAmount(row.actual, d)}{" "}
+        {f(row.actual)}{" "}
         <span style={{ color: "var(--flag)" }}>
-          ({delta > 0n ? "+" : ""}{formatAmount(delta, d)})
+          ({delta > 0n ? "+" : ""}{f(delta)})
         </span>
         <br />
-        <span style={{ color: "var(--text-soft)", fontSize: "0.85em" }}>owed {formatAmount(row.expected, d)}</span>
+        <span style={{ color: "var(--text-soft)", fontSize: "0.85em" }}>owed {f(row.expected)}</span>
       </span>
     );
   }
-  if (row.actual !== undefined) return <span className="hex">{formatAmount(row.actual, d)}</span>;
+  if (row.actual !== undefined) return <span className="hex">{f(row.actual)}</span>;
   if (row.expected !== undefined) {
-    return <span className="hex" style={{ color: "var(--text-soft)" }}>owed {formatAmount(row.expected, d)}</span>;
+    return <span className="hex" style={{ color: "var(--text-soft)" }}>owed {f(row.expected)}</span>;
   }
   return <span style={{ color: "var(--text-soft)" }}>—</span>;
 }
@@ -455,7 +456,8 @@ function RowDetail({
   note?: string;
   receipt?: string;
 }) {
-  const d = tokens.get(row.token.toLowerCase())?.decimals ?? 6;
+  const m = tokens.get(row.token.toLowerCase()) ?? {};
+  const f = (v: bigint) => amountFigure(v, row.token, m);
   return (
     <dl className="detail">
       {note && (<><dt>What this means</dt><dd>{note}</dd></>)}
@@ -467,8 +469,8 @@ function RowDetail({
       )}
       {row.status === "amount_mismatch" && (
         <>
-          <dt>Paid</dt><dd className="hex">{formatAmount(row.actual!, d)}</dd>
-          <dt>Owed</dt><dd className="hex">{formatAmount(row.expected!, d)}</dd>
+          <dt>Paid</dt><dd className="hex">{f(row.actual!)}</dd>
+          <dt>Owed</dt><dd className="hex">{f(row.expected!)}</dd>
         </>
       )}
       <dt>Reference</dt><dd className="hex">{row.memoId}</dd>
@@ -516,7 +518,7 @@ async function loadRun(
   const result = reconcile(logs, effective);
 
   const tokens = new Map<string, TokenMeta>();
-  for (const token of new Set(result.payments.map((p) => p.token))) {
+  for (const token of tokensToRead(result)) {
     const [decimals, symbol] = await Promise.all([
       client.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }),
       client.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }).catch(() => ""),

@@ -7,8 +7,9 @@ import {
   assessBatch, reconcile,
   type BatchAssessment, type PaymentRecord, type RawLog, type Hex,
 } from "@ledgerline/core";
-import { networkFor, short, formatAmount, type NetworkView } from "@/lib/chain";
+import { networkFor, short, type NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
+import { amountText } from "@/lib/token-meta";
 
 /** Approval(address indexed owner, address indexed spender, uint256 value) */
 const APPROVAL_TOPIC =
@@ -160,8 +161,7 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
   const { ours, naive, tokens, allowanceNow, approve } = data;
 
   const tok = (t: Address) => tokens.get(t.toLowerCase());
-  const amount = (t: Address, v: bigint) =>
-    `${formatAmount(v, tok(t)?.decimals ?? 6)} ${tok(t)?.symbol ?? short(t)}`;
+  const amount = (t: Address, v: bigint) => amountText(v, t, tok(t) ?? {});
 
   const naiveTxCount = approve ? 2 : 1;
   const naiveGas = naive.gasUsed + (approve?.gasUsed ?? 0n);
