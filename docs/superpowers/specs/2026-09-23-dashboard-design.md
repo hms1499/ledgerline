@@ -84,8 +84,9 @@ Directly under the tiles:
 - **All read:** "From 12 of 12 runs sent from this browser, read from Arc
   testnet." This is plain soft text.
 - **Some not read:** a warning `Alert`: "Totals cover 11 of 12 runs. 1 could
-  not be read." It carries a **Retry** button that re-reads every run not in
-  a `read` or `attention` state, in one action.
+  not be read." It carries a **Retry** button that reads every recorded run
+  again, in one action. Receipts do not change once final, so re-reading the
+  ones already read costs a few calls and saves merging two result sets.
 - **Some need attention:** in addition to the above, a note: "1 run has a
   payment that needs a look. It is left out of the totals." This links to
   that run's `/run/[tx]`. If there are several such runs, the note links to
@@ -114,10 +115,12 @@ Directly under the tiles:
 ### 4.1 Core: two pure functions (`packages/core/src/summary.ts`)
 
 ```ts
+export interface TokenPaid { value: bigint; payments: number }
+
 export interface RunSummary {
-  /** Emitted value per token, clean payments from `payer` only. */
-  paid: Map<Address, bigint>;          // checksummed token → total
-  payments: number;                    // clean payments counted
+  /** Per token (checksummed): emitted value and count, clean payments from `payer` only. */
+  paid: Map<Address, TokenPaid>;
+  payments: number;                    // clean payments counted, all tokens
   /** Payments whose memo sender ≠ transfer.from. Counted here, never summed. */
   identityBroken: number;
 }
@@ -159,8 +162,9 @@ type RunRead =
 
 - Totals sum the `summary` of `read` **and** `attention` runs. An attention
   run's clean payments still count; only its broken ones are left out.
-  `not_found`, `reverted` and `unreadable` contribute nothing and lower the
-  coverage count.
+- **Covered** runs are `read`, `attention` and `reverted`. A reverted run
+  moved no money, so its zero is exact, not a gap. **Missing** runs are
+  `not_found` and `unreadable`. They lower the coverage count.
 - `readRuns` takes an injectable `getReceipt` in `opts`, so its concurrency,
   timeout and state mapping are unit-tested without a network.
 - Reads restart when the wallet, the network or the history changes. A read
@@ -189,10 +193,11 @@ type RunRead =
   logs of the real testnet run
   `0x0914b2ee684e1b84dd1227a21899335098cb9ecdcd7dee7366f1e9b159a13de0`
   (0.1 USDC + 0.1 EURC), read with `eth_getTransactionReceipt` from
-  `https://rpc.testnet.arc.io`. `scripts/capture-fixture.ts` is hard-coded to
-  mainnet dRPC, so it gains an optional RPC argument. Its default stays
-  unchanged. The fixture checks that USDC is not doubled and EURC is not
-  halved in the same transaction.
+  `https://rpc.testnet.arc.io`. It is captured with a new
+  `scripts/capture-receipt.ts`, which reads one receipt's logs from a given
+  RPC. `capture-fixture.ts` builds a synthetic trace and is left as it is.
+  The fixture checks that USDC is not doubled and EURC is not halved in the
+  same transaction.
   - `[unverified]` cirBTC has no fixture. Its single-log behaviour matches
     EURC per `CLAUDE.md`, but it is covered by that rule, not by a
     measurement.
