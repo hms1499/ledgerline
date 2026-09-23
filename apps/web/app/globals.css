@@ -348,4 +348,5 @@ a { color: var(--link); }
   }
   .bottom-tabs .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 10px; font-size: 0.72rem; color: var(--text-soft); text-decoration: none; }
   .bottom-tabs .tab[aria-current="page"] { color: var(--link); }
+  .step-line { margin: 4px 0 0; color: var(--text-soft); font-size: 0.9rem; }
 }

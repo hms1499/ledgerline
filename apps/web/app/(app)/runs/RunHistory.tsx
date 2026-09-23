@@ -3,54 +3,19 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
-import { networkFor, short } from "@/lib/chain";
-import {
-  connect, knownWallets, watchWalletList,
-  type ConnectedWallet, type WalletChoice,
-} from "@/lib/wallet";
-import { describeError, errorCode } from "@/lib/errors";
+import { short } from "@/lib/chain";
 import { runsFor, forgetRun, type RunRecord } from "@/lib/history";
-import WalletPicker from "@/components/WalletPicker";
+import { useWallet } from "@/components/wallet/WalletProvider";
 
-export default function RunHistory({ networkName }: { networkName: string | null }) {
-  const net = networkFor(networkName);
-  const [wallet, setWallet] = useState<ConnectedWallet>();
-  const [error, setError] = useState<string>();
+export default function RunHistory() {
+  const { net, wallet, connect } = useWallet();
   const [rows, setRows] = useState<RunRecord[]>([]);
-  const [choices, setChoices] = useState<WalletChoice[]>([]);
-  const [picking, setPicking] = useState(false);
 
-  const refresh = useCallback((w: ConnectedWallet) => {
-    setRows(runsFor(w.address, net.chain.id));
-  }, [net.chain.id]);
+  const refresh = useCallback(() => {
+    setRows(wallet ? runsFor(wallet.address, net.chain.id) : []);
+  }, [wallet, net.chain.id]);
 
-  const connectTo = useCallback(async (choice?: WalletChoice) => {
-    setPicking(false);
-    setError(undefined);
-    try {
-      const w = await connect(net, choice);
-      setWallet(w);
-      refresh(w);
-    } catch (err) {
-      setError(errorCode(err) === 4001
-        ? "Connection cancelled. Press connect again when you're ready."
-        : describeError(err));
-    }
-  }, [net, refresh]);
-
-  const onConnect = useCallback(() => {
-    const found = knownWallets();
-    setChoices(found);
-    if (found.length > 1) { setPicking(true); return; }
-    void connectTo(found[0]);
-  }, [connectTo]);
-
-  useEffect(() => { if (wallet) refresh(wallet); }, [wallet, refresh]);
-
-  // Ask the installed wallets to announce themselves. Without this the page
-  // only ever sees wallets that announced before it mounted, which is none of
-  // them on a fresh load.
-  useEffect(() => watchWalletList(() => setChoices(knownWallets())), []);
+  useEffect(() => { refresh(); }, [refresh]);
 
   const columns: TableColumnsType<RunRecord> = [
     {
@@ -76,7 +41,7 @@ export default function RunHistory({ networkName }: { networkName: string | null
             className="linkish"
             onClick={() => {
               forgetRun(txHash, r.payer, r.chainId);
-              if (wallet) refresh(wallet);
+              refresh();
             }}
           >
             Remove
@@ -88,14 +53,6 @@ export default function RunHistory({ networkName }: { networkName: string | null
 
   return (
     <main className="sheet sheet--wide">
-      <div className="masthead">
-        <strong>Your payout runs</strong>
-        <span>
-          Arc {net.name}
-          {wallet ? ` · ${short(wallet.address)}` : ""}
-        </span>
-      </div>
-
       {!wallet ? (
         <>
           <section className="verdict">
@@ -105,8 +62,7 @@ export default function RunHistory({ networkName }: { networkName: string | null
               Ledgerline has no account and no server that remembers you.
             </p>
           </section>
-          {error && <Alert style={{ marginTop: 18 }} type="warning" showIcon title={error} />}
-          <Button type="primary" style={{ marginTop: 24 }} onClick={onConnect}>
+          <Button type="primary" style={{ marginTop: 24 }} onClick={connect}>
             Connect a wallet
           </Button>
         </>
@@ -155,12 +111,6 @@ export default function RunHistory({ networkName }: { networkName: string | null
           </div>
         </>
       )}
-
-      <WalletPicker
-        choices={choices} open={picking}
-        onPick={(c) => void connectTo(c)}
-        onCancel={() => setPicking(false)}
-      />
 
       <footer className="footer">
         <Link href="/new">Create a payout run</Link>
