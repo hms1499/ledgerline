@@ -15,7 +15,7 @@ import { withNet } from "@/lib/nav";
 
 const RECENT = 5;
 
-interface Loaded { reads: RunRead[]; meta: Record<string, TokenMeta> }
+interface Loaded { records: RunRecord[]; reads: RunRead[]; meta: Record<string, TokenMeta> }
 
 export default function Dashboard() {
   const { net, wallet, connect } = useWallet();
@@ -29,12 +29,15 @@ export default function Dashboard() {
   );
   const tokens = useMemo(() => Object.values(tokensForChain(net.chain.id)) as Address[], [net.chain.id]);
 
-  // Reads restart when the wallet, network or history changes; a read that
-  // lands after that is dropped, so one wallet's totals never show under another.
+  // Reads restart when the wallet, network or history changes. A result is
+  // tagged with the `records` it was read for; render below only trusts a
+  // result whose tag is === this render's `records`, so a settled result
+  // from a superseded wallet or network is never painted, not even for one
+  // frame (a route/search-param change is a transition, and effects after a
+  // transition flush after paint — clearing state here would be too late).
   useEffect(() => {
     if (records.length === 0) { setLoaded(undefined); return; }
     let cancelled = false;
-    setLoaded(undefined);
     void (async () => {
       const [reads, meta] = await Promise.all([
         readRuns(records, net),
@@ -44,7 +47,7 @@ export default function Dashboard() {
           ) as Record<string, TokenMeta>)
           .catch(() => ({} as Record<string, TokenMeta>)),
       ]);
-      if (!cancelled) setLoaded({ reads, meta });
+      if (!cancelled) setLoaded({ records, reads, meta });
     })();
     return () => { cancelled = true; };
   }, [records, net, attempt]);
@@ -87,17 +90,21 @@ export default function Dashboard() {
     );
   }
 
-  const byHash = new Map((loaded?.reads ?? []).map((r) => [r.txHash.toLowerCase(), r]));
-  const summaries: RunSummary[] = (loaded?.reads ?? []).flatMap((r) =>
+  // Only a result read for this render's own `records` is trusted — one read
+  // for a different wallet or network is never painted, even for one frame.
+  const current = loaded && loaded.records === records ? loaded : undefined;
+
+  const byHash = new Map((current?.reads ?? []).map((r) => [r.txHash.toLowerCase(), r]));
+  const summaries: RunSummary[] = (current?.reads ?? []).flatMap((r) =>
     r.state === "read" || r.state === "attention" ? [r.summary] : []);
   const totals = paidByToken(summaries, tokens);
-  const coverage = loaded ? coverageView(describeCoverage(loaded.reads), net.name) : undefined;
-  const meta = loaded?.meta ?? {};
+  const coverage = current ? coverageView(describeCoverage(current.reads), net.name) : undefined;
+  const meta = current?.meta ?? {};
   const recent = records.slice(0, RECENT);
   const runHref = (r: RunRecord) =>
     `/run/${r.txHash}?n=${net.name}&label=${encodeURIComponent(r.runLabel)}`;
   const attentionHref = () => {
-    const hashes = loaded ? describeCoverage(loaded.reads).attention : [];
+    const hashes = current ? describeCoverage(current.reads).attention : [];
     const one = hashes.length === 1 ? records.find((r) => r.txHash.toLowerCase() === hashes[0]!.toLowerCase()) : undefined;
     return one ? runHref(one) : withNet("/runs", search);
   };
@@ -133,10 +140,10 @@ export default function Dashboard() {
         return (
           <Col key={t.token} span={4} md={12} as="section" className="stat-tile">
             <p className="stat-label">{m.symbol || t.token.slice(0, 10)}</p>
-            {!loaded
+            {!current
               ? <Skeleton.Input active />
               : <p className="stat-value">{coverage?.tilesBlank ? "—" : amountText(t.value, t.token, m)}</p>}
-            {loaded && !coverage?.tilesBlank && (
+            {current && !coverage?.tilesBlank && (
               <p className="stat-sub">
                 {t.payments} payment{t.payments === 1 ? "" : "s"} · {t.runs} run{t.runs === 1 ? "" : "s"}
               </p>
