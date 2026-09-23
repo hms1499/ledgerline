@@ -6,11 +6,7 @@ import { parseCsv, resolveRows, validateRun, tokensForChain } from "@ledgerline/
 import type { NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
 import { readTokenMeta, type RunDraft } from "./CreateRun";
-
-const SAMPLE = `invoiceId,token,to,amount
-INV-US-001,USDC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10
-INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10
-INV-BTC-003,cirBTC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.00001`;
+import { SAMPLE_CSV, sampleCsvHref } from "@/lib/sample-csv";
 
 export default function StepUpload({
   net, onReady,
@@ -93,11 +89,13 @@ export default function StepUpload({
 
       <details style={{ marginTop: 26 }}>
         <summary style={{ cursor: "pointer" }}>What the file must look like</summary>
-        <pre className="hex" style={{ marginTop: 12, whiteSpace: "pre-wrap" }}>{SAMPLE}</pre>
+        <pre className="hex" style={{ marginTop: 12, whiteSpace: "pre-wrap" }}>{SAMPLE_CSV}</pre>
         <p className="because">
           Header required and spelled exactly as above. Amounts are written the way you
           would write them on an invoice; this page converts them using each token&apos;s
-          own decimals, read from the chain.
+          own decimals, read from the chain.{" "}
+          <a href={sampleCsvHref()} download="ledgerline-sample.csv">Download this sample</a>{" "}
+          and replace the recipients with your own.
         </p>
       </details>
     </>
