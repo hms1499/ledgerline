@@ -43,6 +43,26 @@ describe("summarizeRun — what one run paid, from its own logs", () => {
     const s = summarizeRun([], MAINNET_PAYER);
     expect(s).toEqual({ paid: new Map(), payments: 0, identityBroken: 0 });
   });
+
+  // M2: a broken payment whose memo sender isn't the payer must still be
+  // flagged (and excluded), not silently dropped by the payer filter.
+  it("flags a broken payment even when the memo sender isn't the payer, as long as the transfer sender is", () => {
+    const MEMO_TOPIC = "0xeb15ee720798341c37739df41be53acfbbf70ae6802dade35457beec6e47a5e4";
+    const usdcTargetTopic = `0x000000000000000000000000${USDC.slice(2).toLowerCase()}`;
+    const fakeSenderTopic = "0x000000000000000000000000deaddeaddeaddeaddeaddeaddeaddeaddeaddead";
+
+    const tampered = testnetLogs.map((l) =>
+      l.topics[0] === MEMO_TOPIC && l.topics[2]?.toLowerCase() === usdcTargetTopic
+        ? { ...l, topics: [l.topics[0]!, fakeSenderTopic, l.topics[2]!, l.topics[3]!] as typeof l.topics }
+        : l,
+    );
+
+    const s = summarizeRun(tampered, TESTNET_PAYER);
+    expect(s.identityBroken).toBe(1);
+    expect(s.paid.get(USDC)).toBeUndefined();
+    expect(s.paid.get(EURC_T)).toEqual({ value: 100_000n, payments: 1 });
+    expect(s.payments).toBe(1);
+  });
 });
 
 describe("paidByToken — the tiles", () => {

@@ -55,6 +55,7 @@ export function joinPayments(logs: RawLog[]): {
       memoData: memo.memoData,
       memoIndex: memo.memoIndex,
       identityBroken: memo.sender.toLowerCase() !== match.from.toLowerCase(),
+      transferFrom: match.from,
     });
   }
 

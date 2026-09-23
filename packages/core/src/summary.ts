@@ -29,7 +29,12 @@ export function summarizeRun(logs: RawLog[], payer: Address): RunSummary {
   let identityBroken = 0;
 
   for (const p of joinPayments(logs).payments) {
-    if (p.payer.toLowerCase() !== who) continue;
+    // A payment is this payer's if either side says so: the memo sender
+    // (payer) or the account that actually moved the funds (transferFrom).
+    // Deciding broken-ness before this filter is what lets a payment with a
+    // spoofed memo sender still get flagged instead of silently dropped.
+    const mine = p.payer.toLowerCase() === who || p.transferFrom.toLowerCase() === who;
+    if (!mine) continue;
     if (p.identityBroken) { identityBroken++; continue; }
     const token = getAddress(p.token);
     const prev = paid.get(token) ?? { value: 0n, payments: 0 };

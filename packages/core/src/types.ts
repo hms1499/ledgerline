@@ -40,6 +40,9 @@ export interface PaymentRecord {
   memoIndex: bigint;
   /** True when memo.sender !== transfer.from — an integrity violation. */
   identityBroken: boolean;
+  /** The Transfer's `from` — the account that actually moved the funds, which
+   *  may differ from `payer` (memo.sender) when `identityBroken` is true. */
+  transferFrom: Address;
 }
 
 export interface ManifestItem {
