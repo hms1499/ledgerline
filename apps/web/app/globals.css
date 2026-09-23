@@ -314,6 +314,19 @@ a { color: var(--link); }
 .app-main { padding: 24px; }
 .wallet-wrong-chain { border-color: var(--warning); color: var(--warning); }
 
+/* antd's default Button switches text to colorPrimaryHover on hover and
+   keeps it while a Dropdown trigger stays open (both are :hover, since the
+   pointer never leaves) — a light-theme tint under 4.5:1 on --surface, caught
+   by axe. antd's own hover/active selectors carry more classes than a plain
+   override beats, the same reason the focus ring above needs !important.
+   The address is the one thing this chip exists to show, in every state a
+   pointer or keyboard can put it in. */
+.wallet-chip,
+.wallet-chip:hover,
+.wallet-chip:focus,
+.wallet-chip:focus-visible,
+.wallet-chip:active { color: var(--text) !important; }
+
 .network-badge { padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; border: 1px solid var(--control); color: var(--text-soft); white-space: nowrap; }
 .network-badge.is-test { background: var(--warning-bg); color: var(--warning); border-color: var(--warning); }
 
