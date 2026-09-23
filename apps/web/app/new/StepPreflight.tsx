@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Alert, Button, Skeleton } from "antd";
 import { createPublicClient, http } from "viem";
 import {
@@ -92,21 +92,22 @@ export default function StepPreflight({
     }
   }, [draft, net, wallet]);
 
-  useEffect(() => { void prepare(); }, [prepare]);
-
   const allOk = phase === "ready";
 
   return (
     <>
       <section className={`verdict ${allOk ? "ok" : phase === "failed" ? "error" : ""}`}>
         <h1>
-          {phase === "signing" ? "Waiting for your signature"
+          {phase === "idle" ? "Check the run before any money moves"
+            : phase === "signing" ? "Waiting for your signature"
             : phase === "checking" ? "Checking every payment against the chain"
             : allOk ? "Every payment simulates cleanly"
             : "This run would not go through"}
         </h1>
         <p>
-          {phase === "signing"
+          {phase === "idle"
+            ? "Your wallet will ask you to sign a short message. It is free and moves no money — it creates this run's reference code, which ties each payment to its invoice. Then every payment is tried against the live chain, so problems show up here instead of after you pay."
+            : phase === "signing"
             ? "Your wallet is asking you to sign a short message. This is not the payment — it derives this run's reference salt, and it costs nothing."
             : "Each payment is simulated against live chain state before anything is signed. This is also the only way to see Arc's runtime blocklist, which has no pre-check."}
         </p>
@@ -166,6 +167,14 @@ export default function StepPreflight({
 
       <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Button onClick={onBack}>Back to the preview</Button>
+        {/* Started by this click, never by an effect: the first thing it does
+            is open the wallet, and a prompt nobody asked for is how people
+            learn to approve without reading — the send step's rule too. */}
+        {phase === "idle" && (
+          <Button type="primary" onClick={() => void prepare()}>
+            Sign and check the run
+          </Button>
+        )}
         {phase === "failed" && <Button onClick={() => void prepare()}>Try again</Button>}
         {allOk && prepared && (
           <Button type="primary" onClick={() => onReady(prepared)}>
