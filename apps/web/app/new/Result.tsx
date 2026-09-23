@@ -6,6 +6,18 @@ import type { RunOutcome } from "@ledgerline/core";
 import { formatAmount, receiptUrl, short, type NetworkView } from "@/lib/chain";
 import type { PreparedRun } from "./StepPreflight";
 import type { RunDraft } from "./CreateRun";
+import { fileSlug, receiptLinksCsv, receiptLinksText, type ReceiptLinkRow } from "@/lib/receipt-export";
+
+/** Hand the payer a file. The object URL is revoked a tick later, not
+ *  straight after click(): some browsers start the download asynchronously
+ *  and a URL revoked first saves nothing. */
+function saveFile(name: string, text: string, type: string) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 0);
+}
 
 interface LinkRow {
   key: string;
@@ -23,6 +35,8 @@ export default function Result({
   prepared: PreparedRun; draft: RunDraft; net: NetworkView;
 }) {
   const [copied, setCopied] = useState<string>();
+  const [copiedAll, setCopiedAll] = useState(false);
+
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const rows: LinkRow[] = prepared.manifest.items.map((item, i) => ({
@@ -37,8 +51,18 @@ export default function Result({
     }),
   }));
 
+  const slug = fileSlug(draft.runLabel);
+
+  const exportRows: ReceiptLinkRow[] = rows.map((r) => ({
+    invoiceId: r.invoiceId,
+    recipient: r.to,
+    amount: formatAmount(r.amount, draft.decimals[r.token.toLowerCase()] ?? 6),
+    symbol: draft.symbols[r.token.toLowerCase()] ?? r.token,
+    url: r.url,
+  }));
+
   const downloadManifest = () => {
-    const blob = new Blob([JSON.stringify({
+    saveFile(`ledgerline-${slug}.json`, JSON.stringify({
       ...prepared.manifest,
       items: prepared.manifest.items.map((i) => ({ ...i, amount: i.amount.toString() })),
       runLabel: draft.runLabel,
@@ -48,12 +72,7 @@ export default function Result({
       memoIds: prepared.built.memoIds,
       proofs: prepared.built.proofs,
       runLabelNormalisation: "trimmed, inner whitespace collapsed to single spaces, case preserved",
-    }, null, 2)], { type: "application/json" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = `ledgerline-${draft.runLabel.replace(/\s+/g, "-")}.json`;
-    a.click();
-    URL.revokeObjectURL(a.href);
+    }, null, 2), "application/json");
   };
 
   const columns: TableColumnsType<LinkRow> = [
@@ -106,7 +125,19 @@ export default function Result({
           title="The fee was below the floor" description={outcome.feeWarning} />
       )}
 
-      <div style={{ marginTop: 24 }}>
+      <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
+        <Button onClick={() => {
+          void navigator.clipboard.writeText(receiptLinksText(exportRows));
+          setCopiedAll(true);
+        }}>
+          {copiedAll ? `Copied ${rows.length} links` : "Copy all links"}
+        </Button>
+        <Button onClick={() => saveFile(`ledgerline-${slug}-receipts.csv`, receiptLinksCsv(exportRows), "text/csv")}>
+          Download links as CSV
+        </Button>
+      </div>
+
+      <div style={{ marginTop: 14 }}>
         <Table<LinkRow> columns={columns} dataSource={rows}
           pagination={rows.length > 25 ? { pageSize: 25 } : false} size="middle" />
       </div>
