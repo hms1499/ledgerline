@@ -6,7 +6,8 @@ import { createPublicClient, http, type Address } from "viem";
 import { fundingFor, tokensForChain, totalsByToken, type ResolvedRow } from "@ledgerline/core";
 import { formatAmount, short, type NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
-import type { ConnectError, RunDraft } from "./CreateRun";
+import type { RunDraft } from "./CreateRun";
+import type { ConnectError } from "@/lib/connect-error";
 import { fundingView } from "@/lib/funding-view";
 
 const balanceOfAbi = [
