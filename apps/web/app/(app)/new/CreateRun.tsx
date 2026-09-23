@@ -71,7 +71,7 @@ export default function CreateRun() {
   }, [wallet, outcome, held]);
 
   return (
-    <main className="sheet sheet--wide">
+    <div className="sheet sheet--wide">
       <Steps className="hide-sm" style={{ marginTop: 28 }} current={step} items={STEP_TITLES.map((title) => ({ title }))} />
       <p className="only-sm step-line">Step {step + 1} of {STEP_TITLES.length} · {STEP_TITLES[step]}</p>
 
@@ -128,6 +128,6 @@ export default function CreateRun() {
           <Result outcome={outcome} prepared={prepared} draft={draft} net={net} />
         )}
       </div>
-    </main>
+    </div>
   );
 }

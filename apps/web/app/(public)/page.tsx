@@ -7,7 +7,7 @@ export default function Home() {
   const testnet = net.name === "testnet";
 
   return (
-    <main className="sheet">
+    <div className="sheet">
       <div className="masthead">
         <strong>Ledgerline</strong>
         <span className={testnet ? "network network--test" : "network"}>Arc {net.name}</span>
@@ -96,6 +96,6 @@ export default function Home() {
           <code>npx arc-reconcile</code>.
         </span>
       </footer>
-    </main>
+    </div>
   );
 }

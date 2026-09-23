@@ -82,7 +82,7 @@ export default function Reconciliation({
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <main className="sheet sheet--wide">
+    <div className="sheet sheet--wide">
       <div className="masthead">
         <strong>Payout run</strong>
         <span>
@@ -136,7 +136,7 @@ export default function Reconciliation({
           }}>change</button>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }
 

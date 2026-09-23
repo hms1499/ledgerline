@@ -79,7 +79,7 @@ export default function Receipt(props: Props) {
   }, [run, rpc]);
 
   return (
-    <main className="sheet">
+    <div className="sheet">
       <div className="masthead">
         <strong>Payment advice</strong>
         <span>
@@ -134,7 +134,7 @@ export default function Receipt(props: Props) {
           Ledgerline&apos;s word for it.
         </p>
       </footer>
-    </main>
+    </div>
   );
 }
 

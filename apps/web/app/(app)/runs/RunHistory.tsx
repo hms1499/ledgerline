@@ -52,7 +52,7 @@ export default function RunHistory() {
   ];
 
   return (
-    <main className="sheet sheet--wide">
+    <div className="sheet sheet--wide">
       {!wallet ? (
         <>
           <section className="verdict">
@@ -115,6 +115,6 @@ export default function RunHistory() {
       <footer className="footer">
         <Link href="/new">Create a payout run</Link>
       </footer>
-    </main>
+    </div>
   );
 }

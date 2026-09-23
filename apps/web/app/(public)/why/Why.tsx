@@ -82,7 +82,7 @@ export default function Why({
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <main className="sheet sheet--wide">
+    <div className="sheet sheet--wide">
       <div className="masthead">
         <strong>Why this differs</strong>
         <span>
@@ -141,7 +141,7 @@ export default function Why({
           }}>change</button>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }
 
