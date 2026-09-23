@@ -9,7 +9,7 @@ import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
 import { fundingView } from "@/lib/funding-view";
-import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
+import { amountFigure, metaFor } from "@/lib/token-meta";
 
 const balanceOfAbi = [
   { type: "function", name: "balanceOf", stateMutability: "view",
@@ -93,31 +93,8 @@ export default function StepPreview({
     },
   ];
 
-  const totals = new Map<string, bigint>();
-  for (const r of draft.rows) {
-    const k = r.token.toLowerCase();
-    totals.set(k, (totals.get(k) ?? 0n) + r.amount);
-  }
-
   return (
     <>
-      <section className="line line--summary">
-        <div>
-          <p className="amount">
-            {draft.rows.length}
-            <span className="unit">{draft.rows.length === 1 ? "payment" : "payments"}</span>
-          </p>
-          <ul className="totals">
-            {[...totals.entries()].map(([t, v]) => (
-              <li key={t}>
-                <span className="hex">{amountText(v, t, metaFor(t, draft.decimals, draft.symbols))}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-        <span className={`reference${blocking ? " is-void" : ""}`}>{draft.runLabel}</span>
-      </section>
-
       {draft.issues.map((i) => (
         <Alert key={`i-${i.line}-${i.message}`} style={{ marginTop: 14 }} type="error" showIcon
           title={`Line ${i.line}`} description={i.message} />

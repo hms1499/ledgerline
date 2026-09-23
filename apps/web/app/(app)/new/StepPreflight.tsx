@@ -4,7 +4,7 @@ import { useCallback, useState } from "react";
 import { Alert, Button, Skeleton } from "antd";
 import { createPublicClient, http } from "viem";
 import {
-  saltMessageFor, saltFromSignature, clientRunIdFor, buildRun, runIdFor,
+  saltMessageFor, saltFromSignature, clientRunIdFor, buildRun,
   buildPreflightData, decodePreflightResult, explainRevert,
   type Manifest, type BuiltRun,
 } from "@ledgerline/core";
@@ -97,13 +97,13 @@ export default function StepPreflight({
   return (
     <>
       <section className={`verdict ${allOk ? "ok" : phase === "failed" ? "error" : ""}`}>
-        <h1>
+        <h2>
           {phase === "idle" ? "Check the run before any money moves"
             : phase === "signing" ? "Waiting for your signature"
             : phase === "checking" ? "Checking every payment against the chain"
             : allOk ? "Every payment would go through"
             : "This run would not go through"}
-        </h1>
+        </h2>
         <p>
           {phase === "idle"
             ? "Your wallet will ask you to sign a short message. It is free and moves no money — it creates this run's reference code, which ties each payment to its invoice. Then every payment is tried against the live chain, so problems show up here instead of after you pay."
@@ -157,8 +157,6 @@ export default function StepPreflight({
 
       {prepared && (
         <dl className="detail" style={{ marginTop: 26 }}>
-          <dt>Run ID</dt>
-          <dd className="hex">{runIdFor(prepared.manifest.payer, prepared.manifest.clientRunId)}</dd>
           <dt>List fingerprint</dt>
           <dd className="hex">{prepared.built.root}</dd>
         </dl>

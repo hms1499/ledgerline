@@ -90,7 +90,7 @@ export default function StepSend({
     return (
       <>
         <section className="verdict degraded">
-          <h1>The run stopped in an unknown state</h1>
+          <h2>The run stopped in an unknown state</h2>
           <p>
             Something failed that this screen cannot classify, and it is not safe to tell
             you either that money moved or that it did not. Check{" "}
@@ -110,7 +110,7 @@ export default function StepSend({
     return (
       <>
         <section className="verdict">
-          <h1>Ready to send</h1>
+          <h2>Ready to send</h2>
           <p>
             One transaction pays every line and records the list on chain. Your wallet will
             ask about fees — <strong>do not lower them below 25 Gwei</strong>. Arc discards
@@ -203,7 +203,7 @@ function OutcomeView({
   return (
     <>
       <section className={`verdict ${c.tone}`}>
-        <h1>{c.title}</h1>
+        <h2>{c.title}</h2>
         <p>{c.body}</p>
       </section>
 

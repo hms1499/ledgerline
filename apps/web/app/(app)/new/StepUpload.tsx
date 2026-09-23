@@ -7,7 +7,6 @@ import type { NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
 import type { RunDraft } from "./CreateRun";
 import { readTokenMeta } from "@/lib/token-meta";
-import { SAMPLE_CSV, sampleCsvHref } from "@/lib/sample-csv";
 
 export default function StepUpload({
   net, onReady,
@@ -43,7 +42,7 @@ export default function StepUpload({
   return (
     <>
       <section className="verdict">
-        <h1>A run starts with a file and a name</h1>
+        <h2>A run starts with a file and a name</h2>
         <p>
           The name is what lets the same payroll run again next month. Paying the same
           list twice under the same name is refused on chain, so a double-click or a retry
@@ -89,18 +88,6 @@ export default function StepUpload({
       </div>
 
       {error && <Alert style={{ marginTop: 18 }} type="error" showIcon title={error} />}
-
-      <details style={{ marginTop: 26 }}>
-        <summary style={{ cursor: "pointer" }}>What the file must look like</summary>
-        <pre className="hex" style={{ marginTop: 12, whiteSpace: "pre-wrap" }}>{SAMPLE_CSV}</pre>
-        <p className="because">
-          Header required and spelled exactly as above. Amounts are written the way you
-          would write them on an invoice; this page converts them using each token&apos;s
-          own decimals, read from the chain.{" "}
-          <a href={sampleCsvHref()} download="ledgerline-sample.csv">Download this sample</a>{" "}
-          and replace the recipients with your own.
-        </p>
-      </details>
     </>
   );
 }

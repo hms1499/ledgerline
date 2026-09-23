@@ -133,7 +133,7 @@ export default function Result({
       </section>
 
       <section className="verdict ok">
-        <h1>Paid, with a receipt</h1>
+        <h2>Paid, with a receipt</h2>
         <p>
           Each link below verifies against the chain on its own. Send each recipient
           theirs — they need nothing from us to check it.

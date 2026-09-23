@@ -367,6 +367,10 @@ a { color: var(--link); }
 .panel > .line:first-child { padding-top: 0.6rem; }
 /* A lone block fills its column, so panels in one row share a height. */
 .col > .panel:only-child, .col > .stat-tile:only-child { height: 100%; }
+
+/* The side summary is 4 columns wide: long names and run IDs wrap inside it. */
+dl.detail.run-summary { grid-template-columns: minmax(6rem, auto) 1fr; }
+dl.detail.run-summary dd { overflow-wrap: anywhere; }
 .grid.is-dense { grid-auto-flow: row dense; }
 
 /* md: sidebar collapses to icons; labels as tooltips, visible on keyboard focus */

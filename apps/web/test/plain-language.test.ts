@@ -9,6 +9,7 @@ import { runStatsView } from "@/lib/run-view";
 import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
+import { runSummaryView } from "@/lib/run-summary-view";
 import fixture from "../../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
 
 /**
@@ -106,5 +107,11 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
         })) { clean(s.label); clean(s.value); s.sub.forEach(clean); }
       }
     }
+  });
+
+  it("the create flow's run summary", () => {
+    const v = runSummaryView("Payroll", { items: [], runId: "0x1" }, [], {}, {});
+    clean(v.name); clean(v.payments); v.toPay.forEach(clean);
+    for (const label of ["This run", "Name", "Payments", "To pay", "Network", "Paying wallet", "Run ID", "Not connected"]) clean(label);
   });
 });
