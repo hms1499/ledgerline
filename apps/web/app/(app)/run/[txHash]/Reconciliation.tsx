@@ -15,8 +15,12 @@ import { connect, knownWallets, watchWalletList, type WalletChoice } from "@/lib
 import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
 import { SEVERITY, statusView } from "@/lib/reconcile-view";
-import { amountFigure, amountText } from "@/lib/token-meta";
-import { tokensToRead } from "@/lib/run-view";
+import { amountFigure, amountText, type TokenMeta } from "@/lib/token-meta";
+import { tokensToRead, runStatsView, STAT_LABELS } from "@/lib/run-view";
+import { Grid, Col } from "@/components/grid/Grid";
+import Panel from "@/components/ui/Panel";
+import StatTile from "@/components/ui/StatTile";
+import Verdict from "@/components/ui/Verdict";
 
 const anchorAbi = [
   { type: "function", name: "runs", stateMutability: "view",
@@ -33,8 +37,6 @@ const erc20Abi = [
 ] as const;
 
 type Phase = "loading" | "ready" | "tx_not_found" | "run_reverted" | "rpc_unreachable";
-
-interface TokenMeta { decimals: number; symbol: string }
 
 interface Loaded {
   result: ReconcileResult;
@@ -83,42 +85,40 @@ export default function Reconciliation({
 
   useEffect(() => { void load(); }, [load]);
 
+  const failed = (tone: string, title: string, body: string, extra?: React.ReactNode) => (
+    <Col span={12}>
+      <Panel>
+        <Verdict tone={tone} title={title} body={body} />
+        {extra}
+      </Panel>
+    </Col>
+  );
+
   return (
-    <div className="sheet sheet--wide">
-      <div className="masthead">
-        <strong>Payout run</strong>
-        <span>
-          Arc {net.name}
-          {data ? ` at block ${data.blockNumber.toLocaleString("en-US")}` : ""}
-        </span>
-      </div>
-
-      {phase === "loading" && <Skeleton active paragraph={{ rows: 8 }} style={{ marginTop: 32 }} />}
-
-      {phase === "tx_not_found" && (
-        <Headline tone="error" title="No such transaction on Arc"
-          body={`Nothing on Arc ${net.name} matches this hash. If the run was sent on a different network, switch with ?n=mainnet.`} />
-      )}
-
-      {phase === "run_reverted" && (
+    <Grid>
+      {phase === "loading" && (
         <>
-          <Headline tone="error" title="This payout run did not execute"
-            body="The transaction reverted. No money moved, nothing was paid, and nothing was recorded. The run is safe to send again." />
-          <p style={{ marginTop: "1.5rem" }}>
-            <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">
-              Inspect the failed transaction
-            </a>
-          </p>
+          {STAT_LABELS.map((label) => (
+            <Col key={label} span={3} md={6}>
+              <StatTile label={label} value={<Skeleton.Input active size="small" />} />
+            </Col>
+          ))}
+          <Col span={12}><Panel><Skeleton active paragraph={{ rows: 8 }} /></Panel></Col>
         </>
       )}
 
-      {phase === "rpc_unreachable" && (
-        <>
-          <Headline tone="degraded" title="Could not reach Arc"
-            body="This says nothing about the run — only that the checks could not run. Try another endpoint below." />
-          {error && <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} />}
-        </>
-      )}
+      {phase === "tx_not_found" && failed("error", "No such transaction on Arc",
+        `Nothing on Arc ${net.name} matches this hash. If the run was sent on a different network, switch with ?n=mainnet.`)}
+
+      {phase === "run_reverted" && failed("error", "This payout run did not execute",
+        "The transaction reverted. No money moved, nothing was paid, and nothing was recorded. The run is safe to send again.",
+        <p style={{ marginTop: "1.2rem", marginBottom: 0 }}>
+          <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">Inspect the failed transaction</a>
+        </p>)}
+
+      {phase === "rpc_unreachable" && failed("degraded", "Could not reach Arc",
+        "This says nothing about the run — only that the checks could not run. Try another endpoint below.",
+        error ? <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} /> : undefined)}
 
       {phase === "ready" && data && (
         <Ready
@@ -129,25 +129,18 @@ export default function Reconciliation({
         />
       )}
 
-      <footer className="footer">
-        <div>
-          Checked against <span className="endpoint">{rpc}</span>{" "}
-          <button className="linkish" onClick={() => {
-            const next = window.prompt("Arc RPC endpoint to verify against", rpc);
-            if (next) setRpc(next.trim());
-          }}>change</button>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function Headline({ tone, title, body }: { tone: string; title: string; body: string }) {
-  return (
-    <section className={`verdict ${tone}`}>
-      <h1>{title}</h1>
-      <p>{body}</p>
-    </section>
+      <Col span={12}>
+        <footer className="footer">
+          <div>
+            Checked against <span className="endpoint">{rpc}</span>{" "}
+            <button className="linkish" onClick={() => {
+              const next = window.prompt("Arc RPC endpoint to verify against", rpc);
+              if (next) setRpc(next.trim());
+            }}>change</button>
+          </div>
+        </footer>
+      </Col>
+    </Grid>
   );
 }
 
@@ -190,12 +183,10 @@ function Ready({
     return receiptUrl({ txHash, invoiceId: r.invoiceId, runSalt, proof, network: net.name });
   };
 
-  // Without a manifest every payment is `unexpected` by definition — there is
-  // no intent to compare against. Counting those as things to review would
-  // contradict the completeness verdict directly above them.
-  const problems = result.rows.filter(
-    (r) => r.status !== "matched" && !(r.status === "unexpected" && !hasManifest),
-  ).length;
+  const stats = runStatsView({
+    payments: result.payments, rows: result.rows, completeness,
+    hasManifest, blockNumber: data.blockNumber, meta: tokens,
+  });
 
   const columns: TableColumnsType<ReconcileRow> = [
     {
@@ -232,7 +223,7 @@ function Ready({
           // has to carry the disagreement itself, not hide it behind an expand.
           return (
             <span className="hex" style={{ display: "block", lineHeight: 1.5 }}>
-              <span style={{ color: "var(--flag)" }}>{short(to)}</span>
+              <span style={{ color: "var(--danger)" }}>{short(to)}</span>
               <br />
               <span style={{ color: "var(--text-soft)", fontSize: "0.85em" }}>owed {short(r.expectedTo)}</span>
             </span>
@@ -264,164 +255,142 @@ function Ready({
 
   return (
     <>
-      <section className="line line--summary">
-        <div>
-          <p className="amount">
-            {result.payments.length}
-            <span className="unit">{result.payments.length === 1 ? "payment" : "payments"}</span>
-          </p>
-          <ul className="totals">
-            {[...perToken.entries()].map(([t, total]) => {
-              const m = tokens.get(t);
-              return (
-                <li key={t}>
-                  <span className="hex">{amountText(total, t, m ?? {})}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-        <span className={`reference${problems ? " is-void" : ""}`}>
-          {problems
-            ? `${problems} to review`
-            : hasManifest
-              ? "all matched"
-              : "read from chain"}
-        </span>
-      </section>
+      {stats.map((s) => (
+        <Col key={s.key} span={3} md={6}>
+          <StatTile
+            label={s.label} tone={s.tone} value={s.value}
+            sub={s.key === "recorded"
+              ? <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">View on explorer</a>
+              : s.sub.length ? s.sub.map((line) => <span key={line} className="stat-line">{line}</span>) : undefined}
+          />
+        </Col>
+      ))}
 
-      <section className="verdict" style={{ paddingBottom: 0 }}>
-        <h1 style={{ color: completeness.verdict === "complete" ? "var(--tick)"
-          : completeness.verdict === "unknown" ? "var(--pending)" : "var(--flag)" }}>
-          {completeness.verdict === "complete" ? "Complete run"
-            : completeness.verdict === "incomplete" ? `${completeness.missing} missing`
-            : completeness.verdict === "over" ? `${completeness.surplus} not on the list`
-            : "Completeness unknown"}
-        </h1>
-        <p>{completeness.note}</p>
-      </section>
+      <Col span={12}><p className="coverage-line">{completeness.note}</p></Col>
 
       {!hasManifest && (
-        <Alert
-          style={{ marginTop: 22 }}
-          type="info"
-          title="Reading without the run file"
-          description={
-            <>
-              Every payment below is read from the chain. Without the payer&apos;s run file
-              there is no record of what each invoice was owed, so amounts can only be checked
-              against the list the payer recorded on chain.{" "}
-              <Upload
-                accept=".json"
-                showUploadList={false}
-                beforeUpload={(file) => {
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    try {
-                      const raw = JSON.parse(String(reader.result));
-                      onManifest(
-                        { ...raw, items: raw.items.map((i: { amount: string }) => ({ ...i, amount: BigInt(i.amount) })) },
-                        file.name,
-                      );
-                    } catch { /* a malformed file must not blank the page */ }
-                  };
-                  reader.readAsText(file);
-                  return false;
-                }}
-              >
-                <button className="linkish">Load the run file</button>
-              </Upload>{" "}
-              to compare what was owed with what was paid. It is read in your browser and never uploaded.
-            </>
-          }
-        />
+        <Col span={12}>
+          <Alert
+            type="info"
+            title="Reading without the run file"
+            description={
+              <>
+                Every payment below is read from the chain. Without the payer&apos;s run file
+                there is no record of what each invoice was owed, so amounts can only be checked
+                against the list the payer recorded on chain.{" "}
+                <Upload
+                  accept=".json"
+                  showUploadList={false}
+                  beforeUpload={(file) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      try {
+                        const raw = JSON.parse(String(reader.result));
+                        onManifest(
+                          { ...raw, items: raw.items.map((i: { amount: string }) => ({ ...i, amount: BigInt(i.amount) })) },
+                          file.name,
+                        );
+                      } catch { /* a malformed file must not blank the page */ }
+                    };
+                    reader.readAsText(file);
+                    return false;
+                  }}
+                >
+                  <button className="linkish">Load the run file</button>
+                </Upload>{" "}
+                to compare what was owed with what was paid. It is read in your browser and never uploaded.
+              </>
+            }
+          />
+        </Col>
       )}
 
       {hasManifest && data.manifestCheck && (
-        <Alert
-          style={{ marginTop: 22 }}
-          type={data.manifestCheck.matches === true ? "success"
-            : data.manifestCheck.matches === false ? "error" : "warning"}
-          showIcon
-          title={
-            data.manifestCheck.matches === true ? "This run file matches the recorded list"
-              : data.manifestCheck.matches === false ? "This run file does not match the recorded list"
-              : "This run file could not be checked"
-          }
-          description={
-            <>
-              {data.manifestCheck.note}
-              {manifestName && <> Read from <strong>{manifestName}</strong> in your browser, never uploaded.</>}
-              {data.manifestCheck.matches === false && data.manifestCheck.computedRoot && (
-                <dl className="detail" style={{ marginTop: 10 }}>
-                  <dt>Recorded on chain</dt>
-                  <dd className="hex">{data.manifestCheck.anchoredRoot}</dd>
-                  <dt>This file&apos;s fingerprint</dt>
-                  <dd className="hex">{data.manifestCheck.computedRoot}</dd>
-                </dl>
-              )}
-            </>
-          }
-        />
+        <Col span={12}>
+          <Alert
+            type={data.manifestCheck.matches === true ? "success"
+              : data.manifestCheck.matches === false ? "error" : "warning"}
+            showIcon
+            title={
+              data.manifestCheck.matches === true ? "This run file matches the recorded list"
+                : data.manifestCheck.matches === false ? "This run file does not match the recorded list"
+                : "This run file could not be checked"
+            }
+            description={
+              <>
+                {data.manifestCheck.note}
+                {manifestName && <> Read from <strong>{manifestName}</strong> in your browser, never uploaded.</>}
+                {data.manifestCheck.matches === false && data.manifestCheck.computedRoot && (
+                  <dl className="detail" style={{ marginTop: 10 }}>
+                    <dt>Recorded on chain</dt>
+                    <dd className="hex">{data.manifestCheck.anchoredRoot}</dd>
+                    <dt>This file&apos;s fingerprint</dt>
+                    <dd className="hex">{data.manifestCheck.computedRoot}</dd>
+                  </dl>
+                )}
+              </>
+            }
+          />
+        </Col>
       )}
 
-      <div style={{ marginTop: 26 }}>
-        <Table<ReconcileRow>
-          columns={columns}
-          dataSource={result.rows.map((r, i) => ({ ...r, key: `${r.memoId}-${i}` }))}
-          pagination={result.rows.length > 25 ? { pageSize: 25 } : false}
-          size="middle"
-          scroll={{ x: "max-content" }}
-          expandable={{
-            columnTitle: <span className="sr-only">Details</span>,
-            rowExpandable: (r) => r.status !== "matched",
-            expandedRowRender: (r) => (
-              <RowDetail row={r} net={net} tokens={tokens} receipt={receiptFor(r)}
-                note={statusView(r.status, hasManifest).note ?? r.note} />
-            ),
-          }}
-          summary={() => (
-            <Table.Summary fixed>
-              <Table.Summary.Row>
-                <Table.Summary.Cell index={0} colSpan={2}>
-                  <strong>{result.rows.length} rows</strong>
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={2} colSpan={2}>
-                  {[...counts.entries()].sort((a, b) => SEVERITY[a[0]] - SEVERITY[b[0]])
-                    .map(([s, n]) => `${n} ${statusView(s, hasManifest).label.toLowerCase()}`).join(", ")}
-                </Table.Summary.Cell>
-                <Table.Summary.Cell index={4} align="right" colSpan={3}>
-                  <ul className="totals totals--tight">
-                    {[...perToken.entries()].map(([t, total]) => {
-                      const m = tokens.get(t);
-                      return (
-                        <li key={t}>
-                          <span className="hex">{amountText(total, t, m ?? {})}</span>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </Table.Summary.Cell>
-              </Table.Summary.Row>
-            </Table.Summary>
-          )}
-        />
-      </div>
+      <Col span={12}>
+        <Panel title="Payments in this run">
+          <Table<ReconcileRow>
+            columns={columns}
+            dataSource={result.rows.map((r, i) => ({ ...r, key: `${r.memoId}-${i}` }))}
+            pagination={result.rows.length > 25 ? { pageSize: 25 } : false}
+            size="middle"
+            scroll={{ x: "max-content" }}
+            expandable={{
+              columnTitle: <span className="sr-only">Details</span>,
+              rowExpandable: (r) => r.status !== "matched",
+              expandedRowRender: (r) => (
+                <RowDetail row={r} net={net} tokens={tokens} receipt={receiptFor(r)}
+                  note={statusView(r.status, hasManifest).note ?? r.note} />
+              ),
+            }}
+            summary={() => (
+              <Table.Summary fixed>
+                <Table.Summary.Row>
+                  <Table.Summary.Cell index={0} colSpan={2}>
+                    <strong>{result.rows.length} rows</strong>
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={2} colSpan={2}>
+                    {[...counts.entries()].sort((a, b) => SEVERITY[a[0]] - SEVERITY[b[0]])
+                      .map(([s, n]) => `${n} ${statusView(s, hasManifest).label.toLowerCase()}`).join(", ")}
+                  </Table.Summary.Cell>
+                  <Table.Summary.Cell index={4} align="right" colSpan={3}>
+                    <ul className="totals totals--tight">
+                      {[...perToken.entries()].map(([t, total]) => {
+                        const m = tokens.get(t);
+                        return (
+                          <li key={t}>
+                            <span className="hex">{amountText(total, t, m ?? {})}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </Table.Summary.Cell>
+                </Table.Summary.Row>
+              </Table.Summary>
+            )}
+          />
+        </Panel>
+      </Col>
 
-      <RecoverLinks
-        net={net} txHash={txHash}
-        memoIdsOnChain={new Set(result.payments.map((p) => p.memoId.toLowerCase()))}
-        payments={result.payments}
-        anchoredRoot={data.anchoredRoot}
-        anchorPayer={data.anchorPayer}
-        initialLabel={runLabel ?? ""}
-      />
-
-      <p style={{ marginTop: 20, fontSize: "0.85rem" }}>
-        <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">
-          This run on the explorer
-        </a>
-      </p>
+      <Col span={8} md={12}>
+        <Panel>
+          <RecoverLinks
+            net={net} txHash={txHash}
+            memoIdsOnChain={new Set(result.payments.map((p) => p.memoId.toLowerCase()))}
+            payments={result.payments}
+            anchoredRoot={data.anchoredRoot}
+            anchorPayer={data.anchorPayer}
+            initialLabel={runLabel ?? ""}
+          />
+        </Panel>
+      </Col>
     </>
   );
 }
@@ -434,7 +403,7 @@ function Amount({ row, tokens }: { row: ReconcileRow; tokens: Map<string, TokenM
     return (
       <span className="hex">
         {f(row.actual)}{" "}
-        <span style={{ color: "var(--flag)" }}>
+        <span style={{ color: "var(--danger)" }}>
           ({delta > 0n ? "+" : ""}{f(delta)})
         </span>
         <br />
@@ -463,7 +432,7 @@ function RowDetail({
       {note && (<><dt>What this means</dt><dd>{note}</dd></>)}
       {row.status === "recipient_mismatch" && (
         <>
-          <dt>Paid to</dt><dd className="hex" style={{ color: "var(--flag)" }}>{row.to}</dd>
+          <dt>Paid to</dt><dd className="hex" style={{ color: "var(--danger)" }}>{row.to}</dd>
           <dt>Should have been</dt><dd className="hex">{row.expectedTo}</dd>
         </>
       )}
@@ -669,7 +638,7 @@ function RecoverLinks({
   };
 
   return (
-    <details open={!!initialLabel} style={{ marginTop: 26 }}>
+    <details open={!!initialLabel}>
       <summary style={{ cursor: "pointer" }}>
         Lost the receipt links? Rebuild them by signing again
       </summary>

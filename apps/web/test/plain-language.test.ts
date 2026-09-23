@@ -5,6 +5,7 @@ import {
   type Manifest, type RawLog, type ReconcileStatus, type ReceiptState,
 } from "@ledgerline/core";
 import { statusView } from "@/lib/reconcile-view";
+import { runStatsView } from "@/lib/run-view";
 import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
@@ -94,5 +95,16 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       clean(v.attentionNote);
     }
     for (const s of Object.values(RUN_STATUS)) clean(s.label);
+  });
+
+  it("the run page's tiles", () => {
+    for (const hasManifest of [true, false]) {
+      for (const verdict of ["complete", "incomplete", "over", "unknown"] as const) {
+        for (const s of runStatsView({
+          payments: [], rows: [], hasManifest, blockNumber: 1n, meta: new Map(),
+          completeness: { verdict, found: 0, missing: 1, surplus: 1, note: "" },
+        })) { clean(s.label); clean(s.value); s.sub.forEach(clean); }
+      }
+    }
   });
 });
