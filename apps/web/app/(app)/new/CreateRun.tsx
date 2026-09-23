@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Alert, Steps } from "antd";
-import { createPublicClient, http, type Address } from "viem";
-import { tokensForChain, type ResolvedRow, type CsvIssue, type RowIssue, type RunOutcome } from "@ledgerline/core";
+import type { ResolvedRow, CsvIssue, RowIssue, RunOutcome } from "@ledgerline/core";
 import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
@@ -21,33 +20,6 @@ export interface RunDraft {
   warnings: RowIssue[];
   decimals: Record<string, number>;
   symbols: Record<string, string>;
-}
-
-const erc20Abi = [
-  { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
-  { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
-] as const;
-
-/** Read every token's decimals and symbol from the chain. Nothing downstream
- *  may assume 6 or 8 — that assumption is how a payout ends up off by 10^12. */
-export async function readTokenMeta(
-  rpc: string, chain: Parameters<typeof createPublicClient>[0]["chain"], chainId: number,
-): Promise<{ decimals: Record<string, number>; symbols: Record<string, string> }> {
-  const client = createPublicClient({ chain, transport: http(rpc) });
-  const tokens = tokensForChain(chainId);
-  const decimals: Record<string, number> = {};
-  const symbols: Record<string, string> = {};
-  await Promise.all(
-    Object.values(tokens).map(async (address) => {
-      const [d, s] = await Promise.all([
-        client.readContract({ address: address as Address, abi: erc20Abi, functionName: "decimals" }),
-        client.readContract({ address: address as Address, abi: erc20Abi, functionName: "symbol" }).catch(() => ""),
-      ]);
-      decimals[(address as string).toLowerCase()] = Number(d);
-      symbols[(address as string).toLowerCase()] = s as string;
-    }),
-  );
-  return { decimals, symbols };
 }
 
 const STEP_TITLES = ["Upload", "Review", "Check", "Pay", "Receipts"];

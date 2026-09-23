@@ -5,7 +5,8 @@ import { Alert, Input, Upload } from "antd";
 import { parseCsv, resolveRows, validateRun, tokensForChain } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
-import { readTokenMeta, type RunDraft } from "./CreateRun";
+import type { RunDraft } from "./CreateRun";
+import { readTokenMeta } from "@/lib/token-meta";
 import { SAMPLE_CSV, sampleCsvHref } from "@/lib/sample-csv";
 
 export default function StepUpload({
