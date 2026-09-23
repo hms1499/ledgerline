@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
 import type { RunOutcome } from "@ledgerline/core";
 import { formatAmount, receiptUrl, short, type NetworkView } from "@/lib/chain";
@@ -35,8 +35,18 @@ export default function Result({
   prepared: PreparedRun; draft: RunDraft; net: NetworkView;
 }) {
   const [copied, setCopied] = useState<string>();
+  const [manifestSaved, setManifestSaved] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
 
+  // The manifest is the only record of what each invoice was owed; the chain
+  // holds what was paid. Until it is saved, leaving asks first. Receipt links
+  // are not guarded the same way: they can be rebuilt by signing again.
+  useEffect(() => {
+    if (manifestSaved) return;
+    const hold = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", hold);
+    return () => window.removeEventListener("beforeunload", hold);
+  }, [manifestSaved]);
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const rows: LinkRow[] = prepared.manifest.items.map((item, i) => ({
@@ -73,6 +83,7 @@ export default function Result({
       proofs: prepared.built.proofs,
       runLabelNormalisation: "trimmed, inner whitespace collapsed to single spaces, case preserved",
     }, null, 2), "application/json");
+    setManifestSaved(true);
   };
 
   const columns: TableColumnsType<LinkRow> = [
@@ -125,6 +136,25 @@ export default function Result({
           title="The fee was below the floor" description={outcome.feeWarning} />
       )}
 
+      <Alert
+        style={{ marginTop: 24 }}
+        type={manifestSaved ? "success" : "warning"}
+        showIcon
+        title={manifestSaved ? "Manifest saved" : "Save the manifest before you leave"}
+        description={
+          <>
+            <p style={{ marginTop: 0 }}>
+              {manifestSaved
+                ? "Keep it with your records. Load it on the run page any time to check each invoice against what was paid."
+                : "It is the only record of what each invoice was owed — the chain holds what was paid, not what was meant. Load it on the run page later to check one against the other. Nothing is stored by us, so this is your copy."}
+            </p>
+            <Button type={manifestSaved ? "default" : "primary"} onClick={downloadManifest}>
+              {manifestSaved ? "Download it again" : "Download the manifest"}
+            </Button>
+          </>
+        }
+      />
+
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Button onClick={() => {
           void navigator.clipboard.writeText(receiptLinksText(exportRows));
@@ -173,7 +203,6 @@ export default function Result({
       />
 
       <div style={{ marginTop: 22, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <Button onClick={downloadManifest}>Download the manifest</Button>
         <Button href={`/run/${outcome.txHash}?n=${net.name}`}>Open the reconciliation</Button>
         <Button href={`${net.explorer}/tx/${outcome.txHash}`} target="_blank">On the explorer</Button>
       </div>
