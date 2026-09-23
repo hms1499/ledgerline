@@ -2,6 +2,7 @@ import { TransactionNotFoundError } from "viem";
 import { buildRun, type BuiltRun } from "./build.js";
 import { MIN_MAX_FEE_WEI, tokensForChain } from "./constants.js";
 import { explainCallFailure, explainRevert } from "./errors.js";
+import { totalsByToken } from "./funding.js";
 import { buildPreflightData, decodePreflightResult, gasPolicy } from "./preflight.js";
 import type { Address, Hex, Manifest, RawLog } from "./types.js";
 
@@ -139,14 +140,9 @@ export async function executeRun({
 
   // 1. Balances, per token and never pooled.
   say("balances");
-  const needed = new Map<string, bigint>();
-  for (const item of manifest.items) {
-    const key = item.token.toLowerCase();
-    needed.set(key, (needed.get(key) ?? 0n) + item.amount);
-  }
+  const needed = totalsByToken(manifest.items);
   try {
-    for (const [key, need] of needed) {
-      const token = manifest.items.find((i) => i.token.toLowerCase() === key)!.token;
+    for (const { token, need } of needed) {
       const [balance, decimals] = await Promise.all([
         io.balanceOf(token, payer),
         io.decimalsOf(token),
@@ -260,7 +256,8 @@ export async function executeRun({
     const weiPerUsdcUnit = 10n ** BigInt(18 - usdcDecimals);
     const gasCostInUsdcUnits = (gasCostWei + weiPerUsdcUnit - 1n) / weiPerUsdcUnit;
 
-    const usdcNeededForPayouts = needed.get(usdc.toLowerCase()) ?? 0n;
+    const usdcNeededForPayouts =
+      needed.find((n) => n.token.toLowerCase() === usdc.toLowerCase())?.need ?? 0n;
     const totalUsdcNeeded = usdcNeededForPayouts + gasCostInUsdcUnits;
 
     if (usdcBalance < totalUsdcNeeded) {
