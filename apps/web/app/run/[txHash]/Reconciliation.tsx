@@ -14,6 +14,7 @@ import { networkFor, short, formatAmount, encodeProof, type NetworkView } from "
 import { connect, knownWallets, watchWalletList, type WalletChoice } from "@/lib/wallet";
 import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
+import { SEVERITY, statusView } from "@/lib/reconcile-view";
 
 const anchorAbi = [
   { type: "function", name: "runs", stateMutability: "view",
@@ -28,25 +29,6 @@ const erc20Abi = [
   { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
   { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
 ] as const;
-
-/** Problems are why someone opened this page. The 97 rows that worked are not. */
-const SEVERITY: Record<ReconcileStatus, number> = {
-  unlinked: 0, unpaid: 1, recipient_mismatch: 2, amount_mismatch: 3, unexpected: 4, matched: 5,
-};
-
-const STATUS_LABEL: Record<ReconcileStatus, string> = {
-  unlinked: "No payment behind reference",
-  unpaid: "Not paid",
-  recipient_mismatch: "Wrong recipient",
-  amount_mismatch: "Wrong amount",
-  unexpected: "Not in manifest",
-  matched: "Matched",
-};
-
-const STATUS_COLOR: Record<ReconcileStatus, string> = {
-  unlinked: "error", unpaid: "error", recipient_mismatch: "warning",
-  amount_mismatch: "warning", unexpected: "warning", matched: "success",
-};
 
 type Phase = "loading" | "ready" | "tx_not_found" | "run_reverted" | "rpc_unreachable";
 
@@ -201,15 +183,20 @@ function Ready({
     {
       title: "Status", dataIndex: "status", width: 210,
       filters: [...counts.keys()].sort((a, b) => SEVERITY[a] - SEVERITY[b])
-        .map((s) => ({ text: STATUS_LABEL[s], value: s })),
+        .map((s) => ({ text: statusView(s, hasManifest).label, value: s })),
       onFilter: (v, r) => r.status === v,
       sorter: (a, b) => SEVERITY[a.status] - SEVERITY[b.status],
       defaultSortOrder: "ascend",
-      render: (s: ReconcileStatus) => <Tag color={STATUS_COLOR[s]}>{STATUS_LABEL[s]}</Tag>,
+      render: (s: ReconcileStatus) => {
+        const v = statusView(s, hasManifest);
+        return <Tag color={v.color}>{v.label}</Tag>;
+      },
     },
     {
       title: "Invoice", dataIndex: "invoiceId", width: 150,
-      render: (id?: string) => id ?? <span style={{ opacity: 0.45 }}>not in manifest</span>,
+      render: (id?: string) => id ?? (
+        <span style={{ opacity: 0.45 }}>{hasManifest ? "not in manifest" : "see manifest"}</span>
+      ),
     },
     {
       title: "Token", dataIndex: "token", width: 110,
@@ -360,19 +347,22 @@ function Ready({
           size="middle"
           expandable={{
             rowExpandable: (r) => r.status !== "matched",
-            expandedRowRender: (r) => <RowDetail row={r} net={net} txHash={txHash} tokens={tokens} />,
+            expandedRowRender: (r) => (
+              <RowDetail row={r} net={net} txHash={txHash} tokens={tokens}
+                note={statusView(r.status, hasManifest).note ?? r.note} />
+            ),
           }}
           summary={() => (
             <Table.Summary fixed>
               <Table.Summary.Row>
-                <Table.Summary.Cell index={0}>
+                <Table.Summary.Cell index={0} colSpan={2}>
                   <strong>{result.rows.length} rows</strong>
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={1} colSpan={2}>
+                <Table.Summary.Cell index={2} colSpan={2}>
                   {[...counts.entries()].sort((a, b) => SEVERITY[a[0]] - SEVERITY[b[0]])
-                    .map(([s, n]) => `${n} ${STATUS_LABEL[s].toLowerCase()}`).join(", ")}
+                    .map(([s, n]) => `${n} ${statusView(s, hasManifest).label.toLowerCase()}`).join(", ")}
                 </Table.Summary.Cell>
-                <Table.Summary.Cell index={3} align="right" colSpan={2}>
+                <Table.Summary.Cell index={4} align="right" colSpan={2}>
                   <ul className="totals totals--tight">
                     {[...perToken.entries()].map(([t, total]) => {
                       const m = tokens.get(t);
@@ -432,12 +422,15 @@ function Amount({ row, tokens }: { row: ReconcileRow; tokens: Map<string, TokenM
 }
 
 function RowDetail({
-  row, net, txHash, tokens,
-}: { row: ReconcileRow; net: NetworkView; txHash: string; tokens: Map<string, TokenMeta> }) {
+  row, net, txHash, tokens, note,
+}: {
+  row: ReconcileRow; net: NetworkView; txHash: string; tokens: Map<string, TokenMeta>;
+  note?: string;
+}) {
   const d = tokens.get(row.token.toLowerCase())?.decimals ?? 6;
   return (
     <dl className="detail">
-      {row.note && (<><dt>What this means</dt><dd>{row.note}</dd></>)}
+      {note && (<><dt>What this means</dt><dd>{note}</dd></>)}
       {row.status === "recipient_mismatch" && (
         <>
           <dt>Paid to</dt><dd className="hex" style={{ color: "var(--flag)" }}>{row.to}</dd>
