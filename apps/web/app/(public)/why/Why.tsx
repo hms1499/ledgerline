@@ -10,6 +10,9 @@ import {
 import { networkFor, short, type NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
 import { amountText } from "@/lib/token-meta";
+import { Grid, Col } from "@/components/grid/Grid";
+import Panel from "@/components/ui/Panel";
+import Verdict from "@/components/ui/Verdict";
 
 /** Approval(address indexed owner, address indexed spender, uint256 value) */
 const APPROVAL_TOPIC =
@@ -83,66 +86,65 @@ export default function Why({
   useEffect(() => { void load(); }, [load]);
 
   return (
-    <div className="sheet sheet--wide">
-      <div className="masthead">
-        <strong>Why this differs</strong>
-        <span>
-          Arc {net.name}
-          {data ? ` at block ${data.ours.blockNumber.toLocaleString("en-US")}` : ""}
-        </span>
-      </div>
+    <Grid>
+      <Col span={12}>
+        <div className="page-head">
+          <strong>Why this differs</strong>
+          <span>
+            Arc {net.name}
+            {data ? ` at block ${data.ours.blockNumber.toLocaleString("en-US")}` : ""}
+          </span>
+        </div>
+      </Col>
 
-      {phase === "loading" && <Skeleton active paragraph={{ rows: 8 }} style={{ marginTop: 32 }} />}
+      {phase === "loading" && <Col span={12}><Panel><Skeleton active paragraph={{ rows: 8 }} /></Panel></Col>}
 
       {phase === "unconfigured" && (
-        <>
-          <section className="verdict degraded">
-            <h1>No pair of transactions to compare yet</h1>
-            <p>
-              This page reads two real transactions off Arc and derives every claim below
-              from their logs. It asserts nothing on its own, so with no transactions
-              configured it has nothing to say.
+        <Col span={12}>
+          <Panel>
+            <Verdict level={1} tone="degraded" title="No pair of transactions to compare yet"
+              body="This page reads two real transactions off Arc and derives every claim below from their logs. It asserts nothing on its own, so with no transactions configured it has nothing to say." />
+            <p style={{ marginTop: "1.6rem", marginBottom: 0, maxWidth: "62ch" }}>
+              Point it at a pair:{" "}
+              <code className="hex">/why?ours=0x…&amp;naive=0x…&amp;approve=0x…&amp;n={net.name}</code>
             </p>
-          </section>
-          <p style={{ marginTop: "1.6rem", maxWidth: "62ch" }}>
-            Point it at a pair:{" "}
-            <code className="hex">/why?ours=0x…&amp;naive=0x…&amp;approve=0x…&amp;n={net.name}</code>
-          </p>
-        </>
+          </Panel>
+        </Col>
       )}
 
       {phase === "tx_not_found" && (
-        <section className="verdict error">
-          <h1>One of these transactions is not on Arc {net.name}</h1>
-          <p>Nothing here matches. If the pair was sent on another network, switch with <code>?n=mainnet</code>.</p>
-        </section>
+        <Col span={12}>
+          <Panel>
+            <Verdict level={1} tone="error" title={`One of these transactions is not on Arc ${net.name}`}
+              body={<>Nothing here matches. If the pair was sent on another network, switch with <code>?n=mainnet</code>.</>} />
+          </Panel>
+        </Col>
       )}
 
       {phase === "rpc_unreachable" && (
-        <>
-          <section className="verdict degraded">
-            <h1>Could not reach Arc</h1>
-            <p>
-              This says nothing about either transaction — only that the comparison could
-              not be read. Try another endpoint below.
-            </p>
-          </section>
-          {error && <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} />}
-        </>
+        <Col span={12}>
+          <Panel>
+            <Verdict level={1} tone="degraded" title="Could not reach Arc"
+              body="This says nothing about either transaction — only that the comparison could not be read. Try another endpoint below." />
+            {error && <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} />}
+          </Panel>
+        </Col>
       )}
 
       {phase === "ready" && data && <Comparison data={data} net={net} />}
 
-      <footer className="footer">
-        <div>
-          Read from <span className="endpoint">{rpc}</span>{" "}
-          <button className="linkish" onClick={() => {
-            const next = window.prompt("Arc RPC endpoint to read from", rpc);
-            if (next) setRpc(next.trim());
-          }}>change</button>
-        </div>
-      </footer>
-    </div>
+      <Col span={12}>
+        <footer className="footer">
+          <div>
+            Read from <span className="endpoint">{rpc}</span>{" "}
+            <button className="linkish" onClick={() => {
+              const next = window.prompt("Arc RPC endpoint to read from", rpc);
+              if (next) setRpc(next.trim());
+            }}>change</button>
+          </div>
+        </footer>
+      </Col>
+    </Grid>
   );
 }
 
@@ -187,7 +189,7 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
     {
       key: "allowance",
       claim: "Allowance granted to a contract the payer does not control",
-      ours: <span style={{ color: "var(--tick)" }}>none — no approval exists in this path</span>,
+      ours: <span style={{ color: "var(--success)" }}>none — no approval exists in this path</span>,
       naive: approve?.granted !== undefined && approve.token
         ? <>{amount(approve.token, approve.granted)} granted</>
         : <>required before any transfer</>,
@@ -199,8 +201,8 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
       ours: <span style={{ color: "var(--text-soft)" }}>—</span>,
       naive: allowanceNow
         ? allowanceNow.value === 0n
-          ? <span style={{ color: "var(--tick)" }}>0 — fully spent</span>
-          : <span style={{ color: "var(--flag)" }}>{amount(allowanceNow.token, allowanceNow.value)} still standing</span>
+          ? <span style={{ color: "var(--success)" }}>0 — fully spent</span>
+          : <span style={{ color: "var(--danger)" }}>{amount(allowanceNow.token, allowanceNow.value)} still standing</span>
         : <span style={{ color: "var(--text-soft)" }}>not read</span>,
       source: `allowance(payer, ${allowanceNow ? short(allowanceNow.spender) : "batcher"}) — an eth_call made when this page loaded`,
     },
@@ -209,10 +211,10 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
       claim: "Who the recipient sees as Transfer.from",
       ours: ours.assessment.payerVisible
         ? <>the payer, <span className="hex addr">{short(ours.payer)}</span></>
-        : <span style={{ color: "var(--flag)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
+        : <span style={{ color: "var(--danger)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
       naive: naive.assessment.payerVisible
         ? <>the payer, <span className="hex addr">{short(naive.payer)}</span></>
-        : <span style={{ color: "var(--flag)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
+        : <span style={{ color: "var(--danger)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
       source: "Transfer.from on every non-system Transfer log",
       same: ours.assessment.payerVisible && naive.assessment.payerVisible,
     },
@@ -257,50 +259,43 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
 
   return (
     <>
-      <section className="line line--summary">
-        <div>
-          <p className="amount">
-            {ours.assessment.referenced}
-            <span className="unit">of {ours.assessment.payments} referenced</span>
-          </p>
-          <p className="payee">
-            one transaction, {ours.assessment.totals.map((t) => amount(t.token, t.value)).join(" · ")}
-          </p>
-        </div>
-        <span className="reference is-void">
-          {naive.assessment.referenced} of {naive.assessment.payments} the ordinary way
-        </span>
-      </section>
+      <Col span={12}>
+        <Panel>
+          <section className="line line--summary">
+            <div>
+              <p className="amount">
+                {ours.assessment.referenced}
+                <span className="unit">of {ours.assessment.payments} referenced</span>
+              </p>
+              <p className="payee">
+                one transaction, {ours.assessment.totals.map((t) => amount(t.token, t.value)).join(" · ")}
+              </p>
+            </div>
+            <span className="reference is-void">
+              {naive.assessment.referenced} of {naive.assessment.payments} the ordinary way
+            </span>
+          </section>
 
-      {reverted.length > 0 && (
-        <Alert
-          style={{ marginTop: 22 }}
-          type="error"
-          showIcon
-          title={`${reverted.length === 2 ? "Both" : "One"} of these transactions reverted`}
-          description="A reverted transaction moved no money, so the comparison below is not a comparison of two payments. Fix the configured pair before showing this to anyone."
-        />
-      )}
+          {reverted.length > 0 && (
+            <Alert
+              style={{ marginTop: 22 }}
+              type="error"
+              showIcon
+              title={`${reverted.length === 2 ? "Both" : "One"} of these transactions reverted`}
+              description="A reverted transaction moved no money, so the comparison below is not a comparison of two payments. Fix the configured pair before showing this to anyone."
+            />
+          )}
 
-      <section className="verdict ok" style={{ paddingBottom: 0 }}>
-        <h1>The reference is the difference</h1>
-        <p>
-          Both transactions below moved real money on Arc {net.name}. Every claim in the
-          table is read from their logs when this page loads — nothing here is asserted
-          by us.
-        </p>
-      </section>
+          <Verdict level={1} tone="ok" title="The reference is the difference"
+            body={`Both transactions below moved real money on Arc ${net.name}. Every claim in the table is read from their logs when this page loads — nothing here is asserted by us.`} />
+          <div style={{ marginTop: 20 }}>
+            <Table<ClaimRow> columns={columns} dataSource={rows} pagination={false} size="middle"
+              scroll={{ x: "max-content" }} />
+          </div>
+        </Panel>
+      </Col>
 
-      <div style={{ marginTop: 26 }}>
-        <Table<ClaimRow>
-          columns={columns}
-          dataSource={rows}
-          pagination={false}
-          size="middle"
-        />
-      </div>
-
-      <div className="compare">
+      <Col span={6} md={12}>
         <TxCard
           title="Ledgerline"
           side={ours}
@@ -326,7 +321,8 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
             it — which is what the <a href={`/r/${ours.hash}?n=${net.name}`}>receipt page</a> does.
           </p>
         </TxCard>
-
+      </Col>
+      <Col span={6} md={12}>
         <TxCard
           title="Ordinary Multicall3 batch"
           side={naive}
@@ -349,30 +345,31 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
             else.
           </p>
         </TxCard>
-      </div>
+      </Col>
 
-      <Alert
-        style={{ marginTop: 26 }}
-        type="info"
-        title="What this comparison does not claim"
-        description={
-          <>
-            <p style={{ marginTop: 0 }}>
-              An ordinary <code>Multicall3</code> batch does <strong>not</strong> hide the
-              payer. <code>transferFrom(from, …)</code> emits{" "}
-              <code>Transfer(from, …)</code>, so the payer stays visible — the table above
-              reads the same address on both sides. Identity is lost only with a{" "}
-              <em>custodial</em> batcher that pays out of its own balance, which is a
-              different design and not the one compared here.
-            </p>
-            <p style={{ marginBottom: 0 }}>
-              {allowanceNow?.value === 0n
-                ? "The allowance above is 0 because this approval was for an exact amount and the transfer consumed all of it. Tools that approve an unlimited amount leave one standing indefinitely; this one did not."
-                : "Whether an allowance outlives the payment depends on whether it was granted for an exact amount. This page reads the live value rather than assuming."}
-            </p>
-          </>
-        }
-      />
+      <Col span={12}>
+        <Alert
+          type="info"
+          title="What this comparison does not claim"
+          description={
+            <>
+              <p style={{ marginTop: 0 }}>
+                An ordinary <code>Multicall3</code> batch does <strong>not</strong> hide the
+                payer. <code>transferFrom(from, …)</code> emits{" "}
+                <code>Transfer(from, …)</code>, so the payer stays visible — the table above
+                reads the same address on both sides. Identity is lost only with a{" "}
+                <em>custodial</em> batcher that pays out of its own balance, which is a
+                different design and not the one compared here.
+              </p>
+              <p style={{ marginBottom: 0 }}>
+                {allowanceNow?.value === 0n
+                  ? "The allowance above is 0 because this approval was for an exact amount and the transfer consumed all of it. Tools that approve an unlimited amount leave one standing indefinitely; this one did not."
+                  : "Whether an allowance outlives the payment depends on whether it was granted for an exact amount. This page reads the live value rather than assuming."}
+              </p>
+            </>
+          }
+        />
+      </Col>
     </>
   );
 }
@@ -396,8 +393,7 @@ function TxCard({
   title: string; side: Side; net: NetworkView; note: string; children?: React.ReactNode;
 }) {
   return (
-    <section className="card">
-      <h2 className="card-title">{title}</h2>
+    <Panel title={title}>
       <p className="because" style={{ marginTop: 0 }}>{note}</p>
       <p style={{ margin: "0.9rem 0" }}>
         <a className="hex" href={`${net.explorer}/tx/${side.hash}`} target="_blank" rel="noreferrer">
@@ -405,7 +401,7 @@ function TxCard({
         </a>
       </p>
       {children}
-    </section>
+    </Panel>
   );
 }
 
