@@ -114,7 +114,8 @@ export default function CreateRun() {
             Result), so an untitled Tape there would double it up. Review's
             table had no heading of its own, which is what left it opening
             as a blank band. */}
-        <Tape title={step === 1 ? "Payments in this run" : undefined}>
+        {/* The whole flow is a tape still feeding; the Result tears it off (spec §6.1). */}
+        <Tape state={step === 4 ? "torn" : "feeding"} title={step === 1 ? "Payments in this run" : undefined}>
           {step === 0 && (
             <StepUpload net={net} onReady={(d) => { setDraft(d); setStep(1); }} />
           )}

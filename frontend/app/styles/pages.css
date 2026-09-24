@@ -94,16 +94,19 @@
 .slip-folds { margin-top: 14px; border-top: 1.5px dotted var(--rule); }
 .slip-folds .ant-collapse-item { border-bottom: 1.5px dotted var(--rule); }
 
-/* ── funding ──────────────────────────────────────────────────────────── */
-.funding { margin-top: 26px; }
-.funding h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem; }
+/* ── funding: can this wallet pay it? ─────────────────────────────────── */
+.funding { margin-top: 24px; }
+.funding h2 {
+  margin: 0 0 8px;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+}
 .funding ul { list-style: none; margin: 0; padding: 0; }
-.funding li { display: flex; gap: 0.7rem; padding: 0.4rem 0; border-top: 1px solid var(--rule); font-size: 0.9rem; }
-.funding li:last-child { border-bottom: 1px solid var(--rule); }
-.funding .mark { width: 1rem; flex: none; font-family: var(--font-mono), ui-monospace, monospace; }
-.funding-ok .mark { color: var(--ink); }
+.funding li { display: flex; gap: 10px; padding: 5px 0; border-top: 1.5px dotted var(--rule); font-size: 14px; }
+.funding li:last-child { border-bottom: 1.5px dotted var(--rule); }
+.funding .mark { width: 1.2rem; flex: none; text-align: center; font-family: var(--font-mono), ui-monospace, monospace; }
 .funding-short .mark, .funding-short strong:last-child { color: var(--ribbon); }
-.funding-unknown .mark { color: var(--warning); }
+.funding-unknown .mark { background: var(--highlight); color: var(--on-highlight); }
 
 /* ── wallet picker ────────────────────────────────────────────────────── */
 .wallet-list { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
@@ -123,3 +126,6 @@
 /* ── create flow ──────────────────────────────────────────────────────── */
 .tape dl.detail, dl.detail.run-summary { grid-template-columns: minmax(6rem, auto) 1fr; }
 dl.detail.run-summary dd { overflow-wrap: anywhere; }
+/* The totals print across the whole slip: in the 4-column aside, beside the
+   terms, "0.00001 cirBTC" would break from its symbol. */
+dl.detail.run-summary dd.is-wide { grid-column: 1 / -1; margin-top: -2px; }
