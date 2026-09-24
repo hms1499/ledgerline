@@ -121,7 +121,6 @@
 
 /* ── dashboard ────────────────────────────────────────────────────────── */
 .coverage-line { margin: 0; color: var(--ink-soft); }
-.section-title { margin: 8px 0 12px; font-size: 1rem; font-weight: 600; }
 
 /* ── create flow ──────────────────────────────────────────────────────── */
 .tape dl.detail, dl.detail.run-summary { grid-template-columns: minmax(6rem, auto) 1fr; }

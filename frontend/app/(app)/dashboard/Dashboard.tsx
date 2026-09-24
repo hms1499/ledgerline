@@ -8,6 +8,7 @@ import { tokensForChain, paidByToken, type Address, type RunSummary } from "@led
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
 import StatTile from "@/components/ui/StatTile";
+import Tape from "@/components/ui/Tape";
 import { runsFor, type RunRecord } from "@/lib/history";
 import { readRuns, describeCoverage, type RunRead } from "@/lib/run-reads";
 import { readTokenMeta } from "@/lib/token-meta";
@@ -61,15 +62,17 @@ export default function Dashboard() {
   if (!wallet) {
     return (
       <Grid>
-        <Col span={8} md={12}>
-          <section className="verdict">
-            <h2>Your payouts at a glance</h2>
-            <p>
-              Connect the wallet that paid them. This overview is built from runs sent from
-              this browser and re-read from the chain.
-            </p>
-          </section>
-          <Button type="primary" style={{ marginTop: 24 }} onClick={connect}>Connect a wallet</Button>
+        <Col span={12}>
+          <Tape>
+            <section className="verdict">
+              <h2>Your payouts at a glance</h2>
+              <p>
+                Connect the wallet that paid them. This overview is built from runs sent from
+                this browser and re-read from the chain.
+              </p>
+            </section>
+            <Button type="primary" style={{ marginTop: 20 }} onClick={connect}>Connect a wallet</Button>
+          </Tape>
         </Col>
       </Grid>
     );
@@ -79,16 +82,18 @@ export default function Dashboard() {
     return (
       <Grid>
         <Col span={12}>
-          <section className="verdict">
-            <h2>Nothing sent from this browser yet</h2>
-            <p>
-              A run sent from another browser is still on chain. Open it from the explorer or by
-              its transaction hash.
+          <Tape>
+            <section className="verdict">
+              <h2>Nothing sent from this browser yet</h2>
+              <p>
+                A run sent from another browser is still on chain. Open it from the explorer or by
+                its transaction hash.
+              </p>
+            </section>
+            <p style={{ marginTop: 20, marginBottom: 0 }}>
+              <Link href={withNet("/new", search)} className="button-primary">Create a payout run</Link>
             </p>
-          </section>
-          <p style={{ marginTop: 22 }}>
-            <Link href={withNet("/new", search)} className="button-primary">Create a payout run</Link>
-          </p>
+          </Tape>
         </Col>
       </Grid>
     );
@@ -183,7 +188,7 @@ export default function Dashboard() {
       </Col>
 
       <Col span={12}>
-        <h2 className="section-title">Recent runs</h2>
+        <Tape title="Recent runs">
         <Table<RunRecord>
           columns={columns}
           dataSource={recent.map((r) => ({ ...r, key: r.txHash }))}
@@ -191,9 +196,10 @@ export default function Dashboard() {
           size="middle"
           scroll={{ x: "max-content" }}
         />
-        <p style={{ marginTop: 12 }}>
+        <p style={{ marginTop: 12, marginBottom: 0 }}>
           <Link href={withNet("/runs", search)}>All runs →</Link>
         </p>
+        </Tape>
       </Col>
     </Grid>
   );
