@@ -165,8 +165,8 @@ Requirements: Node 22, pnpm 10, and [Foundry](https://book.getfoundry.sh/) for
 the contracts.
 
 ```bash
-git clone --recurse-submodules <this repository>
-cd <repository directory>
+git clone --recurse-submodules https://github.com/hms1499/ledgerline.git
+cd ledgerline
 pnpm install
 ```
 
