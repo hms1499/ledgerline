@@ -7,8 +7,8 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--desk);
+  color: var(--ink);
   font-family: var(--font-sans), system-ui, sans-serif;
   /* The whole page is figures; tabular by default keeps columns honest. */
   font-variant-numeric: tabular-nums;
@@ -21,7 +21,7 @@ a:hover { text-decoration-color: currentColor; }
    (link-in-text-block): the underline is what marks it as a link. */
 .ant-alert a { text-decoration: underline; }
 
-:focus-visible { outline: 2px solid var(--success); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 /* antd draws its own 3px ring in colorPrimaryBorder — 1.6:1 on the dark
    background, under the 3:1 a focus indicator needs. One ring everywhere.
    The segmented control focuses a zero-width radio, so ring its label.
@@ -32,13 +32,13 @@ a:hover { text-decoration-color: currentColor; }
 .ant-segmented-item:has(input:focus-visible),
 a:focus-visible,
 .ant-table-row-expand-icon:focus-visible {
-  outline: 2px solid var(--success) !important;
+  outline: 2px solid var(--focus) !important;
   outline-offset: 2px !important;
 }
 /* Inset: the header sits against the table's scroll edge, which would clip
    an outside ring. */
 .ant-table-thead > tr > th.ant-table-column-has-sorters:focus-visible {
-  outline: 2px solid var(--success) !important;
+  outline: 2px solid var(--focus) !important;
   outline-offset: -2px !important;
 }
 
@@ -50,7 +50,7 @@ a:focus-visible,
   gap: 1.5rem;
   flex-wrap: wrap;
   padding: 2.2rem 0 1.4rem;
-  border-bottom: 2px solid var(--text);
+  border-bottom: 2px solid var(--ink);
 }
 .amount {
   font-family: var(--font-mono), ui-monospace, monospace;
@@ -61,14 +61,14 @@ a:focus-visible,
   margin: 0;
 }
 .amount .unit { font-size: 0.42em; font-weight: 400; margin-left: 0.5em; letter-spacing: 0; }
-.payee { margin: 0.55rem 0 0; font-size: 0.87rem; color: var(--text-soft); }
+.payee { margin: 0.55rem 0 0; font-size: 0.87rem; color: var(--ink-soft); }
 .reference {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 1rem;
   padding-bottom: 0.3rem;
-  border-bottom: 2px solid var(--success);
+  border-bottom: 2px solid var(--ink);
 }
-.reference.is-void { border-bottom-color: var(--danger); }
+.reference.is-void { border-bottom-color: var(--ribbon); }
 
 /* ── verdict ──────────────────────────────────────────────────────────── */
 .verdict { padding: 1.9rem 0 0.4rem; }
@@ -78,9 +78,9 @@ a:focus-visible,
   letter-spacing: -0.02em;
   margin: 0 0 0.45rem;
 }
-.verdict p { margin: 0; max-width: var(--measure); color: var(--text-soft); }
-.verdict.ok :is(h1, h2) { color: var(--success); }
-.verdict.error :is(h1, h2), .verdict.critical :is(h1, h2) { color: var(--danger); }
+.verdict p { margin: 0; max-width: var(--measure); color: var(--ink-soft); }
+.verdict.ok :is(h1, h2) { color: var(--ink); }
+.verdict.error :is(h1, h2), .verdict.critical :is(h1, h2) { color: var(--ribbon); }
 .verdict.degraded :is(h1, h2) { color: var(--warning); }
 
 /* ── the tickmark ladder ──────────────────────────────────────────────── */
@@ -88,9 +88,9 @@ a:focus-visible,
 .rung {
   position: relative;
   padding: 0.62rem 0 0.62rem 2rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--rule);
 }
-.rung:last-child { border-bottom: 1px solid var(--border); }
+.rung:last-child { border-bottom: 1px solid var(--rule); }
 .mark {
   position: absolute;
   left: 0;
@@ -99,16 +99,16 @@ a:focus-visible,
   font-size: 1rem;
   line-height: 1.6;
 }
-.rung.pass .mark { color: var(--success); }
-.rung.fail .mark { color: var(--danger); }
+.rung.pass .mark { color: var(--ink); }
+.rung.fail .mark { color: var(--ribbon); }
 .rung.skipped .mark { color: var(--warning); }
-.rung.skipped .claim { color: var(--text-soft); }
+.rung.skipped .claim { color: var(--ink-soft); }
 .claim { display: block; }
 .because {
   display: block;
   margin-top: 0.18rem;
   font-size: 0.85rem;
-  color: var(--text-soft);
+  color: var(--ink-soft);
   max-width: var(--measure);
 }
 
@@ -128,7 +128,7 @@ a:focus-visible,
   font-weight: 500;
   text-decoration: none;
 }
-.button-primary:hover { background: var(--link); color: var(--on-accent); }
+.button-primary:hover { background: var(--ink); color: var(--on-accent); }
 
 .network-note {
   margin: 1.8rem 0 0;
@@ -136,28 +136,28 @@ a:focus-visible,
   border-left: 3px solid var(--warning);
   max-width: var(--measure);
   font-size: 0.9rem;
-  color: var(--text-soft);
+  color: var(--ink-soft);
 }
 
-.how-card .how-step { display: block; margin-bottom: 8px; font-family: var(--font-mono), ui-monospace, monospace; font-size: 1.35rem; line-height: 1.2; color: var(--success); }
+.how-card .how-step { display: block; margin-bottom: 8px; font-family: var(--font-mono), ui-monospace, monospace; font-size: 1.35rem; line-height: 1.2; color: var(--ink); }
 .how-card h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.35rem; }
-.how-card p { margin: 0; color: var(--text-soft); font-size: 0.93rem; }
+.how-card p { margin: 0; color: var(--ink-soft); font-size: 0.93rem; }
 .hero { padding-top: 0.4rem; }
-.how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--text-soft); max-width: var(--measure); }
+.how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--ink-soft); max-width: var(--measure); }
 
 .home-footer { display: flex; flex-direction: column; gap: 0.35rem; }
 
 /* ── trust footer ─────────────────────────────────────────────────────── */
-.footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--border); font-size: 0.84rem; color: var(--text-soft); }
+.footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.84rem; color: var(--ink-soft); }
 .footer .endpoint { font-family: var(--font-mono), ui-monospace, monospace; }
-.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--link); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--ink); cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .hex { font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.85em; word-break: break-all; }
 /* A reason in a token's own words: monospace like a hex, but prose, so it
    wraps at spaces rather than mid-word. */
 .raw-reason { display: block; font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.92em; }
 
 dl.detail { margin: 0; display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: 0.45rem 1.4rem; font-size: 0.88rem; }
-dl.detail dt { color: var(--text-soft); }
+dl.detail dt { color: var(--ink-soft); }
 dl.detail dd { margin: 0; }
 
 /* Announced to screen readers, never painted. */
@@ -175,40 +175,40 @@ dl.detail dd { margin: 0; }
   font-family: var(--font-sans), system-ui, sans-serif;
   font-size: clamp(1.3rem, 4vw, 1.75rem);
   font-weight: 500;
-  color: var(--text-soft);
+  color: var(--ink-soft);
   letter-spacing: -0.02em;
 }
 
 .line--summary .amount .unit { font-size: 0.34em; }
 
-.totals { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; list-style: none; margin: 0.55rem 0 0; padding: 0; font-size: 0.87rem; color: var(--text-soft); }
+.totals { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; list-style: none; margin: 0.55rem 0 0; padding: 0; font-size: 0.87rem; color: var(--ink-soft); }
 .totals--tight { justify-content: flex-end; margin: 0; }
 
 /* ── preview: can this wallet pay it? ─────────────────────────────────── */
 .funding { margin-top: 26px; }
 .funding h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem; }
 .funding ul { list-style: none; margin: 0; padding: 0; }
-.funding li { display: flex; gap: 0.7rem; padding: 0.4rem 0; border-top: 1px solid var(--border); font-size: 0.9rem; }
-.funding li:last-child { border-bottom: 1px solid var(--border); }
+.funding li { display: flex; gap: 0.7rem; padding: 0.4rem 0; border-top: 1px solid var(--rule); font-size: 0.9rem; }
+.funding li:last-child { border-bottom: 1px solid var(--rule); }
 .funding .mark { position: static; width: 1rem; flex: none; line-height: inherit; }
-.funding-ok .mark { color: var(--success); }
-.funding-short .mark, .funding-short strong:last-child { color: var(--danger); }
+.funding-ok .mark { color: var(--ink); }
+.funding-short .mark, .funding-short strong:last-child { color: var(--ribbon); }
 .funding-unknown .mark { color: var(--warning); }
 
 /* A disconnect that is temporarily unsafe still has to look like a control,
    not like a link that stopped working. */
-.linkish:disabled { color: var(--text-soft); cursor: not-allowed; text-decoration: none; }
+.linkish:disabled { color: var(--ink-soft); cursor: not-allowed; text-decoration: none; }
 
 .wallet-list { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
 .wallet-list button {
   width: 100%; display: flex; align-items: center; gap: 0.75rem;
   padding: 0.7rem 0.85rem; font: inherit; text-align: left; cursor: pointer;
-  background: var(--raised); color: var(--text);
+  background: var(--tape-shade); color: var(--ink);
   border: 1px solid var(--control); border-radius: 10px;
 }
-.wallet-list button:hover { border-color: var(--link); }
+.wallet-list button:hover { border-color: var(--ink); }
 .wallet-list img { border-radius: 6px; }
-.wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--border); }
+.wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--rule); }
 
 /* ── 12-column grid (lib/grid.ts sets the variables) ─────────────────── */
 .grid {
@@ -232,33 +232,33 @@ dl.detail dd { margin: 0; }
 }
 
 /* ── shells ───────────────────────────────────────────────────────────── */
-body { background: var(--bg); color: var(--text); }
-a { color: var(--link); }
+body { background: var(--desk); color: var(--ink); }
+a { color: var(--ink); }
 
 .skip-link { position: absolute; left: -9999px; }
-.skip-link:focus { left: 16px; top: 12px; z-index: 100; background: var(--surface); padding: 8px 12px; }
+.skip-link:focus { left: 16px; top: 12px; z-index: 100; background: var(--tape); padding: 8px 12px; }
 
 .app-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
 .side-nav {
   position: sticky; top: 0; height: 100vh;
   display: flex; flex-direction: column; gap: 2px;
-  padding: 16px 12px; background: var(--sidebar); border-right: 1px solid var(--border);
+  padding: 16px 12px; background: var(--desk-deep); border-right: 1px solid var(--rule);
 }
-.side-brand { font-weight: 600; font-size: 1rem; color: var(--text); text-decoration: none; padding: 4px 10px 16px; }
+.side-brand { font-weight: 600; font-size: 1rem; color: var(--ink); text-decoration: none; padding: 4px 10px 16px; }
 .nav-item {
   display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 6px;
-  color: var(--text-soft); text-decoration: none;
+  color: var(--ink-soft); text-decoration: none;
 }
-.nav-item:hover { background: var(--raised); color: var(--text); }
-.nav-item[aria-current="page"] { background: var(--raised); color: var(--link); font-weight: 500; }
-.nav-group { margin: 16px 10px 4px; font-size: 0.8rem; color: var(--text-soft); }
+.nav-item:hover { background: var(--tape-shade); color: var(--ink); }
+.nav-item[aria-current="page"] { background: var(--tape-shade); color: var(--ink); font-weight: 500; }
+.nav-group { margin: 16px 10px 4px; font-size: 0.8rem; color: var(--ink-soft); }
 .side-foot { margin-top: auto; padding: 8px 4px 0; }
 
 .app-body { min-width: 0; display: flex; flex-direction: column; }
 .top-bar {
   position: sticky; top: 0; z-index: 10; height: 64px;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 0 24px; background: var(--bg); border-bottom: 1px solid var(--border);
+  padding: 0 24px; background: var(--desk); border-bottom: 1px solid var(--rule);
 }
 .top-title { margin: 0; font-size: 1.05rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .top-actions { display: flex; align-items: center; gap: 10px; }
@@ -267,7 +267,7 @@ a { color: var(--link); }
 
 /* antd's default Button switches text to colorPrimaryHover on hover and
    keeps it while a Dropdown trigger stays open (both are :hover, since the
-   pointer never leaves) — a light-theme tint under 4.5:1 on --surface, caught
+   pointer never leaves) — a light-theme tint under 4.5:1 on --tape, caught
    by axe. antd's own hover/active selectors carry more classes than a plain
    override beats, the same reason the focus ring above needs !important.
    The address is the one thing this chip exists to show, in every state a
@@ -276,14 +276,14 @@ a { color: var(--link); }
 .wallet-chip:hover,
 .wallet-chip:focus,
 .wallet-chip:focus-visible,
-.wallet-chip:active { color: var(--text) !important; }
+.wallet-chip:active { color: var(--ink) !important; }
 
-.network-badge { padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; border: 1px solid var(--control); color: var(--text-soft); white-space: nowrap; }
-.network-badge.is-test { background: var(--warning-bg); color: var(--warning); border-color: var(--warning); }
+.network-badge { padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; border: 1px solid var(--control); color: var(--ink-soft); white-space: nowrap; }
+.network-badge.is-test { background: var(--highlight); color: var(--on-highlight); border-color: var(--highlight); }
 
 .bottom-tabs { display: none; }
 
-.public-bar { border-bottom: 1px solid var(--border); background: var(--bg); }
+.public-bar { border-bottom: 1px solid var(--rule); background: var(--desk); }
 .public-bar-inner { max-width: 1200px; margin: 0 auto; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .public-links { display: flex; align-items: center; gap: 16px; }
 .public-main { padding: 24px; }
@@ -292,27 +292,27 @@ a { color: var(--link); }
 .only-sm { display: none; }
 
 /* ── dashboard ────────────────────────────────────────────────────────── */
-.stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; }
-.stat-label { margin: 0; color: var(--text-soft); font-size: 0.85rem; }
+.stat-tile { background: var(--tape); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 20px; }
+.stat-label { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
 .stat-value { margin: 6px 0 2px; font-size: 1.6rem; font-weight: 600; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.stat-sub { margin: 0; color: var(--text-soft); font-size: 0.85rem; }
-.coverage-line { margin: 0; color: var(--text-soft); }
+.stat-sub { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
+.coverage-line { margin: 0; color: var(--ink-soft); }
 .section-title { margin: 8px 0 12px; font-size: 1rem; font-weight: 600; }
 
-.stat-value.is-success { color: var(--success); }
+.stat-value.is-success { color: var(--ink); }
 .stat-value.is-warning { color: var(--warning); }
-.stat-value.is-danger { color: var(--danger); }
+.stat-value.is-danger { color: var(--ribbon); }
 .stat-line { display: block; }
 
 /* ── panels (components/ui/Panel.tsx) ───────────────────────────────── */
-.panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; min-width: 0; }
+.panel { background: var(--tape); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; min-width: 0; }
 .panel-title { margin: 0 0 12px; font-size: 1rem; font-weight: 600; }
 .panel-head, .page-head {
   display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap;
-  font-size: 0.85rem; color: var(--text-soft);
+  font-size: 0.85rem; color: var(--ink-soft);
 }
-.panel-head { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
-.panel-head strong, .page-head strong { color: var(--text); font-weight: 600; }
+.panel-head { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--rule); }
+.panel-head strong, .page-head strong { color: var(--ink); font-weight: 600; }
 /* Content that used to open a bare page brings its own top spacing. */
 .panel > .verdict:first-child { padding-top: 0; }
 .panel > .line:first-child { padding-top: 0.6rem; }
@@ -333,8 +333,8 @@ dl.detail.run-summary dd { overflow-wrap: anywhere; }
   .nav-item { position: relative; justify-content: center; }
   .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .nav-item:focus-visible .nav-label {
-    width: auto; height: auto; clip-path: none; left: 56px; background: var(--surface);
-    border: 1px solid var(--control); padding: 4px 8px; border-radius: 4px; color: var(--text); z-index: 30;
+    width: auto; height: auto; clip-path: none; left: 56px; background: var(--tape);
+    border: 1px solid var(--control); padding: 4px 8px; border-radius: 4px; color: var(--ink); z-index: 30;
   }
 }
 
@@ -350,11 +350,11 @@ dl.detail.run-summary dd { overflow-wrap: anywhere; }
   .bottom-tabs {
     display: grid; grid-template-columns: repeat(3, 1fr);
     position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-    background: var(--sidebar); border-top: 1px solid var(--border);
+    background: var(--desk-deep); border-top: 1px solid var(--rule);
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .bottom-tabs .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 10px; font-size: 0.72rem; color: var(--text-soft); text-decoration: none; }
-  .bottom-tabs .tab[aria-current="page"] { color: var(--link); }
-  .step-line { margin: 4px 0 0; color: var(--text-soft); font-size: 0.9rem; }
+  .bottom-tabs .tab { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 0 10px; font-size: 0.72rem; color: var(--ink-soft); text-decoration: none; }
+  .bottom-tabs .tab[aria-current="page"] { color: var(--ink); }
+  .step-line { margin: 4px 0 0; color: var(--ink-soft); font-size: 0.9rem; }
   .panel { padding: 16px; }
 }

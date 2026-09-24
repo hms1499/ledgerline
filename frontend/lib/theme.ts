@@ -8,7 +8,8 @@ export const SYSTEM_COOKIE = "theme-system";
 /**
  * What the server renders. Only two fixed strings ever leave this function,
  * so nothing from a cookie can reach the HTML. Missing or unknown means
- * "system"; system with no recorded value is dark, the product default.
+ * "system"; system with no recorded value is light, the product default
+ * (tape spec §10): paper on a desk is a light-first world.
  */
 export function resolveTheme(
   themeCookie?: string | null, systemCookie?: string | null,
@@ -16,54 +17,56 @@ export function resolveTheme(
   const choice: ThemeChoice =
     themeCookie === "dark" || themeCookie === "light" ? themeCookie : "system";
   if (choice !== "system") return { choice, mode: choice };
-  return { choice, mode: systemCookie === "light" ? "light" : "dark" };
+  return { choice, mode: systemCookie === "dark" ? "dark" : "light" };
 }
 
 export function themeCookie(name: string, value: string): string {
   return `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }
 
-/** antd computes colour in JS; these tokens pin it to our palette. */
+/** antd computes colour in JS; these tokens pin it to our palette. Task 5 of
+ *  the tape plan adds shape, faces and the component tokens. */
 export function antdTheme(mode: Mode): ThemeConfig {
   const p = palettes[mode];
   return {
     algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
       colorPrimary: p.accent,
-      colorLink: p.link,
-      colorInfo: p.link,
-      colorSuccess: p.success,
+      colorLink: p.ink,
+      colorInfo: p.ink,
+      // Only exceptions get colour: a success is black ink with ✓ and words.
+      colorSuccess: p.ink,
       colorWarning: p.warning,
-      colorError: p.danger,
-      colorText: p.text,
-      colorTextSecondary: p.textSoft,
-      colorTextTertiary: p.textSoft,
-      colorTextDescription: p.textSoft,
-      colorTextPlaceholder: p.textSoft,
+      colorError: p.ribbon,
+      colorText: p.ink,
+      colorTextSecondary: p.inkSoft,
+      colorTextTertiary: p.inkSoft,
+      colorTextDescription: p.inkSoft,
+      colorTextPlaceholder: p.inkSoft,
       colorTextLightSolid: p.onAccent,
-      colorBgBase: p.bg,
-      colorBgLayout: p.bg,
-      colorBgContainer: p.surface,
-      colorBgElevated: p.surface,
+      colorBgBase: p.desk,
+      colorBgLayout: p.desk,
+      colorBgContainer: p.tape,
+      colorBgElevated: p.tape,
       colorBorder: p.control,
-      colorBorderSecondary: p.border,
-      colorSuccessBg: p.successBg,
-      colorWarningBg: p.warningBg,
-      colorErrorBg: p.dangerBg,
-      colorInfoBg: p.raised,
+      colorBorderSecondary: p.rule,
+      colorSuccessBg: p.tapeShade,
+      colorWarningBg: p.highlight,
+      colorErrorBg: p.ribbonBg,
+      colorInfoBg: p.tapeShade,
       borderRadius: 6,
       fontFamily: "var(--font-sans)",
       fontSize: 15,
       lineHeight: 1.6,
     },
     components: {
-      Table: { headerBg: p.surface, rowHoverBg: p.raised, borderColor: p.border, footerBg: p.surface },
-      Tag: { defaultBg: p.raised, defaultColor: p.text },
+      Table: { headerBg: p.tape, rowHoverBg: p.tapeShade, borderColor: p.rule, footerBg: p.tape },
+      Tag: { defaultBg: p.tapeShade, defaultColor: p.ink },
       Alert: {
-        colorInfoBorder: p.border, colorSuccessBorder: p.border,
-        colorWarningBorder: p.border, colorErrorBorder: p.border,
+        colorInfoBorder: p.rule, colorSuccessBorder: p.rule,
+        colorWarningBorder: p.rule, colorErrorBorder: p.rule,
       },
-      Steps: { colorTextDescription: p.textSoft },
+      Steps: { colorTextDescription: p.inkSoft },
     },
   };
 }

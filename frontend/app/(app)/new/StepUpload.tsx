@@ -78,7 +78,7 @@ export default function StepUpload({
             return false;
           }}
         >
-          <p style={{ margin: "1.4rem 0 0.4rem", fontWeight: 500, color: labelReady ? "var(--text)" : "var(--text-soft)" }}>
+          <p style={{ margin: "1.4rem 0 0.4rem", fontWeight: 500, color: labelReady ? "var(--ink)" : "var(--ink-soft)" }}>
             Drop a CSV, or click to choose one
           </p>
           <p className="because" style={{ margin: "0 0 1.4rem" }}>

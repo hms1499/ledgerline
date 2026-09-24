@@ -10,14 +10,15 @@ describe("resolveTheme", () => {
   });
   it("follows the recorded system value when the choice is system or missing", () => {
     expect(resolveTheme("system", "light")).toEqual({ choice: "system", mode: "light" });
-    expect(resolveTheme(undefined, "light")).toEqual({ choice: "system", mode: "light" });
+    expect(resolveTheme("system", "dark")).toEqual({ choice: "system", mode: "dark" });
+    expect(resolveTheme(undefined, "dark")).toEqual({ choice: "system", mode: "dark" });
   });
-  it("renders dark on a first visit, before the system value is known", () => {
-    expect(resolveTheme(undefined, undefined)).toEqual({ choice: "system", mode: "dark" });
+  it("renders light on a first visit, before the system value is known", () => {
+    expect(resolveTheme(undefined, undefined)).toEqual({ choice: "system", mode: "light" });
   });
   it("treats a garbage or hostile cookie as system, never echoing it", () => {
     const r = resolveTheme("</script><script>alert(1)", "<b>");
-    expect(r).toEqual({ choice: "system", mode: "dark" });
+    expect(r).toEqual({ choice: "system", mode: "light" });
   });
 });
 
@@ -26,15 +27,21 @@ describe("antdTheme", () => {
     const t = antdTheme("dark");
     expect(t.algorithm).toBe(antd.darkAlgorithm);
     expect(t.token?.colorPrimary).toBe(palettes.dark.accent);
-    expect(t.token?.colorLink).toBe(palettes.dark.link);
-    expect(t.token?.colorBgBase).toBe(palettes.dark.bg);
-    expect(t.token?.colorTextSecondary).toBe(palettes.dark.textSoft);
-    expect(t.token?.colorSuccessBg).toBe(palettes.dark.successBg);
+    expect(t.token?.colorLink).toBe(palettes.dark.ink);
+    expect(t.token?.colorBgBase).toBe(palettes.dark.desk);
+    expect(t.token?.colorBgContainer).toBe(palettes.dark.tape);
+    expect(t.token?.colorTextSecondary).toBe(palettes.dark.inkSoft);
+    expect(t.token?.colorError).toBe(palettes.dark.ribbon);
   });
   it("uses the default algorithm and the light palette in light mode", () => {
     const t = antdTheme("light");
     expect(t.algorithm).toBe(antd.defaultAlgorithm);
-    expect(t.token?.colorText).toBe(palettes.light.text);
+    expect(t.token?.colorText).toBe(palettes.light.ink);
+  });
+  it("gives success no colour of its own: only exceptions get colour", () => {
+    for (const mode of ["light", "dark"] as const) {
+      expect(antdTheme(mode).token?.colorSuccess).toBe(palettes[mode].ink);
+    }
   });
 });
 

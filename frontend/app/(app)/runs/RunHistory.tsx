@@ -23,7 +23,7 @@ export default function RunHistory() {
   const columns: TableColumnsType<RunRecord> = [
     {
       title: "Run", dataIndex: "runLabel",
-      render: (label: string) => label || <span style={{ color: "var(--text-soft)" }}>unnamed</span>,
+      render: (label: string) => label || <span style={{ color: "var(--ink-soft)" }}>unnamed</span>,
     },
     {
       title: "Paid", dataIndex: "itemCount", width: 110,

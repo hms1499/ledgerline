@@ -32,9 +32,10 @@ describe("guards that keep fixed mistakes fixed", () => {
     // Task 10's keyboard check: inside a Panel's table, links and the expand
     // button kept antd's 1.5:1 colorPrimaryBorder ring and a sortable header
     // had no ring at all. Each needs the app's ring, forced over antd's.
-    const css = readFileSync(join(ROOT, "app", "globals.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const css = SOURCES.filter((f) => f.endsWith(".css"))
+      .map((f) => readFileSync(f, "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
     const forced = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-      .filter(([, , body]) => /outline:\s*2px solid var\(--success\)\s*!important/.test(body!))
+      .filter(([, , body]) => /outline:\s*2px solid var\(--focus\)\s*!important/.test(body!))
       .flatMap(([, sel]) => sel!.split(",").map((s) => s.trim()));
     for (const needed of [
       "a:focus-visible",
@@ -45,8 +46,11 @@ describe("guards that keep fixed mistakes fixed", () => {
     }
   });
 
-  it("no page uses a pre-redesign colour name", () => {
-    // --raised is a real token (raised), not one of these aliases.
-    expect(hits(/--(ground|ink|ink-soft|rule|ruleStrong|tick|flag|pending)(?![\w-])/)).toEqual([]);
+  it("no page uses a retired colour name", () => {
+    // Part 1's Settlement-blue names, and the pre-redesign ones the tape
+    // system did not bring back. --ink, --ink-soft and --rule are real again.
+    expect(hits(
+      /--(bg|surface|raised|sidebar|border|text|text-soft|link|success|danger|success-bg|warning-bg|danger-bg|ground|tick|flag|pending|ruleStrong)(?![\w-])/,
+    )).toEqual([]);
   });
 });

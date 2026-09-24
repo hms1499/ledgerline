@@ -189,7 +189,7 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
     {
       key: "allowance",
       claim: "Allowance granted to a contract the payer does not control",
-      ours: <span style={{ color: "var(--success)" }}>none — no approval exists in this path</span>,
+      ours: <span style={{ color: "var(--ink)" }}>none — no approval exists in this path</span>,
       naive: approve?.granted !== undefined && approve.token
         ? <>{amount(approve.token, approve.granted)} granted</>
         : <>required before any transfer</>,
@@ -198,12 +198,12 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
     {
       key: "standing",
       claim: "That allowance, read from the chain right now",
-      ours: <span style={{ color: "var(--text-soft)" }}>—</span>,
+      ours: <span style={{ color: "var(--ink-soft)" }}>—</span>,
       naive: allowanceNow
         ? allowanceNow.value === 0n
-          ? <span style={{ color: "var(--success)" }}>0 — fully spent</span>
-          : <span style={{ color: "var(--danger)" }}>{amount(allowanceNow.token, allowanceNow.value)} still standing</span>
-        : <span style={{ color: "var(--text-soft)" }}>not read</span>,
+          ? <span style={{ color: "var(--ink)" }}>0 — fully spent</span>
+          : <span style={{ color: "var(--ribbon)" }}>{amount(allowanceNow.token, allowanceNow.value)} still standing</span>
+        : <span style={{ color: "var(--ink-soft)" }}>not read</span>,
       source: `allowance(payer, ${allowanceNow ? short(allowanceNow.spender) : "batcher"}) — an eth_call made when this page loaded`,
     },
     {
@@ -211,10 +211,10 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
       claim: "Who the recipient sees as Transfer.from",
       ours: ours.assessment.payerVisible
         ? <>the payer, <span className="hex addr">{short(ours.payer)}</span></>
-        : <span style={{ color: "var(--danger)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
+        : <span style={{ color: "var(--ribbon)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
       naive: naive.assessment.payerVisible
         ? <>the payer, <span className="hex addr">{short(naive.payer)}</span></>
-        : <span style={{ color: "var(--danger)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
+        : <span style={{ color: "var(--ribbon)" }}>{naive.assessment.senders.map(short).join(", ")}</span>,
       source: "Transfer.from on every non-system Transfer log",
       same: ours.assessment.payerVisible && naive.assessment.payerVisible,
     },

@@ -202,7 +202,7 @@ function Ready({
     {
       title: "Invoice", dataIndex: "invoiceId", width: 150,
       render: (id?: string) => id ?? (
-        <span style={{ color: "var(--text-soft)" }}>{hasManifest ? "not on the list" : "in the run file"}</span>
+        <span style={{ color: "var(--ink-soft)" }}>{hasManifest ? "not on the list" : "in the run file"}</span>
       ),
     },
     {
@@ -221,14 +221,14 @@ function Ready({
           // has to carry the disagreement itself, not hide it behind an expand.
           return (
             <span className="hex" style={{ display: "block", lineHeight: 1.5 }}>
-              <span style={{ color: "var(--danger)" }}>{short(to)}</span>
+              <span style={{ color: "var(--ribbon)" }}>{short(to)}</span>
               <br />
-              <span style={{ color: "var(--text-soft)", fontSize: "0.85em" }}>owed {short(r.expectedTo)}</span>
+              <span style={{ color: "var(--ink-soft)", fontSize: "0.85em" }}>owed {short(r.expectedTo)}</span>
             </span>
           );
         }
         const shown = to ?? r.expectedTo;
-        if (!shown) return <span style={{ color: "var(--text-soft)" }}>—</span>;
+        if (!shown) return <span style={{ color: "var(--ink-soft)" }}>—</span>;
         return (
           <a className="hex addr" href={`${net.explorer}/address/${shown}`} target="_blank" rel="noreferrer" title={shown}>
             {short(shown)}
@@ -246,7 +246,7 @@ function Ready({
         const url = receiptFor(r);
         return url
           ? <a href={url}>Open</a>
-          : <span style={{ color: "var(--text-soft)" }} title={hasManifest ? undefined : "Load the run file to issue receipt links"}>—</span>;
+          : <span style={{ color: "var(--ink-soft)" }} title={hasManifest ? undefined : "Load the run file to issue receipt links"}>—</span>;
       },
     },
   ];
@@ -397,19 +397,19 @@ function Amount({ row, tokens }: { row: ReconcileRow; tokens: Map<string, TokenM
     return (
       <span className="hex">
         {f(row.actual)}{" "}
-        <span style={{ color: "var(--danger)" }}>
+        <span style={{ color: "var(--ribbon)" }}>
           ({delta > 0n ? "+" : ""}{f(delta)})
         </span>
         <br />
-        <span style={{ color: "var(--text-soft)", fontSize: "0.85em" }}>owed {f(row.expected)}</span>
+        <span style={{ color: "var(--ink-soft)", fontSize: "0.85em" }}>owed {f(row.expected)}</span>
       </span>
     );
   }
   if (row.actual !== undefined) return <span className="hex">{f(row.actual)}</span>;
   if (row.expected !== undefined) {
-    return <span className="hex" style={{ color: "var(--text-soft)" }}>owed {f(row.expected)}</span>;
+    return <span className="hex" style={{ color: "var(--ink-soft)" }}>owed {f(row.expected)}</span>;
   }
-  return <span style={{ color: "var(--text-soft)" }}>—</span>;
+  return <span style={{ color: "var(--ink-soft)" }}>—</span>;
 }
 
 function RowDetail({
@@ -426,7 +426,7 @@ function RowDetail({
       {note && (<><dt>What this means</dt><dd>{note}</dd></>)}
       {row.status === "recipient_mismatch" && (
         <>
-          <dt>Paid to</dt><dd className="hex" style={{ color: "var(--danger)" }}>{row.to}</dd>
+          <dt>Paid to</dt><dd className="hex" style={{ color: "var(--ribbon)" }}>{row.to}</dd>
           <dt>Should have been</dt><dd className="hex">{row.expectedTo}</dd>
         </>
       )}
@@ -443,7 +443,7 @@ function RowDetail({
         {receipt ? (
           <a href={receipt}>Open this line&apos;s receipt</a>
         ) : (
-          <span style={{ color: "var(--text-soft)" }}>
+          <span style={{ color: "var(--ink-soft)" }}>
             {!row.invoiceId
               ? "Needs the invoice reference and reference code, which only the run file holds."
               : row.actual === undefined

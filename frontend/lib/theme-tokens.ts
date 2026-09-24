@@ -1,39 +1,61 @@
 /**
- * The single source of colour. CSS variables, the antd theme and the contrast
- * test all read from here, so a colour cannot drift between them. Every value
- * was measured against WCAG 2 before it went in (spec §5.1); the test in
- * test/theme-tokens.test.ts keeps it that way.
+ * The single source of colour for the tape design system (spec
+ * docs/superpowers/specs/2026-09-24-tape-design-system-design.md §4.1).
+ * CSS variables, the antd theme and the contrast test all read from here, so
+ * a colour cannot drift between them. test/theme-tokens.test.ts keeps every
+ * pair above WCAG AA.
  */
 export type Mode = "dark" | "light";
 
 export interface Palette {
-  bg: string; surface: string; raised: string; sidebar: string;
-  /** Decorative rules only — WCAG exempts them. */
-  border: string;
-  /** Edges a user must see to operate: inputs, outline buttons, the wallet chip. ≥ 3:1. */
+  /** The page: the desk the tape lies on. */
+  desk: string;
+  /** Sidebar and bottom tabs. */
+  deskDeep: string;
+  /** Every block: paper from the roll. */
+  tape: string;
+  /** Row hover, selected items, code on tape. */
+  tapeShade: string;
+  /** Dotted leaders and separators. Decorative only — WCAG exempts them. */
+  rule: string;
+  /** Edges a user must see to operate: inputs, outline buttons, chips. ≥ 3:1. */
   control: string;
-  text: string; textSoft: string; link: string;
-  accent: string; onAccent: string;
-  success: string; warning: string; danger: string;
-  successBg: string; warningBg: string; dangerBg: string;
+  ink: string;
+  inkSoft: string;
+  /** The adding machine's red ribbon: wrong, short, failed. */
+  ribbon: string;
+  ribbonBg: string;
+  /** Look at this. A fill only; text on it is always onHighlight. */
+  highlight: string;
+  onHighlight: string;
+  /** antd's warning icons, nothing else. */
+  warning: string;
+  accent: string;
+  accentHover: string;
+  onAccent: string;
+  focus: string;
 }
 
 export const palettes: Record<Mode, Palette> = {
-  dark: {
-    bg: "#0B1220", surface: "#101929", raised: "#15213A", sidebar: "#080E1A",
-    border: "#1B2436", control: "#5F7090",
-    text: "#E4E9F2", textSoft: "#98A3B8", link: "#7FB0FF",
-    accent: "#4C8DFF", onAccent: "#051024",
-    success: "#5EE0A0", warning: "#F2C35B", danger: "#FF8C9B",
-    successBg: "#0F3326", warningBg: "#33290F", dangerBg: "#3B1720",
-  },
   light: {
-    bg: "#F5F7FB", surface: "#FFFFFF", raised: "#E8EFFB", sidebar: "#EEF2F8",
-    border: "#DCE3EE", control: "#7C889E",
-    text: "#0E1726", textSoft: "#4F5B70", link: "#1A56C4",
-    accent: "#1F5FD6", onAccent: "#FFFFFF",
-    success: "#0B6E48", warning: "#7A5000", danger: "#B0222E",
-    successBg: "#E2F4EC", warningBg: "#FBF0D9", dangerBg: "#FBE4E6",
+    desk: "#E2E0DA", deskDeep: "#D6D3CB", tape: "#FDFDFA", tapeShade: "#F0EEE8",
+    rule: "#B9B7B0", control: "#77756D",
+    ink: "#161616", inkSoft: "#55544F",
+    ribbon: "#AC0D26", ribbonBg: "#FBE4E6",
+    highlight: "#FFE45C", onHighlight: "#161616",
+    warning: "#6E5200",
+    accent: "#161616", accentHover: "#3A3935", onAccent: "#FDFDFA",
+    focus: "#161616",
+  },
+  dark: {
+    desk: "#121211", deskDeep: "#0B0B0A", tape: "#262521", tapeShade: "#31302B",
+    rule: "#45433D", control: "#8A877E",
+    ink: "#F2F1EC", inkSoft: "#AEACA3",
+    ribbon: "#FF7A7A", ribbonBg: "#3D1C1E",
+    highlight: "#F4D63D", onHighlight: "#161616",
+    warning: "#F4D63D",
+    accent: "#F2F1EC", accentHover: "#CFCDC5", onAccent: "#121211",
+    focus: "#F2F1EC",
   },
 };
 
