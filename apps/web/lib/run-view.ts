@@ -18,6 +18,27 @@ export function tokensToRead(result: Pick<ReconcileResult, "rows" | "payments">)
   return [...seen.values()];
 }
 
+/**
+ * Splits `tokensToRead`'s tokens into ones a payment on this transaction
+ * actually used, and ones only a loaded run file names. A paid token emitted
+ * a Transfer on this chain, so a metadata read failing for it is a real RPC
+ * problem and should still throw. A file-only token is named by data the
+ * payer typed or uploaded, not by anything the chain confirmed — a run file
+ * for the wrong network, say — so a failed read there should degrade to the
+ * no-decimals display rather than take down the whole page (§3.4).
+ */
+export function splitTokensToRead(
+  result: Pick<ReconcileResult, "rows" | "payments">,
+): { paid: Address[]; fileOnly: Address[] } {
+  const paidTokens = new Set(result.payments.map((p) => p.token.toLowerCase()));
+  const paid: Address[] = [];
+  const fileOnly: Address[] = [];
+  for (const t of tokensToRead(result)) {
+    (paidTokens.has(t.toLowerCase()) ? paid : fileOnly).push(t);
+  }
+  return { paid, fileOnly };
+}
+
 export const STAT_LABELS = ["Payments", "Completeness", "Review", "Recorded"] as const;
 
 export interface StatView {

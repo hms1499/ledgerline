@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import type { Address, Completeness, PaymentRecord, ReconcileRow } from "@ledgerline/core";
 import {
-  tokensToRead, runStatsView, reviewCount, STAT_LABELS, perTokenTotals, statusBreakdown,
+  tokensToRead, splitTokensToRead, runStatsView, reviewCount, STAT_LABELS, perTokenTotals, statusBreakdown,
 } from "@/lib/run-view";
 
 const USDC = "0x3600000000000000000000000000000000000000" as Address;
@@ -23,6 +23,36 @@ describe("tokensToRead — every token the run page prints an amount in", () => 
   });
   it("is empty for an empty run", () => {
     expect(tokensToRead({ payments: [], rows: [] })).toEqual([]);
+  });
+});
+
+describe("splitTokensToRead — paid tokens throw on a bad read, file-only tokens degrade (I1)", () => {
+  it("puts a token a payment actually used in `paid`", () => {
+    const out = splitTokensToRead({ payments: [pay(USDC)], rows: [row("matched", USDC)] });
+    expect(out.paid.map((t) => t.toLowerCase())).toEqual([USDC.toLowerCase()]);
+    expect(out.fileOnly).toEqual([]);
+  });
+
+  it("puts a token only an unpaid row names in `fileOnly`, not `paid`", () => {
+    // This is the run-file-mismatch case I1 covers: a run file names a token
+    // (e.g. mainnet cirBTC) that has no contract on this network. Its metadata
+    // read fails, and it must not be treated as a paid token's failure.
+    const out = splitTokensToRead({ payments: [pay(USDC)], rows: [row("matched", USDC), row("unpaid", CIRBTC)] });
+    expect(out.paid.map((t) => t.toLowerCase())).toEqual([USDC.toLowerCase()]);
+    expect(out.fileOnly.map((t) => t.toLowerCase())).toEqual([CIRBTC.toLowerCase()]);
+  });
+
+  it("case-insensitively recognises a paid token even if a row spells it differently", () => {
+    const out = splitTokensToRead({
+      payments: [pay(EURC)],
+      rows: [row("matched", EURC.toLowerCase() as Address)],
+    });
+    expect(out.paid).toEqual([EURC]);
+    expect(out.fileOnly).toEqual([]);
+  });
+
+  it("is empty/empty for an empty run", () => {
+    expect(splitTokensToRead({ payments: [], rows: [] })).toEqual({ paid: [], fileOnly: [] });
   });
 });
 

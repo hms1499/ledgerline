@@ -90,8 +90,14 @@ design found five):
 *payments* use. With a run file loaded, a row can be `unpaid` — owed, never
 paid — in a token no payment in the transaction used. Its "owed" amount then
 renders through `?? 6`; for cirBTC (8 decimals) that is 100× too large. If a
-metadata read *fails*, `loadRun` throws and the page shows "Could not reach
-Arc", which is honest; that path does not change.
+metadata read *fails* for a token a payment on this transaction actually
+used, `loadRun` throws and the page shows "Could not reach Arc", which is
+honest; that path does not change. It does **not** hold for a token named
+only by a loaded run file's rows: that token comes from data the payer typed
+or uploaded, not from anything this chain confirmed (a run file for the
+wrong network, say), so a failed read there degrades to the no-decimals
+display below instead of throwing — that is what lets the run-file-mismatch
+alert show at all.
 
 **Fix, in two parts:**
 

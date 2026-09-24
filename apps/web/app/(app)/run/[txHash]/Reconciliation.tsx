@@ -17,7 +17,7 @@ import WalletPicker from "@/components/WalletPicker";
 import { SEVERITY, statusView } from "@/lib/reconcile-view";
 import { amountFigure, amountText, type TokenMeta } from "@/lib/token-meta";
 import {
-  tokensToRead, runStatsView, STAT_LABELS, perTokenTotals, statusBreakdown,
+  tokensToRead, splitTokensToRead, runStatsView, STAT_LABELS, perTokenTotals, statusBreakdown,
 } from "@/lib/run-view";
 import { Grid, Col } from "@/components/grid/Grid";
 import Panel from "@/components/ui/Panel";
@@ -481,12 +481,29 @@ async function loadRun(
   const result = reconcile(logs, effective);
 
   const tokens = new Map<string, TokenMeta>();
-  for (const token of tokensToRead(result)) {
+  const { paid, fileOnly } = splitTokensToRead(result);
+  // Paid tokens emitted a Transfer on this chain, so a failed read here really
+  // is an RPC problem — let it throw, same as before.
+  for (const token of paid) {
     const [decimals, symbol] = await Promise.all([
       client.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }),
       client.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }).catch(() => ""),
     ]);
     tokens.set(token.toLowerCase(), { decimals: Number(decimals), symbol: symbol as string });
+  }
+  // File-only tokens are named by the loaded run file, not by anything this
+  // transaction confirmed (a run file for the wrong network, say). A failed
+  // read here is not this page's problem to report as "could not reach Arc" —
+  // leave the token out of `tokens` so its amount degrades to the raw-integer
+  // display (§3.4) and the run-file mismatch alert can still show.
+  for (const token of fileOnly) {
+    try {
+      const [decimals, symbol] = await Promise.all([
+        client.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }),
+        client.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }).catch(() => ""),
+      ]);
+      tokens.set(token.toLowerCase(), { decimals: Number(decimals), symbol: symbol as string });
+    } catch { /* not on this network — amountFigure/amountText degrade without it */ }
   }
 
   let anchoredItemCount: number | undefined;
