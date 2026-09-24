@@ -188,8 +188,8 @@ upgrade path, no approvals and no balance. The mainnet deployment is
 source-verified. See [`docs/notes/2026-09-24-mainnet-deploy.md`](docs/notes/2026-09-24-mainnet-deploy.md).
 
 Tests: `PayoutAnchor.t.sol` (behaviour), `MerkleCrossCheck.t.sol` (proofs built
-in TypeScript verify on chain), `Audit.t.sol` (findings from the pre-mainnet
-audit), `ProbeRisk.t.sol`. `CustodialBatcher.sol` and `MemoCallerProbe.sol` are
+in TypeScript verify on chain), `Audit.t.sol` (findings from the internal
+pre-mainnet review, not an independent audit), `ProbeRisk.t.sol`. `CustodialBatcher.sol` and `MemoCallerProbe.sol` are
 test fixtures used to establish the caller rules and the negative control.
 
 ### `scripts`
@@ -252,7 +252,8 @@ wallet, and with any RPC endpoint the recipient chooses.
 | Data | Lives in | Trusted for | If lost |
 |---|---|---|---|
 | Payments, references, `RunCommitted` | Chain (the transaction's logs) | Everything | Cannot be lost |
-| Root and item count | Chain (`PayoutAnchor.runs`) | Completeness, run-file integrity, receipt proofs | Cannot be lost |
+| Root | Chain (`PayoutAnchor.runs`) | Run-file integrity and receipt proofs | Cannot be lost |
+| Item count | Chain (`PayoutAnchor.runs`) | A completeness hint only. The payer declares it, and the contract cannot check it against the tree | Cannot be lost |
 | `runSalt` | Nowhere. Re-derived from a payer signature | Mapping payments to invoice ids | The payer signs again |
 | Run file (JSON) | The payer's disk | Invoice ids and intended amounts, after it matches the anchored root | Ids are recoverable from the payer's own records plus a signature, and the root still proves the list |
 | Run history | The payer's browser `localStorage`, keyed by payer and chain | Nothing. Every entry is re-read from the chain, and the connected wallet, not the stored payer, decides whose runs are shown | Only the list of hashes is lost |
@@ -275,6 +276,8 @@ just a feature.
    a sibling subcall, so `Transfer.from` stays the payer.
 3. **`PayoutAnchor` never holds funds.** It has no approvals, balances, owner or
    upgrade path. It is an evidence layer. If it broke, money would still move.
+   It records what the payer declared. It does not bind that list to the
+   payments, so it makes a divergence detectable rather than preventing it.
 4. **No payment is reported without a receipt.** `executeRun` separates
    `dropped` and `pending` from `confirmed`.
 5. **Reconcile from the emitted `Transfer` value, never from the requested
