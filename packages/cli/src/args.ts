@@ -10,10 +10,11 @@ const RPC: Record<Network, string> = {
 /**
  * The PayoutAnchor whose RunCommitted events this tool trusts. Any contract can
  * emit that event, so the address has to come from here or from --anchor,
- * never from the transaction being checked. Mainnet is filled in at deploy.
+ * never from the transaction being checked. The mainnet one is source-verified
+ * on explorer.arc.io.
  */
 const KNOWN_ANCHOR: Record<Network, Address | undefined> = {
-  mainnet: undefined,
+  mainnet: "0xd4838881EcBa8320d456B8B65A07A0ac167F0890",
   testnet: "0xb8907A07768D936D1D498257E5803c91033a8802",
 };
 

@@ -30,6 +30,10 @@ describe("parseArgs", () => {
     expect(parseArgs([TX, "--network", "testnet", "--anchor", other]).anchor).toBe(other);
   });
 
+  it("uses the verified mainnet anchor by default", () => {
+    expect(parseArgs([TX]).anchor).toBe("0xd4838881EcBa8320d456B8B65A07A0ac167F0890");
+  });
+
   it("rejects a network it does not know", () => {
     expect(() => parseArgs([TX, "--network", "sepolia"])).toThrow(/mainnet.*testnet/);
   });
