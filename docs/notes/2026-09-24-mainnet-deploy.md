@@ -13,7 +13,7 @@ Submission artifact #1. Deployed 2026-09-24.
 
 ## Freeze gate, checked before deploying
 
-`contracts/src/PayoutAnchor.sol` is unchanged since `683fde5` (the audit
+`contracts/src/PayoutAnchor.sol` is unchanged since `266f1db` (the audit
 fixes). Its deployed bytecode from `forge build` is byte-identical to the
 testnet anchor `0xb8907A07768D936D1D498257E5803c91033a8802`, which every
 testnet run and the Task 10 browser pass exercised. After the deploy, the
