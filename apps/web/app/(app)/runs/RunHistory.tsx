@@ -34,7 +34,7 @@ export default function RunHistory() {
       render: (ms: number) => new Date(ms).toLocaleString(),
     },
     {
-      title: "", dataIndex: "txHash", width: 230,
+      title: <span className="sr-only">Actions</span>, dataIndex: "txHash", width: 230,
       render: (txHash: string, r) => (
         <span style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Link href={`/run/${txHash}?n=${net.name}&label=${encodeURIComponent(r.runLabel)}`}>
