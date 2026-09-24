@@ -5,6 +5,7 @@ the pieces fit, where each responsibility lives, and which design decisions are
 deliberate and should not be "tidied" away. For what the project does and how
 to run it, start with the [README](README.md). For the measurements behind the
 design, see the [design spec](docs/superpowers/specs/2026-09-21-ledgerline-design.md).
+For the same picture as two diagrams, see the [overview](docs/architecture-overview.md).
 
 ## Bird's-eye view
 
