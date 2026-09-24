@@ -89,7 +89,12 @@ export default function CreateRun() {
       )}
 
       <Col span={step === 4 ? 12 : 8} md={12}>
-        <Panel>
+        {/* Only the Review step names itself here: every other step opens
+            with its own heading (StepUpload, StepPreflight, StepSend,
+            Result), so an untitled Panel there would double it up. Review's
+            table had no heading of its own, which is what left it opening
+            as a blank band. */}
+        <Panel title={step === 1 ? "Payments in this run" : undefined}>
           {step === 0 && (
             <StepUpload net={net} onReady={(d) => { setDraft(d); setStep(1); }} />
           )}
