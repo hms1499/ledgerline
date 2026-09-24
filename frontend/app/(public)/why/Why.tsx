@@ -11,7 +11,7 @@ import { networkFor, short, type NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
 import { amountText } from "@/lib/token-meta";
 import { Grid, Col } from "@/components/grid/Grid";
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 import Verdict from "@/components/ui/Verdict";
 
 /** Approval(address indexed owner, address indexed spender, uint256 value) */
@@ -97,37 +97,37 @@ export default function Why({
         </div>
       </Col>
 
-      {phase === "loading" && <Col span={12}><Panel><Skeleton active paragraph={{ rows: 8 }} /></Panel></Col>}
+      {phase === "loading" && <Col span={12}><Tape><Skeleton active paragraph={{ rows: 8 }} /></Tape></Col>}
 
       {phase === "unconfigured" && (
         <Col span={12}>
-          <Panel>
+          <Tape>
             <Verdict level={1} tone="degraded" title="No pair of transactions to compare yet"
               body="This page reads two real transactions off Arc and derives every claim below from their logs. It asserts nothing on its own, so with no transactions configured it has nothing to say." />
             <p style={{ marginTop: "1.6rem", marginBottom: 0, maxWidth: "62ch" }}>
               Point it at a pair:{" "}
               <code className="hex">/why?ours=0x…&amp;naive=0x…&amp;approve=0x…&amp;n={net.name}</code>
             </p>
-          </Panel>
+          </Tape>
         </Col>
       )}
 
       {phase === "tx_not_found" && (
         <Col span={12}>
-          <Panel>
+          <Tape>
             <Verdict level={1} tone="error" title={`One of these transactions is not on Arc ${net.name}`}
               body={<>Nothing here matches. If the pair was sent on another network, switch with <code>?n=mainnet</code>.</>} />
-          </Panel>
+          </Tape>
         </Col>
       )}
 
       {phase === "rpc_unreachable" && (
         <Col span={12}>
-          <Panel>
+          <Tape>
             <Verdict level={1} tone="degraded" title="Could not reach Arc"
               body="This says nothing about either transaction — only that the comparison could not be read. Try another endpoint below." />
             {error && <Alert type="warning" showIcon style={{ marginTop: 20 }} title={error} />}
-          </Panel>
+          </Tape>
         </Col>
       )}
 
@@ -260,7 +260,7 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
   return (
     <>
       <Col span={12}>
-        <Panel>
+        <Tape>
           <section className="line line--summary">
             <div>
               <p className="amount">
@@ -292,7 +292,7 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
             <Table<ClaimRow> columns={columns} dataSource={rows} pagination={false} size="middle"
               scroll={{ x: "max-content" }} />
           </div>
-        </Panel>
+        </Tape>
       </Col>
 
       <Col span={6} md={12}>
@@ -393,7 +393,7 @@ function TxCard({
   title: string; side: Side; net: NetworkView; note: string; children?: React.ReactNode;
 }) {
   return (
-    <Panel title={title}>
+    <Tape title={title}>
       <p className="because" style={{ marginTop: 0 }}>{note}</p>
       <p style={{ margin: "0.9rem 0" }}>
         <a className="hex" href={`${net.explorer}/tx/${side.hash}`} target="_blank" rel="noreferrer">
@@ -401,7 +401,7 @@ function TxCard({
         </a>
       </p>
       {children}
-    </Panel>
+    </Tape>
   );
 }
 

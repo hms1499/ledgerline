@@ -1,9 +1,9 @@
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 import { SAMPLE_CSV, sampleCsvHref } from "@/lib/sample-csv";
 
 export default function CsvHelp() {
   return (
-    <Panel title="What the file must look like">
+    <Tape title="What the file must look like">
       <pre className="hex" style={{ margin: 0, whiteSpace: "pre-wrap" }}>{SAMPLE_CSV}</pre>
       <p className="because">
         Header required and spelled exactly as above. Amounts are written the way you
@@ -12,6 +12,6 @@ export default function CsvHelp() {
         <a href={sampleCsvHref()} download="ledgerline-sample.csv">Download this sample</a>{" "}
         and replace the recipients with your own.
       </p>
-    </Panel>
+    </Tape>
   );
 }

@@ -1,4 +1,4 @@
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 import { short } from "@/lib/chain";
 import type { RunSummaryView } from "@/lib/run-summary-view";
 
@@ -7,7 +7,7 @@ export default function RunSummary({
   view, network, payer,
 }: { view: RunSummaryView; network: string; payer?: string }) {
   return (
-    <Panel title="This run">
+    <Tape title="This run">
       <dl className="detail run-summary">
         <dt>Name</dt><dd>{view.name}</dd>
         <dt>Payments</dt><dd>{view.payments}</dd>
@@ -18,6 +18,6 @@ export default function RunSummary({
         <dd>{payer ? <span className="hex addr" title={payer}>{short(payer)}</span> : "Not connected"}</dd>
         {view.runId && (<><dt>Run ID</dt><dd className="hex">{view.runId}</dd></>)}
       </dl>
-    </Panel>
+    </Tape>
   );
 }

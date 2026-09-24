@@ -7,7 +7,7 @@ import { short } from "@/lib/chain";
 import { runsFor, forgetRun, type RunRecord } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 import Verdict from "@/components/ui/Verdict";
 
 export default function RunHistory() {
@@ -58,15 +58,15 @@ export default function RunHistory() {
     <Grid>
       {!wallet ? (
         <Col span={12}>
-          <Panel>
+          <Tape>
             <Verdict title="Runs you sent from this browser"
               body="Connect the wallet that paid them. This list lives in this browser only — Ledgerline has no account and no server that remembers you." />
             <Button type="primary" style={{ marginTop: 24 }} onClick={connect}>Connect a wallet</Button>
-          </Panel>
+          </Tape>
         </Col>
       ) : rows.length === 0 ? (
         <Col span={12}>
-          <Panel>
+          <Tape>
             <Verdict title="Nothing recorded for this wallet" body={
               <>
                 No runs from <span className="hex addr">{short(wallet.address)}</span> have been sent
@@ -82,7 +82,7 @@ export default function RunHistory() {
                 Find an earlier one on the explorer
               </a>
             </p>
-          </Panel>
+          </Tape>
         </Col>
       ) : (
         <>
@@ -102,7 +102,7 @@ export default function RunHistory() {
             />
           </Col>
           <Col span={12}>
-            <Panel title="Runs sent from this browser">
+            <Tape title="Runs sent from this browser">
               <Table<RunRecord>
                 columns={columns}
                 dataSource={rows.map((r) => ({ ...r, key: r.txHash }))}
@@ -110,7 +110,7 @@ export default function RunHistory() {
                 size="middle"
                 scroll={{ x: "max-content" }}
               />
-            </Panel>
+            </Tape>
           </Col>
         </>
       )}

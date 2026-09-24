@@ -2,7 +2,7 @@ import Link from "next/link";
 import { defaultNetwork } from "@/lib/chain";
 import { sampleCsvHref } from "@/lib/sample-csv";
 import { Grid, Col } from "@/components/grid/Grid";
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 
 export default function Home() {
   const net = defaultNetwork();
@@ -27,7 +27,7 @@ export default function Home() {
 
       <Col span={5} md={12}>
         {/* Labelled so it is never read as someone's real payment. */}
-        <Panel head={<><strong>Example</strong><span>what a recipient sees</span></>}>
+        <Tape head={<><strong>Example</strong><span>what a recipient sees</span></>}>
           <section className="line">
             <div>
               <p className="amount">0.10<span className="unit">USDC</span></p>
@@ -35,7 +35,7 @@ export default function Home() {
             </div>
             <span className="reference">INV-US-001</span>
           </section>
-        </Panel>
+        </Tape>
       </Col>
 
       {!testnet && (
@@ -62,7 +62,7 @@ export default function Home() {
       <Col span={12}><h2 className="section-title">How a run works</h2></Col>
 
       <Col span={4} md={12}>
-        <Panel className="how-card">
+        <Tape className="how-card">
           <span className="how-step">1</span>
           <h3>Upload a list of invoices</h3>
           <p>
@@ -70,10 +70,10 @@ export default function Home() {
             <a href={sampleCsvHref()} download="ledgerline-sample.csv">Download a sample</a>{" "}
             to start from. It stays in your browser.
           </p>
-        </Panel>
+        </Tape>
       </Col>
       <Col span={4} md={12}>
-        <Panel className="how-card">
+        <Tape className="how-card">
           <span className="how-step">2</span>
           <h3>Check it, then pay in one transaction</h3>
           <p>
@@ -81,17 +81,17 @@ export default function Home() {
             or a transfer the token would refuse shows up before any money moves. Then
             one transaction pays every line.
           </p>
-        </Panel>
+        </Tape>
       </Col>
       <Col span={4} md={12}>
-        <Panel className="how-card">
+        <Tape className="how-card">
           <span className="how-step">3</span>
           <h3>Send each recipient their receipt link</h3>
           <p>
             The link shows what was paid and which invoice it settles, checked against
             the chain in their own browser. They need no account and nothing from us.
           </p>
-        </Panel>
+        </Tape>
       </Col>
 
       <Col span={12}>

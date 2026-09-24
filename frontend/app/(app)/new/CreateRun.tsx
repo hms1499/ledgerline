@@ -9,7 +9,7 @@ import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
 import { Grid, Col } from "@/components/grid/Grid";
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 import { summarySource, runSummaryView } from "@/lib/run-summary-view";
 import { realFundsNotice } from "@/lib/network-notice";
 import StepUpload from "./StepUpload";
@@ -111,10 +111,10 @@ export default function CreateRun() {
       <Col span={step === 4 ? 12 : 8} md={12}>
         {/* Only the Review step names itself here: every other step opens
             with its own heading (StepUpload, StepPreflight, StepSend,
-            Result), so an untitled Panel there would double it up. Review's
+            Result), so an untitled Tape there would double it up. Review's
             table had no heading of its own, which is what left it opening
             as a blank band. */}
-        <Panel title={step === 1 ? "Payments in this run" : undefined}>
+        <Tape title={step === 1 ? "Payments in this run" : undefined}>
           {step === 0 && (
             <StepUpload net={net} onReady={(d) => { setDraft(d); setStep(1); }} />
           )}
@@ -156,7 +156,7 @@ export default function CreateRun() {
           {step === 4 && outcome && prepared && draft && (
             <Result outcome={outcome} prepared={prepared} draft={draft} net={net} />
           )}
-        </Panel>
+        </Tape>
       </Col>
 
       {step === 0 && (

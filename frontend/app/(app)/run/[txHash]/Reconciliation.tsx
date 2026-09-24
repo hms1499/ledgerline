@@ -20,7 +20,7 @@ import {
   tokensToRead, splitTokensToRead, runStatsView, STAT_LABELS, perTokenTotals, statusBreakdown,
 } from "@/lib/run-view";
 import { Grid, Col } from "@/components/grid/Grid";
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 import StatTile from "@/components/ui/StatTile";
 import Verdict from "@/components/ui/Verdict";
 
@@ -89,10 +89,10 @@ export default function Reconciliation({
 
   const failed = (tone: string, title: string, body: string, extra?: React.ReactNode) => (
     <Col span={12}>
-      <Panel>
+      <Tape>
         <Verdict tone={tone} title={title} body={body} />
         {extra}
-      </Panel>
+      </Tape>
     </Col>
   );
 
@@ -105,7 +105,7 @@ export default function Reconciliation({
               <StatTile label={label} value={<Skeleton.Input active size="small" />} />
             </Col>
           ))}
-          <Col span={12}><Panel><Skeleton active paragraph={{ rows: 8 }} /></Panel></Col>
+          <Col span={12}><Tape><Skeleton active paragraph={{ rows: 8 }} /></Tape></Col>
         </>
       )}
 
@@ -333,7 +333,7 @@ function Ready({
       )}
 
       <Col span={12}>
-        <Panel title="Payments in this run">
+        <Tape title="Payments in this run">
           <Table<ReconcileRow>
             columns={columns}
             dataSource={result.rows.map((r, i) => ({ ...r, key: `${r.memoId}-${i}` }))}
@@ -370,11 +370,11 @@ function Ready({
               </Table.Summary>
             )}
           />
-        </Panel>
+        </Tape>
       </Col>
 
       <Col span={8} md={12}>
-        <Panel>
+        <Tape>
           <RecoverLinks
             net={net} txHash={txHash}
             memoIdsOnChain={new Set(result.payments.map((p) => p.memoId.toLowerCase()))}
@@ -383,7 +383,7 @@ function Ready({
             anchorPayer={data.anchorPayer}
             initialLabel={runLabel ?? ""}
           />
-        </Panel>
+        </Tape>
       </Col>
     </>
   );

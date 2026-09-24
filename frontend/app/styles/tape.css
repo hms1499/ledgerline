@@ -1,0 +1,166 @@
+/* The tape design system: the tape and what prints on it (spec §6.1–6.3). */
+
+/* ── Tape: every block is paper from the roll ─────────────────────────── */
+.tape, .stat-tile, .col > .ant-alert, .ant-modal .ant-modal-container {
+  position: relative;
+  background: var(--tape);
+}
+.tape { padding: 16px var(--tape-pad) 18px; min-width: 0; }
+/* Torn edges: scallops in the tape's own colour, just outside its box. */
+:is(.tape, .stat-tile, .col > .ant-alert, .ant-modal .ant-modal-container)::before,
+:is(.tape, .stat-tile, .col > .ant-alert, .ant-modal .ant-modal-container)::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: var(--edge);
+  pointer-events: none;
+}
+:is(.tape, .stat-tile, .col > .ant-alert, .ant-modal .ant-modal-container)::before {
+  top: calc(-1 * var(--edge));
+  background: radial-gradient(circle at 6px 0, transparent 5px, var(--tape) 5.5px) 0 0 / 12px var(--edge) repeat-x;
+}
+:is(.tape, .stat-tile, .col > .ant-alert, .ant-modal .ant-modal-container)::after {
+  bottom: calc(-1 * var(--edge));
+  background: radial-gradient(circle at 6px var(--edge), transparent 5px, var(--tape) 5.5px) 0 0 / 12px var(--edge) repeat-x;
+}
+/* Feeding: a straight edge and a feed line — still printing, or waiting for you. */
+.tape.is-feeding { padding-bottom: 24px; }
+.tape.is-feeding::after {
+  bottom: 0;
+  height: 3px;
+  background: repeating-linear-gradient(90deg, var(--ink) 0 6px, transparent 6px 12px);
+  opacity: 0.5;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tape.is-feeding::after { animation: tape-feed 900ms linear infinite; }
+}
+@keyframes tape-feed { to { background-position: 12px 0; } }
+/* A lone block fills its column, so tapes in one row share a height. */
+.col > .tape:only-child, .col > .stat-tile:only-child { height: 100%; }
+
+/* ── the printed header ───────────────────────────────────────────────── */
+.tape-head, .page-head {
+  display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 4px 12px;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);
+}
+.tape-head { padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1.5px dashed var(--ink); }
+:is(.tape-head, .page-head) strong { color: var(--ink); font-weight: 700; letter-spacing: 0.1em; }
+.tape-title {
+  margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1.5px dashed var(--ink);
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink);
+}
+.tape-head + .tape-title { border-bottom: 0; padding-bottom: 0; }
+.tape > .verdict:first-child { padding-top: 0; }
+.rule-dashed { height: 0; border-top: 1.5px dashed var(--ink); margin: 14px 0; }
+
+/* ── key marks: ◇ subtotal, ✱ total, # non-add (spec §6.2) ───────────── */
+.key-mark { width: 1.2em; flex: none; text-align: right; font-family: var(--font-mono), ui-monospace, monospace; color: var(--ink-soft); }
+
+/* ── leader lines: LABEL ........ value ───────────────────────────────── */
+.leader {
+  display: flex; align-items: baseline; gap: 8px; margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 13px; line-height: 1.9;
+}
+.leader-dots { flex: 1; min-width: 12px; align-self: stretch; border-bottom: 1.5px dotted var(--rule); margin-bottom: 0.55em; }
+.leader-key { text-transform: uppercase; letter-spacing: 0.06em; }
+.leader-val { text-align: right; min-width: 0; overflow-wrap: anywhere; }
+.leader-val.is-void { color: var(--ribbon); }
+
+/* ── Totals: one ◇ line per token ─────────────────────────────────────── */
+.totals-lines { list-style: none; margin: 0; padding: 0; }
+.totals-sum { border-top: 1.5px dashed var(--ink); margin-top: 4px; padding-top: 2px; font-weight: 600; }
+
+/* ── stat tile: a small torn tape ─────────────────────────────────────── */
+.stat-tile { padding: 14px var(--tape-pad) 16px; }
+.stat-label {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);
+}
+.stat-value {
+  margin: 6px 0 2px;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 22px; font-weight: 600; line-height: 1.25; overflow-wrap: anywhere;
+}
+.stat-value.is-danger { color: var(--ribbon); }
+.stat-value.is-warning > span {
+  background: var(--highlight); color: var(--on-highlight); padding: 0 0.2em;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.stat-sub { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.stat-line { display: block; font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; }
+
+/* ── verdict: a heading, or the machine's printed answer ─────────────── */
+.verdict { padding: 4px 0 2px; }
+.verdict :is(h1, h2) { margin: 0 0 6px; font-size: 22px; line-height: 1.3; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+.verdict p { margin: 0; max-width: var(--measure); color: var(--ink-soft); }
+.verdict:is(.ok, .error, .critical, .degraded) { text-align: center; padding: 10px 0 6px; }
+.verdict:is(.ok, .error, .critical, .degraded) p { margin-inline: auto; font-size: 14px; }
+.stamp, .verdict:is(.ok, .error, .critical, .degraded) :is(h1, h2) {
+  margin: 0 0 8px;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 100%;
+  font-size: 14px; font-weight: 700; line-height: 1.6; letter-spacing: 0.1em; text-transform: uppercase;
+  text-align: center;
+}
+/* The stars are print, not words: empty alt text keeps them out of speech. */
+:is(.stamp, .verdict:is(.ok, .error, .critical, .degraded) :is(h1, h2))::before { content: "*** " / ""; }
+:is(.stamp, .verdict:is(.ok, .error, .critical, .degraded) :is(h1, h2))::after { content: " ***" / ""; }
+.verdict:is(.error, .critical) :is(h1, h2) { color: var(--ribbon); }
+.verdict.degraded :is(h1, h2) {
+  display: inline; padding: 2px 6px;
+  background: var(--highlight); color: var(--on-highlight);
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.verdict.degraded p { margin-top: 12px; }
+
+/* ── the printed checks ───────────────────────────────────────────────── */
+.ladder { list-style: none; margin: 0; padding: 0; }
+.rung { display: grid; grid-template-columns: minmax(0, 1fr) 1.5em; column-gap: 8px; padding: 4px 0; border-top: 1.5px dotted var(--rule); }
+.rung:first-child { border-top: 0; }
+.rung .claim { grid-column: 1; grid-row: 1; }
+.rung .mark { grid-column: 2; grid-row: 1; text-align: right; font-family: var(--font-mono), ui-monospace, monospace; }
+.rung .because { grid-column: 1 / -1; margin: 0 0 4px; }
+.rung.fail :is(.mark, .claim) { color: var(--ribbon); }
+.rung.skipped :is(.mark, .claim) { color: var(--ink-soft); }
+/* On a receipt the checks are printed labels: capitals, a hanging indent,
+   the mark kept on the first line. */
+.ladder--printed .rung { border-top: 0; padding: 1px 0; }
+.ladder--printed .claim {
+  padding-left: 1.2em; text-indent: -1.2em;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 13px; line-height: 1.8; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.ladder--printed .mark { font-size: 13px; line-height: 1.8; }
+/* Verification is genuinely sequential, so show it printing — once. */
+@media (prefers-reduced-motion: no-preference) {
+  .rung { animation: print-in 260ms ease-out both; }
+}
+@keyframes print-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* ── the ledger line: an amount and what it settles ───────────────────── */
+.line {
+  display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 12px 24px;
+  padding: 4px 0 16px; margin-bottom: 16px; border-bottom: 1.5px dashed var(--ink);
+}
+.amount {
+  margin: 0;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 100%;
+  font-size: clamp(32px, 6vw, 48px); font-weight: 600; line-height: 1; letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+.amount .unit { margin-left: 0.4em; font-size: 15px; font-weight: 500; letter-spacing: 0; }
+.amount.is-absent {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(20px, 3vw, 26px); font-weight: 700; letter-spacing: -0.01em; color: var(--ink-soft);
+}
+.slip-amount { text-align: right; margin: 12px 0 4px; }
+.payee { margin: 8px 0 0; font-size: 13px; color: var(--ink-soft); }
+.reference {
+  padding: 2px 8px; border: 1px solid var(--control);
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; font-size: 14px;
+}
+.reference.is-void { color: var(--ribbon); border-color: var(--ribbon); }

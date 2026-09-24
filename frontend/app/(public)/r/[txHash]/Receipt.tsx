@@ -13,7 +13,7 @@ import {
 } from "@/lib/chain";
 import { absentHeadline, RECEIPT_COPY } from "@/lib/receipt-view";
 import { Grid, Col } from "@/components/grid/Grid";
-import Panel from "@/components/ui/Panel";
+import Tape from "@/components/ui/Tape";
 import Verdict from "@/components/ui/Verdict";
 import { amountFigure, amountText } from "@/lib/token-meta";
 
@@ -85,7 +85,7 @@ export default function Receipt(props: Props) {
   return (
     <Grid>
       <Col start={4} span={6} md={{ start: 2, span: 10 }}>
-        <Panel
+        <Tape
           head={
             <>
               <strong>Payment advice</strong>
@@ -114,7 +114,7 @@ export default function Receipt(props: Props) {
           {phase === "ready" && data && (
             <Ready data={data} net={net} txHash={props.txHash} invoiceId={props.invoiceId} />
           )}
-        </Panel>
+        </Tape>
 
         <footer className="footer">
           <div>
