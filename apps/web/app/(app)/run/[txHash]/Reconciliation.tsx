@@ -207,7 +207,7 @@ function Ready({
     },
     {
       title: "Token", dataIndex: "token", width: 110,
-      filters: tokenTotals.map(({ token: t }) => ({
+      filters: tokensToRead(result).map((t) => ({
         text: tokens.get(t.toLowerCase())?.symbol ?? short(t), value: t.toLowerCase(),
       })),
       onFilter: (v, r) => r.token.toLowerCase() === v,

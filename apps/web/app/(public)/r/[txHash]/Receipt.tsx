@@ -15,7 +15,7 @@ import { absentHeadline, RECEIPT_COPY } from "@/lib/receipt-view";
 import { Grid, Col } from "@/components/grid/Grid";
 import Panel from "@/components/ui/Panel";
 import Verdict from "@/components/ui/Verdict";
-import { amountText } from "@/lib/token-meta";
+import { amountFigure, amountText } from "@/lib/token-meta";
 
 const anchorAbi = [
   { type: "function", name: "verifyItem", stateMutability: "view",
@@ -155,8 +155,14 @@ function Ready({
           {p ? (
             <>
               <p className="amount">
-                {decimals === undefined ? p.value.toString() : formatHeadline(p.value, decimals)}
-                <span className="unit">{symbol}</span>
+                {decimals === undefined
+                  ? amountFigure(p.value, p.token, {})
+                  : (
+                    <>
+                      {formatHeadline(p.value, decimals)}
+                      <span className="unit">{symbol || short(p.token)}</span>
+                    </>
+                  )}
               </p>
               <p className="payee">to {short(p.to)}</p>
             </>
