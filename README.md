@@ -186,18 +186,21 @@ pnpm --filter @ledgerline/core build
 pnpm --filter @ledgerline/web dev
 ```
 
-The app defaults to Arc testnet. Add `?n=mainnet` to any page for mainnet.
-Testnet tokens come from the [Circle faucet](https://faucet.circle.com).
+The app runs on Arc mainnet and says so before anything is signed. Add
+`?n=testnet` to any page to try it with tokens that have no value, from the
+[Circle faucet](https://faucet.circle.com).
 
 ### Send a run from the command line
 
 ```bash
 cp .env.example .env    # PRIVATE_KEY, DEMO_RECIPIENT, ANCHOR_TESTNET / ANCHOR_MAINNET
-npx tsx --env-file=.env scripts/run-payout.ts --network testnet --dry-run   # preflight only, signs nothing
-npx tsx --env-file=.env scripts/run-payout.ts --network testnet
+npx tsx --env-file=.env scripts/run-payout.ts --network mainnet --dry-run   # preflight only, signs nothing
+npx tsx --env-file=.env scripts/run-payout.ts --network mainnet
 ```
 
-Use a wallet created for this purpose. `.env` is gitignored.
+`--network` is required: the scripts never choose a network on their own.
+Rehearse with `--network testnet` first. Use a wallet created for this purpose.
+`.env` is gitignored.
 
 ### Repository layout
 

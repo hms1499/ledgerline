@@ -138,9 +138,12 @@ the run file against the anchored root.
 ### `frontend`
 
 Next.js App Router with Ant Design. Pages are thin server components that pass
-URL parameters to client components, and every chain read is made from the browser. The network is chosen per URL with `?n=mainnet|testnet`
-(`lib/use-network.ts`, `lib/chain.ts`), and the default comes from
-`NEXT_PUBLIC_DEFAULT_NETWORK`.
+URL parameters to client components, and every chain read is made from the
+browser. The network is chosen per URL with `?n=mainnet|testnet`
+(`lib/use-network.ts`, `lib/chain.ts`). Without `?n=` a page opens on mainnet,
+unless `NEXT_PUBLIC_DEFAULT_NETWORK` is exactly `testnet`. On mainnet, `/new`
+and the home page say that real money moves before anything is signed
+(`lib/network-notice.ts`).
 
 Two route groups, each with its own shell:
 
@@ -199,7 +202,8 @@ test fixtures used to establish the caller rules and the negative control.
 - `naive-batch.ts` sends the same payment through a standard `Multicall3`.
 - `lib/network.ts` resolves the network, RPC, anchor and token set from
   `--network` and `.env`, so the mainnet script is the one already rehearsed on
-  testnet.
+  testnet. `--network` is required: a script that moves money never picks a
+  network by default.
 - `capture-fixture.ts` and `capture-receipt.ts` record real receipts as test fixtures.
 
 ## Flows
