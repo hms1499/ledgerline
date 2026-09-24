@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Alert, Steps } from "antd";
 import { tokensForChain } from "@ledgerline/core";
 import type { ResolvedRow, CsvIssue, RowIssue, RunOutcome } from "@ledgerline/core";
@@ -10,6 +11,7 @@ import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
 import { Grid, Col } from "@/components/grid/Grid";
 import Panel from "@/components/ui/Panel";
 import { summarySource, runSummaryView } from "@/lib/run-summary-view";
+import { realFundsNotice } from "@/lib/network-notice";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
 import StepPreflight, { type PreparedRun } from "./StepPreflight";
@@ -50,6 +52,8 @@ export default function CreateRun() {
 
   const source = summarySource(step, draft, prepared?.manifest);
   const tokenOrder = Object.values(tokensForChain(net.chain.id)) as string[];
+  // Until the run is paid: after that there is nothing left to warn about.
+  const notice = step < 4 ? realFundsNotice(net) : undefined;
 
   return (
     <Grid dense={!!source}>
@@ -57,6 +61,22 @@ export default function CreateRun() {
         <Steps className="hide-sm" current={step} items={STEP_TITLES.map((title) => ({ title }))} />
         <p className="only-sm step-line">Step {step + 1} of {STEP_TITLES.length} · {STEP_TITLES[step]}</p>
       </Col>
+
+      {notice && (
+        <Col span={12}>
+          <Alert
+            type="warning"
+            showIcon
+            title={notice.title}
+            description={
+              <>
+                {notice.body}{" "}
+                <Link href={notice.tryHref}>Try it on testnet first</Link>, where tokens have no value.
+              </>
+            }
+          />
+        </Col>
+      )}
 
       {wrongChain && wallet && (
         <Col span={12}>

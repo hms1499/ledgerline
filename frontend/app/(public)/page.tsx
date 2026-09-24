@@ -38,9 +38,19 @@ export default function Home() {
         </Panel>
       </Col>
 
+      {!testnet && (
+        <Col span={12}>
+          <p className="network-note">
+            This is Arc mainnet: a payout run moves real money. To try it first with tokens
+            that have no value, use the{" "}
+            <Link href="/new?n=testnet">testnet version</Link>.
+          </p>
+        </Col>
+      )}
+
       {testnet && (
         <Col span={12}>
-          <p className="testnet-note">
+          <p className="network-note">
             This is Arc testnet: tokens here have no value, so nothing you do can lose real
             money. Get test USDC from the{" "}
             <a href="https://faucet.circle.com" target="_blank" rel="noreferrer">Circle faucet</a>

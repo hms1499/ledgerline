@@ -17,6 +17,9 @@ html, body {
 
 a { color: inherit; text-underline-offset: 3px; text-decoration-color: currentColor; }
 a:hover { text-decoration-color: currentColor; }
+/* antd styles a link inside an Alert by colour alone, which axe flags
+   (link-in-text-block): the underline is what marks it as a link. */
+.ant-alert a { text-decoration: underline; }
 
 :focus-visible { outline: 2px solid var(--success); outline-offset: 2px; }
 /* antd draws its own 3px ring in colorPrimaryBorder — 1.6:1 on the dark
@@ -127,7 +130,7 @@ a:focus-visible,
 }
 .button-primary:hover { background: var(--link); color: var(--on-accent); }
 
-.testnet-note {
+.network-note {
   margin: 1.8rem 0 0;
   padding: 0.75rem 0 0.75rem 0.9rem;
   border-left: 3px solid var(--warning);
