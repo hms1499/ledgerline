@@ -28,6 +28,23 @@ describe("guards that keep fixed mistakes fixed", () => {
     expect(hits(/\bdecimals\s*=\s*\d/)).toEqual([]);
   });
 
+  it("antd's own focus ring is replaced wherever a table puts something focusable", () => {
+    // Task 10's keyboard check: inside a Panel's table, links and the expand
+    // button kept antd's 1.5:1 colorPrimaryBorder ring and a sortable header
+    // had no ring at all. Each needs the app's ring, forced over antd's.
+    const css = readFileSync(join(ROOT, "app", "globals.css"), "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const forced = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, , body]) => /outline:\s*2px solid var\(--success\)\s*!important/.test(body!))
+      .flatMap(([, sel]) => sel!.split(",").map((s) => s.trim()));
+    for (const needed of [
+      "a:focus-visible",
+      ".ant-table-row-expand-icon:focus-visible",
+      ".ant-table-thead > tr > th.ant-table-column-has-sorters:focus-visible",
+    ]) {
+      expect(forced).toContain(needed);
+    }
+  });
+
   it("no page uses a pre-redesign colour name", () => {
     // --raised is a real token (raised), not one of these aliases.
     expect(hits(/--(ground|ink|ink-soft|rule|ruleStrong|tick|flag|pending)(?![\w-])/)).toEqual([]);

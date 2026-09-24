@@ -21,12 +21,22 @@ a:hover { text-decoration-color: currentColor; }
 :focus-visible { outline: 2px solid var(--success); outline-offset: 2px; }
 /* antd draws its own 3px ring in colorPrimaryBorder — 1.6:1 on the dark
    background, under the 3:1 a focus indicator needs. One ring everywhere.
-   The segmented control focuses a zero-width radio, so ring its label. */
+   The segmented control focuses a zero-width radio, so ring its label.
+   antd rings a link, and a table's expand button, the same way; a sortable
+   column header it rings not at all (outline: none). */
 .ant-btn:not(:disabled):focus-visible,
 .ant-segmented:focus-visible,
-.ant-segmented-item:has(input:focus-visible) {
+.ant-segmented-item:has(input:focus-visible),
+a:focus-visible,
+.ant-table-row-expand-icon:focus-visible {
   outline: 2px solid var(--success) !important;
   outline-offset: 2px !important;
+}
+/* Inset: the header sits against the table's scroll edge, which would clip
+   an outside ring. */
+.ant-table-thead > tr > th.ant-table-column-has-sorters:focus-visible {
+  outline: 2px solid var(--success) !important;
+  outline-offset: -2px !important;
 }
 
 /* ── the ledger line: the product, in one line ────────────────────────── */
