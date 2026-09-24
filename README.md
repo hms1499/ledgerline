@@ -231,6 +231,8 @@ was measured on Arc and is handled in `packages/core`.
 
 ## Documentation
 
+- [Architecture](ARCHITECTURE.md): how the pieces fit, the transaction layout,
+  the codemap, and the decisions that are deliberate.
 - [Design spec](docs/superpowers/specs/2026-09-21-ledgerline-design.md): the
   problem, the architecture and the measurements behind it. Claims are tagged
   `[measured]`, `[docs]` or `[unverified]`.
