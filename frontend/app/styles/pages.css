@@ -11,10 +11,16 @@
 .how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--ink-soft); max-width: var(--measure); }
 .home-footer { display: flex; flex-direction: column; gap: 0.35rem; }
 
-/* ── trust footer ─────────────────────────────────────────────────────── */
-.footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.84rem; color: var(--ink-soft); }
-.totals { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; list-style: none; margin: 0.55rem 0 0; padding: 0; font-size: 0.87rem; color: var(--ink-soft); }
+/* ── trust footer: on the desk, under the tape ────────────────────────── */
+.footer { margin-top: 20px; font-size: 13px; color: var(--ink-soft); }
+.footer p { max-width: var(--measure); margin: 8px 0 0; }
+.totals { display: flex; flex-wrap: wrap; gap: 4px 24px; list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; color: var(--ink-soft); }
 .totals--tight { justify-content: flex-end; margin: 0; }
+
+/* ── receipt: the slip (spec §7.2) ────────────────────────────────────── */
+.slip-lines { margin-bottom: 4px; }
+.slip-folds { margin-top: 14px; border-top: 1.5px dotted var(--rule); }
+.slip-folds .ant-collapse-item { border-bottom: 1.5px dotted var(--rule); }
 
 /* ── funding ──────────────────────────────────────────────────────────── */
 .funding { margin-top: 26px; }

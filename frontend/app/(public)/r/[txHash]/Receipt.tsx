@@ -86,12 +86,18 @@ export default function Receipt(props: Props) {
     <Grid>
       <Col start={4} span={6} md={{ start: 2, span: 10 }}>
         <Tape
+          state={phase === "loading" ? "feeding" : "torn"}
           head={
             <>
               <strong>Payment advice</strong>
               <span>
                 Arc {net.name}
-                {data ? ` at block ${data.blockNumber.toLocaleString("en-US")}` : ""}
+                {data && (
+                  <>
+                    {" · "}<span className="sr-only">block </span>
+                    <span aria-hidden="true"># </span>{data.blockNumber.toLocaleString("en-US")}
+                  </>
+                )}
               </span>
             </>
           }
@@ -150,36 +156,47 @@ function Ready({
 
   return (
     <>
-      <section className="line">
-        <div>
-          {p ? (
-            <>
-              <p className="amount">
-                {decimals === undefined
-                  ? amountFigure(p.value, p.token, {})
-                  : (
-                    <>
-                      {formatHeadline(p.value, decimals)}
-                      <span className="unit">{symbol || short(p.token)}</span>
-                    </>
-                  )}
-              </p>
-              <p className="payee">to {short(p.to)}</p>
-            </>
-          ) : (
-            /* A bare em dash at headline size reads as a redaction, not an
-               absence. Say what is missing instead. */
-            <p className="amount is-absent">{absentHeadline(result)}</p>
-          )}
-        </div>
+      <div className="slip-lines">
         {invoiceId && (
-          <span className={`reference${void_ ? " is-void" : ""}`}>{invoiceId}</span>
+          <p className="leader">
+            <span className="leader-key">Invoice</span>
+            <span className="leader-dots" aria-hidden="true" />
+            <span className={`leader-val${void_ ? " is-void" : ""}`}>
+              <span aria-hidden="true"># </span>{invoiceId}
+            </span>
+          </p>
         )}
-      </section>
+        {p && (
+          <p className="leader">
+            <span className="leader-key">To</span>
+            <span className="leader-dots" aria-hidden="true" />
+            <span className="leader-val hex addr" title={p.to}>{short(p.to)}</span>
+          </p>
+        )}
+      </div>
 
+      {p ? (
+        <p className="amount slip-amount">
+          {decimals === undefined
+            ? amountFigure(p.value, p.token, {})
+            : (
+              <>
+                {formatHeadline(p.value, decimals)}
+                <span className="unit">{symbol || short(p.token)}</span>
+              </>
+            )}
+        </p>
+      ) : (
+        /* A bare em dash at headline size reads as a redaction, not an
+           absence. Say what is missing instead. */
+        <p className="amount is-absent">{absentHeadline(result)}</p>
+      )}
+
+      <div className="rule-dashed" aria-hidden="true" />
       <Verdict level={1} tone={copy.tone} title={copy.headline} body={copy.body} />
+      <div className="rule-dashed" aria-hidden="true" />
 
-      <ol className="ladder">
+      <ol className="ladder ladder--printed">
         {result.rungs.map((r, i) => (
           <li
             key={r.id}
@@ -200,7 +217,7 @@ function Ready({
         ))}
       </ol>
 
-      <div style={{ marginTop: "2.2rem" }}>
+      <div className="slip-folds">
         <Collapse
           ghost
           items={[
