@@ -41,7 +41,8 @@ html .ant-btn {
 /* Inside a tape, a table runs to the tape's edges and its first column sits
    under the tape's title (spec §5.2 rule 4). Specificity (0,5,2) beats
    antd's cell padding (0,4,2) without !important. */
-.tape .ant-table-wrapper { margin-inline: calc(-1 * var(--tape-pad)); }
+/* antd caps the wrapper at max-width: 100%, which would only shift it left. */
+.tape .ant-table-wrapper { margin-inline: calc(-1 * var(--tape-pad)); max-width: none; }
 .tape .ant-table-wrapper .ant-table :is(.ant-table-thead, .ant-table-tbody, .ant-table-summary) > tr > :is(th, td):first-child {
   padding-inline-start: var(--tape-pad);
 }

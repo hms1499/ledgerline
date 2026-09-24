@@ -22,6 +22,7 @@ import {
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import StatTile from "@/components/ui/StatTile";
+import Totals from "@/components/ui/Totals";
 import Verdict from "@/components/ui/Verdict";
 
 const anchorAbi = [
@@ -105,7 +106,7 @@ export default function Reconciliation({
               <StatTile label={label} value={<Skeleton.Input active size="small" />} />
             </Col>
           ))}
-          <Col span={12}><Tape><Skeleton active paragraph={{ rows: 8 }} /></Tape></Col>
+          <Col span={12}><Tape state="feeding"><Skeleton active paragraph={{ rows: 8 }} /></Tape></Col>
         </>
       )}
 
@@ -259,7 +260,9 @@ function Ready({
             label={s.label} tone={s.tone} value={s.value}
             sub={s.key === "recorded"
               ? <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">View on explorer</a>
-              : s.sub.length ? s.sub.map((line) => <span key={line} className="stat-line">{line}</span>) : undefined}
+              : s.key === "payments" && s.sub.length
+                ? <Totals lines={s.sub} />
+                : s.sub.length ? s.sub.map((line) => <span key={line} className="stat-line">{line}</span>) : undefined}
           />
         </Col>
       ))}
