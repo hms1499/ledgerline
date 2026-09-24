@@ -9,11 +9,13 @@ import MoreMenu from "./MoreMenu";
 export default function TopBar() {
   return (
     <header className="top-bar">
-      <h1 className="top-title">{pageTitle(usePathname() ?? "")}</h1>
-      <div className="top-actions">
-        <NetworkBadge />
-        <WalletButton />
-        <span className="only-sm"><MoreMenu /></span>
+      <div className="frame top-bar-inner">
+        <h1 className="top-title">{pageTitle(usePathname() ?? "")}</h1>
+        <div className="top-actions">
+          <NetworkBadge />
+          <WalletButton />
+          <span className="only-sm"><MoreMenu /></span>
+        </div>
       </div>
     </header>
   );

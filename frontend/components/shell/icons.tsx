@@ -10,7 +10,7 @@ const PATHS: Record<IconName, string> = {
 export function NavIcon({ name }: { name: IconName }) {
   return (
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      strokeWidth="1.8" strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true">
       <path d={PATHS[name]} />
     </svg>
   );

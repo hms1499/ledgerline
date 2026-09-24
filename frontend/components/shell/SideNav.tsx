@@ -27,7 +27,7 @@ export default function SideNav() {
     <nav className="side-nav" aria-label="Main">
       <Brand href={withNet("/", search)} onClick={guard} />
       {APP_NAV.map((i) => <Item key={i.href} item={i} active={current === i.href} />)}
-      <p className="nav-group">Learn</p>
+      <p className="nav-group label">Learn</p>
       {LEARN_NAV.map((i) => <Item key={i.href} item={i} active={current === i.href} />)}
       <div className="side-foot"><ThemeToggle /></div>
     </nav>

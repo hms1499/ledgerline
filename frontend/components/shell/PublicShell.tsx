@@ -16,10 +16,10 @@ export default function PublicShell({ children }: { children: React.ReactNode })
     <div className="public-shell">
       <a href="#main" className="skip-link">Skip to content</a>
       <header className="public-bar">
-        <div className="public-bar-inner">
+        <div className="frame public-bar-inner">
           <Brand href={withNet("/", search)} />
           <nav className="public-links" aria-label="Main">
-            <Link href={withNet("/why", search)} className="hide-sm">How it works</Link>
+            <Link href={withNet("/why", search)} className="nav-link hide-sm">How it works</Link>
             <NetworkBadge />
             <span className="hide-sm"><ThemeToggle /></span>
             <span className="only-sm"><MoreMenu /></span>
@@ -27,7 +27,9 @@ export default function PublicShell({ children }: { children: React.ReactNode })
           </nav>
         </div>
       </header>
-      <main id="main" className="public-main">{children}</main>
+      <main id="main" className="public-main">
+        <div className="frame">{children}</div>
+      </main>
     </div>
   );
 }

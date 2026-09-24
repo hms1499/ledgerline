@@ -1,0 +1,116 @@
+/* The tape design system: page-level rules. Sections carried over from part 1
+   of the redesign are rebuilt by plan Tasks 4–11, which name them below. */
+
+/* ── the ledger line ──────────────────────────────────────────────────── */
+.line { display: flex; justify-content: space-between; align-items: flex-end; gap: 1.5rem; flex-wrap: wrap; padding: 2.2rem 0 1.4rem; border-bottom: 2px solid var(--ink); }
+.amount { font-family: var(--font-mono), ui-monospace, monospace; font-size: clamp(2.1rem, 7vw, 3.1rem); font-weight: 500; letter-spacing: -0.03em; line-height: 1; margin: 0; }
+.amount .unit { font-size: 0.42em; font-weight: 400; margin-left: 0.5em; letter-spacing: 0; }
+.amount.is-absent { font-family: var(--font-sans), system-ui, sans-serif; font-size: clamp(1.3rem, 4vw, 1.75rem); font-weight: 500; color: var(--ink-soft); letter-spacing: -0.02em; }
+.line--summary .amount .unit { font-size: 0.34em; }
+.payee { margin: 0.55rem 0 0; font-size: 0.87rem; color: var(--ink-soft); }
+.reference { font-family: var(--font-mono), ui-monospace, monospace; font-size: 1rem; padding-bottom: 0.3rem; border-bottom: 2px solid var(--ink); }
+.reference.is-void { border-bottom-color: var(--ribbon); }
+
+/* ── verdict ──────────────────────────────────────────────────────────── */
+.verdict { padding: 1.9rem 0 0.4rem; }
+.verdict :is(h1, h2) { font-size: 1.45rem; font-weight: 600; letter-spacing: -0.02em; margin: 0 0 0.45rem; }
+.verdict p { margin: 0; max-width: var(--measure); color: var(--ink-soft); }
+.verdict.ok :is(h1, h2) { color: var(--ink); }
+.verdict.error :is(h1, h2), .verdict.critical :is(h1, h2) { color: var(--ribbon); }
+.verdict.degraded :is(h1, h2) { color: var(--warning); }
+
+/* ── the tickmark ladder ──────────────────────────────────────────────── */
+.ladder { list-style: none; margin: 2rem 0 0; padding: 0; }
+.rung { position: relative; padding: 0.62rem 0 0.62rem 2rem; border-top: 1px solid var(--rule); }
+.rung:last-child { border-bottom: 1px solid var(--rule); }
+.rung .mark { position: absolute; left: 0; top: 0.62rem; font-family: var(--font-mono), ui-monospace, monospace; font-size: 1rem; line-height: 1.6; }
+.rung.pass .mark { color: var(--ink); }
+.rung.fail .mark { color: var(--ribbon); }
+.rung.skipped .mark { color: var(--warning); }
+.rung.skipped .claim { color: var(--ink-soft); }
+.claim { display: block; }
+@media (prefers-reduced-motion: no-preference) {
+  .rung { animation: settle 340ms ease-out both; }
+}
+@keyframes settle { from { opacity: 0; } to { opacity: 1; } }
+
+/* ── home ─────────────────────────────────────────────────────────────── */
+.home-actions { display: flex; align-items: center; gap: 1.4rem; flex-wrap: wrap; margin-top: 1.6rem; }
+.network-note { margin: 1.8rem 0 0; padding: 0.75rem 0 0.75rem 0.9rem; border-left: 3px solid var(--warning); max-width: var(--measure); font-size: 0.9rem; color: var(--ink-soft); }
+.how-card .how-step { display: block; margin-bottom: 8px; font-family: var(--font-mono), ui-monospace, monospace; font-size: 1.35rem; line-height: 1.2; color: var(--ink); }
+.how-card h3 { font-size: 1rem; font-weight: 600; margin: 0 0 0.35rem; }
+.how-card p { margin: 0; color: var(--ink-soft); font-size: 0.93rem; }
+.hero { padding-top: 0.4rem; }
+.how-note { margin: 1rem 0 0; font-size: 0.84rem; color: var(--ink-soft); max-width: var(--measure); }
+.home-footer { display: flex; flex-direction: column; gap: 0.35rem; }
+
+/* ── trust footer ─────────────────────────────────────────────────────── */
+.footer { margin-top: 2.6rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: 0.84rem; color: var(--ink-soft); }
+.totals { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; list-style: none; margin: 0.55rem 0 0; padding: 0; font-size: 0.87rem; color: var(--ink-soft); }
+.totals--tight { justify-content: flex-end; margin: 0; }
+
+/* ── funding ──────────────────────────────────────────────────────────── */
+.funding { margin-top: 26px; }
+.funding h2 { font-size: 0.95rem; font-weight: 600; margin: 0 0 0.5rem; }
+.funding ul { list-style: none; margin: 0; padding: 0; }
+.funding li { display: flex; gap: 0.7rem; padding: 0.4rem 0; border-top: 1px solid var(--rule); font-size: 0.9rem; }
+.funding li:last-child { border-bottom: 1px solid var(--rule); }
+.funding .mark { width: 1rem; flex: none; font-family: var(--font-mono), ui-monospace, monospace; }
+.funding-ok .mark { color: var(--ink); }
+.funding-short .mark, .funding-short strong:last-child { color: var(--ribbon); }
+.funding-unknown .mark { color: var(--warning); }
+
+/* ── wallet picker ────────────────────────────────────────────────────── */
+.wallet-list { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.5rem; }
+.wallet-list button {
+  width: 100%; display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.7rem 0.85rem; font: inherit; text-align: left; cursor: pointer;
+  background: var(--tape-shade); color: var(--ink);
+  border: 1px solid var(--control); border-radius: 10px;
+}
+.wallet-list button:hover { border-color: var(--ink); }
+.wallet-list img { border-radius: 6px; }
+.wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--rule); }
+
+/* ── wallet chip ──────────────────────────────────────────────────────── */
+.wallet-wrong-chain { border-color: var(--warning); color: var(--warning); }
+/* antd's default Button switches text to colorPrimaryHover on hover and
+   keeps it while a Dropdown trigger stays open. The address is the one thing
+   this chip exists to show, in every state a pointer or keyboard can put it in. */
+.wallet-chip,
+.wallet-chip:hover,
+.wallet-chip:focus,
+.wallet-chip:focus-visible,
+.wallet-chip:active { color: var(--ink) !important; }
+
+/* ── stat tiles ───────────────────────────────────────────────────────── */
+.stat-tile { background: var(--tape); border: 1px solid var(--rule); border-radius: 8px; padding: 16px 20px; }
+.stat-label { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
+.stat-value { margin: 6px 0 2px; font-size: 1.6rem; font-weight: 600; overflow-wrap: anywhere; }
+.stat-sub { margin: 0; color: var(--ink-soft); font-size: 0.85rem; }
+.stat-value.is-success { color: var(--ink); }
+.stat-value.is-warning { color: var(--warning); }
+.stat-value.is-danger { color: var(--ribbon); }
+.stat-line { display: block; }
+
+/* ── dashboard ────────────────────────────────────────────────────────── */
+.coverage-line { margin: 0; color: var(--ink-soft); }
+.section-title { margin: 8px 0 12px; font-size: 1rem; font-weight: 600; }
+
+/* ── panels ───────────────────────────────────────────────────────────── */
+.panel { background: var(--tape); border: 1px solid var(--rule); border-radius: 8px; padding: 20px; min-width: 0; }
+.panel-title { margin: 0 0 12px; font-size: 1rem; font-weight: 600; }
+.panel-head, .page-head {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 4px 12px; flex-wrap: wrap;
+  font-size: 0.85rem; color: var(--ink-soft);
+}
+.panel-head { padding-bottom: 12px; margin-bottom: 4px; border-bottom: 1px solid var(--rule); }
+.panel-head strong, .page-head strong { color: var(--ink); font-weight: 600; }
+.panel > .verdict:first-child { padding-top: 0; }
+.panel > .line:first-child { padding-top: 0.6rem; }
+.col > .panel:only-child, .col > .stat-tile:only-child { height: 100%; }
+@media (max-width: 639px) { .panel { padding: 16px; } }
+
+/* ── create flow ──────────────────────────────────────────────────────── */
+.panel dl.detail, dl.detail.run-summary { grid-template-columns: minmax(6rem, auto) 1fr; }
+dl.detail.run-summary dd { overflow-wrap: anywhere; }

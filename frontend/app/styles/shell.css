@@ -1,0 +1,142 @@
+/* The tape design system: the frame, the grid and the shells (spec §5, §6.5). */
+
+/* ── the frame: logo, page title and content share one left edge ─────── */
+.frame { width: 100%; max-width: calc(1200px + 2 * var(--gutter)); margin-inline: auto; padding-inline: var(--gutter); }
+
+/* ── 12-column grid, inside a frame (lib/grid.ts sets the variables) ──── */
+.grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); width: 100%; }
+.grid.is-dense { grid-auto-flow: row dense; }
+.col { min-width: 0; grid-column: var(--start) / span var(--span); }
+@media (min-width: 1024px) {
+  .col.is-sticky { position: sticky; top: 88px; align-self: start; }
+}
+@media (max-width: 1023px) {
+  .col { grid-column: var(--md-start) / span var(--md-span); }
+}
+@media (max-width: 639px) {
+  .col { grid-column: var(--sm-start) / span var(--sm-span); }
+}
+
+/* ── brand: ✱ LEDGERLINE ──────────────────────────────────────────────── */
+.brand {
+  display: inline-flex; align-items: center; gap: 9px;
+  color: var(--ink); text-decoration: none;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 14px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+}
+.brand:hover { text-decoration: none; }
+
+/* ── app shell ────────────────────────────────────────────────────────── */
+.app-shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 100vh; }
+.side-nav {
+  position: sticky; top: 0; height: 100vh;
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 20px 16px;
+  background: var(--desk-deep);
+  border-right: 1px solid var(--rule);
+}
+.side-nav .brand { padding: 0 8px 22px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px;
+  color: var(--ink-soft); text-decoration: none;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.nav-item:hover { background: var(--tape-shade); color: var(--ink); text-decoration: none; }
+.nav-item[aria-current="page"] { background: var(--tape); color: var(--ink); font-weight: 600; }
+.nav-item[aria-current="page"] .nav-label::before { content: "▸ " / ""; }
+.nav-group { margin: 20px 8px 4px; }
+.side-foot { margin-top: auto; padding-top: 8px; }
+
+.app-body { min-width: 0; display: flex; flex-direction: column; }
+.top-bar { position: sticky; top: 0; z-index: 10; background: var(--desk); border-bottom: 1px solid var(--rule); }
+.top-bar-inner { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.top-title {
+  margin: 0; min-width: 0;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 14px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.top-actions { display: flex; align-items: center; gap: 10px; }
+.app-main { padding-block: 32px 56px; }
+
+/* ── public shell ─────────────────────────────────────────────────────── */
+.public-bar { background: var(--desk); border-bottom: 1px solid var(--rule); }
+.public-bar-inner { height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.public-links { display: flex; align-items: center; gap: 16px; }
+.nav-link {
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none;
+}
+.nav-link:hover { text-decoration: underline; }
+.public-bar .button-primary { padding: 8px 12px; font-size: 11px; }
+.public-main { padding-block: 40px 64px; }
+
+/* ── network badge: testnet sits on the highlighter ───────────────────── */
+.network-badge {
+  padding: 5px 8px;
+  border: 1px solid var(--control);
+  color: var(--ink-soft);
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; font-weight: 500; line-height: 1; letter-spacing: 0.06em; text-transform: uppercase;
+  white-space: nowrap;
+}
+.network-badge.is-test { background: var(--highlight); color: var(--on-highlight); border-color: var(--highlight); }
+
+.only-sm { display: none; }
+.bottom-tabs { display: none; }
+
+/* md: the sidebar collapses to icons, and keeps the ✱. Labels are tooltips
+   on hover and visible text on keyboard focus. */
+@media (max-width: 1023px) {
+  .app-shell { grid-template-columns: 64px minmax(0, 1fr); }
+  .side-nav { padding: 20px 8px; align-items: center; }
+  .side-nav .brand { padding: 0 0 22px; }
+  .side-nav .brand-word, .nav-group, .side-foot { display: none; }
+  .nav-item { position: relative; justify-content: center; }
+  .nav-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .nav-item:focus-visible .nav-label {
+    width: auto; height: auto; clip-path: none; left: 56px;
+    background: var(--tape); border: 1px solid var(--control);
+    padding: 4px 8px; color: var(--ink); z-index: 30;
+  }
+}
+
+/* Below 360px the word "Ledgerline" is spoken, not shown: the ✱ stays. */
+@media (max-width: 359px) {
+  .public-bar .brand-word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* sm: no sidebar; bottom tabs and the ⋯ menu take over. */
+@media (max-width: 639px) {
+  .app-shell { grid-template-columns: minmax(0, 1fr); }
+  .side-nav { display: none; }
+  .app-main { padding-bottom: 96px; }
+  .public-main { padding-block: 24px 48px; }
+  .only-sm { display: inline-flex; }
+  .hide-sm { display: none; }
+  .network-badge { font-size: 10px; padding: 4px 6px; }
+  /* The header must fit down to 320px (WCAG 1.4.10): tighter tracking and
+     gaps, "Arc" only spoken, a smaller ⋯. */
+  .badge-arc { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .public-bar .brand { font-size: 13px; letter-spacing: 0.1em; gap: 7px; }
+  .public-links { gap: 8px; }
+  .public-bar .button-primary { white-space: nowrap; padding: 8px 10px; }
+  .more-menu { width: 30px !important; height: 30px !important; padding: 0 !important; }
+  .bottom-tabs {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+    background: var(--desk-deep); border-top: 1px solid var(--rule);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .bottom-tabs .tab {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 8px 0 10px; margin-top: -1px; border-top: 2px solid transparent;
+    color: var(--ink-soft); text-decoration: none;
+    font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+    font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .bottom-tabs .tab[aria-current="page"] { color: var(--ink); border-top-color: var(--ink); }
+  .step-line { margin: 4px 0 0; color: var(--ink-soft); font-size: 14px; }
+}

@@ -9,7 +9,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <SideNav />
       <div className="app-body">
         <TopBar />
-        <main id="main" className="app-main">{children}</main>
+        {/* One frame for the title above and the page below (spec §5.2). */}
+        <main id="main" className="app-main">
+          <div className="frame">{children}</div>
+        </main>
       </div>
       <BottomTabs />
     </div>

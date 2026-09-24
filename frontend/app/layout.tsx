@@ -5,7 +5,9 @@ import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { tokenCss } from "@/lib/theme-tokens";
 import { resolveTheme, BOOT_SCRIPT, THEME_COOKIE, SYSTEM_COOKIE } from "@/lib/theme";
-import "./globals.css";
+import "./styles/base.css";
+import "./styles/shell.css";
+import "./styles/pages.css";
 
 // Atkinson for sentences. Martian, variable with its width axis, for all the
 // machine prints: labels at 87% width, amounts at 100% (spec §4.3).
