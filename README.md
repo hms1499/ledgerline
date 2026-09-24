@@ -61,6 +61,39 @@ the payer as `Transfer.from`.
 
 ## How it works
 
+```mermaid
+flowchart LR
+    payer(["Payer"])
+    recipient(["Recipient"])
+
+    subgraph ledgerline["Ledgerline (no backend)"]
+        web["Web app<br/>Next.js"]
+        cli["CLI<br/>arc-reconcile"]
+        core["packages/core<br/>build · preflight · send<br/>reconcile · verify"]
+    end
+
+    subgraph arc["Arc chain"]
+        m3f["Multicall3From"]
+        memo["Memo"]
+        anchor["PayoutAnchor"]
+        tokens["USDC · EURC · cirBTC"]
+    end
+
+    payer -- "CSV + wallet signature" --> web
+    web --> core
+    cli --> core
+    core -- "one transaction" --> m3f
+    m3f -- "commit list root" --> anchor
+    m3f -- "payment + reference" --> memo
+    memo -- "transfer" --> tokens
+    core -. "read receipt logs<br/>and anchored root" .-> arc
+    recipient -- "receipt link" --> web
+```
+
+The payer signs one transaction. Everyone else reads it back from the chain.
+The [architecture overview](docs/architecture-overview.md) and
+[ARCHITECTURE.md](ARCHITECTURE.md) go further.
+
 Arc ships two predeployed contracts that make a reference native to the
 payment. `Memo` wraps a call and emits an indexed reference. `Multicall3From`
 batches calls while keeping the signing EOA as `msg.sender`. Ledgerline puts
