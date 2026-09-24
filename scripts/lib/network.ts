@@ -23,7 +23,13 @@ export function hasFlag(flag: string): boolean {
 
 export function resolveNetwork(): NetworkConfig {
   const idx = process.argv.indexOf("--network");
-  const raw = (idx >= 0 ? process.argv[idx + 1] : process.env.NETWORK) ?? "testnet";
+  // No default. A script that moves money should never pick a network on its
+  // own: a silent testnet default would rehearse what the author meant to pay,
+  // and a silent mainnet default would pay what they meant to rehearse.
+  const raw = idx >= 0 ? process.argv[idx + 1] : process.env.NETWORK;
+  if (raw === undefined) {
+    throw new Error(`pass --network mainnet or --network testnet (add --dry-run to check without signing)`);
+  }
 
   if (raw !== "mainnet" && raw !== "testnet") {
     throw new Error(`--network must be "mainnet" or "testnet", got "${raw}"`);
