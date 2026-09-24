@@ -6,6 +6,7 @@ import { withNet } from "@/lib/nav";
 import NetworkBadge from "./NetworkBadge";
 import ThemeToggle from "./ThemeToggle";
 import MoreMenu from "./MoreMenu";
+import Brand from "./Brand";
 
 /** For people who were sent a link, or are deciding whether to use the app.
  *  No wallet: a recipient reading a receipt has nothing to connect. */
@@ -16,7 +17,7 @@ export default function PublicShell({ children }: { children: React.ReactNode })
       <a href="#main" className="skip-link">Skip to content</a>
       <header className="public-bar">
         <div className="public-bar-inner">
-          <Link href={withNet("/", search)} className="side-brand">Ledgerline</Link>
+          <Brand href={withNet("/", search)} />
           <nav className="public-links" aria-label="Main">
             <Link href={withNet("/why", search)} className="hide-sm">How it works</Link>
             <NetworkBadge />

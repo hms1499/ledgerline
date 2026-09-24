@@ -6,6 +6,7 @@ import { APP_NAV, LEARN_NAV, activeHref, withNet, type NavItem } from "@/lib/nav
 import { useLeaveGuard } from "@/components/wallet/WalletProvider";
 import { NavIcon } from "./icons";
 import ThemeToggle from "./ThemeToggle";
+import Brand from "./Brand";
 
 function Item({ item, active }: { item: NavItem; active: boolean }) {
   const search = useSearchParams();
@@ -24,7 +25,7 @@ export default function SideNav() {
   const guard = useLeaveGuard();
   return (
     <nav className="side-nav" aria-label="Main">
-      <Link href={withNet("/", search)} onClick={guard} className="side-brand">Ledgerline</Link>
+      <Brand href={withNet("/", search)} onClick={guard} />
       {APP_NAV.map((i) => <Item key={i.href} item={i} active={current === i.href} />)}
       <p className="nav-group">Learn</p>
       {LEARN_NAV.map((i) => <Item key={i.href} item={i} active={current === i.href} />)}

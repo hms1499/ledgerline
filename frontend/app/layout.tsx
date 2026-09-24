@@ -1,14 +1,16 @@
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
-import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Atkinson_Hyperlegible, Martian_Mono } from "next/font/google";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 import { ThemeProvider } from "@/components/theme/ThemeProvider";
 import { tokenCss } from "@/lib/theme-tokens";
 import { resolveTheme, BOOT_SCRIPT, THEME_COOKIE, SYSTEM_COOKIE } from "@/lib/theme";
 import "./globals.css";
 
-const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-sans" });
-const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
+// Atkinson for sentences. Martian, variable with its width axis, for all the
+// machine prints: labels at 87% width, amounts at 100% (spec §4.3).
+const sans = Atkinson_Hyperlegible({ subsets: ["latin"], weight: ["400", "700"], variable: "--font-sans" });
+const mono = Martian_Mono({ subsets: ["latin"], axes: ["wdth"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
   title: "Ledgerline",
