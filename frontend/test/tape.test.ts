@@ -35,3 +35,11 @@ describe("printed decoration", () => {
     expect(css).toContain('content: " ***" / ""');
   });
 });
+
+describe("data inside an uppercased control keeps its case", () => {
+  it("the wallet chip's keep-case rule outranks the button capitals", () => {
+    // Task 12 caught "0X5955…DE17": `html .ant-btn` (0,1,1) beat `.wallet-chip` (0,1,0).
+    const antd = readFileSync(join(STYLES, "antd.css"), "utf8");
+    expect(antd).toMatch(/html \.ant-btn\.wallet-chip\s*\{[^}]*text-transform:\s*none/);
+  });
+});

@@ -14,7 +14,7 @@ html .ant-btn {
 /* The wallet chip shows an address: data never changes case (spec §3.6).
    antd switches a Button's text to colorPrimaryHover on hover and keeps it
    while a Dropdown stays open; the address stays ink in every state. */
-.wallet-chip { text-transform: none; letter-spacing: 0; }
+html .ant-btn.wallet-chip { text-transform: none; letter-spacing: 0; }
 .wallet-chip,
 .wallet-chip:hover,
 .wallet-chip:focus,
