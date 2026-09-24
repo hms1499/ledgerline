@@ -52,8 +52,10 @@ export function networkFor(name: string | null | undefined): NetworkView {
   return name === "mainnet" ? MAINNET : name === "testnet" ? TESTNET : defaultNetwork();
 }
 
+/** Mainnet unless testnet is asked for by name: the product runs on mainnet,
+ *  and testnet is the place to try it without real funds (`?n=testnet`). */
 export function defaultNetwork(): NetworkView {
-  return process.env.NEXT_PUBLIC_DEFAULT_NETWORK === "mainnet" ? MAINNET : TESTNET;
+  return process.env.NEXT_PUBLIC_DEFAULT_NETWORK === "testnet" ? TESTNET : MAINNET;
 }
 
 export const tokensFor = tokensForChain;

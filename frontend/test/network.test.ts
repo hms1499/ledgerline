@@ -15,3 +15,24 @@ describe("networkFromSearch — the network an app route runs on", () => {
     expect(networkFromSearch(null).name).toBe(defaultNetwork().name);
   });
 });
+
+describe("defaultNetwork — the network a URL without ?n= opens on", () => {
+  const saved = process.env.NEXT_PUBLIC_DEFAULT_NETWORK;
+  const withDefault = (v: string | undefined) => {
+    if (v === undefined) delete process.env.NEXT_PUBLIC_DEFAULT_NETWORK;
+    else process.env.NEXT_PUBLIC_DEFAULT_NETWORK = v;
+    try { return defaultNetwork().name; } finally {
+      if (saved === undefined) delete process.env.NEXT_PUBLIC_DEFAULT_NETWORK;
+      else process.env.NEXT_PUBLIC_DEFAULT_NETWORK = saved;
+    }
+  };
+
+  it("is mainnet when nothing is configured, because that is where the product runs", () => {
+    expect(withDefault(undefined)).toBe("mainnet");
+    expect(withDefault("")).toBe("mainnet");
+  });
+  it("is testnet only when asked for by name", () => {
+    expect(withDefault("testnet")).toBe("testnet");
+    expect(withDefault("mainnet")).toBe("mainnet");
+  });
+});
