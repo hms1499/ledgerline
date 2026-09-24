@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseArgs } from "../src/args.js";
+import { parseArgs, notFoundMessage } from "../src/args.js";
 import { runIdFromLogs } from "../src/anchor.js";
 import { RUN_COMMITTED_TOPIC, type RawLog } from "@ledgerline/core";
 
@@ -58,5 +58,12 @@ describe("runIdFromLogs", () => {
 
   it("has nothing to trust without an anchor", () => {
     expect(runIdFromLogs([committed(ANCHOR)], undefined)).toBeUndefined();
+  });
+});
+
+describe("notFoundMessage", () => {
+  it("points at the other network, the usual reason a real hash is not found", () => {
+    expect(notFoundMessage("mainnet")).toContain("--network testnet");
+    expect(notFoundMessage("testnet")).toContain("--network mainnet");
   });
 });

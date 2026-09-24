@@ -1,5 +1,5 @@
 #!/usr/bin/env -S npx tsx
-import { createPublicClient, http, type Address } from "viem";
+import { createPublicClient, http, TransactionReceiptNotFoundError, type Address } from "viem";
 import { arc, arcTestnet } from "viem/chains";
 import { readFileSync } from "node:fs";
 import {
@@ -7,7 +7,7 @@ import {
   type Manifest, type RawLog,
 } from "@ledgerline/core";
 import { formatRows, type TokenMeta } from "./format.js";
-import { parseArgs } from "./args.js";
+import { parseArgs, notFoundMessage } from "./args.js";
 import { runIdFromLogs } from "./anchor.js";
 
 let args;
@@ -24,7 +24,13 @@ const client = createPublicClient({
   transport: http(rpcUrl),
 });
 
-const receipt = await client.getTransactionReceipt({ hash: txHash });
+const receipt = await client.getTransactionReceipt({ hash: txHash }).catch((err: unknown) => {
+  if (err instanceof TransactionReceiptNotFoundError) {
+    console.error(notFoundMessage(network));
+    process.exit(1);
+  }
+  throw err;
+});
 
 if (receipt.status === "reverted") {
   console.log(`\n  This payout run did not execute — the transaction reverted.`);

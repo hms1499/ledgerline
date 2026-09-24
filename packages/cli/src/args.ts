@@ -50,3 +50,9 @@ export function parseArgs(argv: string[]): CliArgs {
     manifestPath: valueOf("--manifest"),
   };
 }
+
+/** A real hash that is not found was almost always sent on the other network. */
+export function notFoundMessage(network: Network): string {
+  const other = network === "mainnet" ? "testnet" : "mainnet";
+  return `No transaction with this hash on Arc ${network}. If it was sent on ${other}, add --network ${other}.`;
+}
