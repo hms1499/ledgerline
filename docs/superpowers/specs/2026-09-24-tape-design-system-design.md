@@ -130,11 +130,11 @@ colour ever used on a highlight.
 - Status is never colour alone: ✓ / ✗ / ! plus words (the existing `sr-only`
   pattern stays).
 
-### 4.3 Type `[unverified: loading]`
+### 4.3 Type
 
-Both faces load through `next/font/google`. Whether `next/font` exposes Martian
-Mono's `wdth` axis is not yet checked; if it does not, load the default width
-and drop the 87% setting (§13).
+Both faces load through `next/font/google`. Next 16.3.5's font data lists a
+`wdth` axis (75–112.5) for Martian Mono `[measured]`, loaded with
+`axes: ["wdth"]`; Atkinson Hyperlegible ships 400 and 700.
 
 | Role | Face | Size / line | Weight | Notes |
 |---|---|---|---|---|
@@ -253,8 +253,8 @@ through tables, and `aria-hidden` wherever they sit beside words:
 | `Panel` | **`Tape`** (renamed; every use site updated) |
 | `StatTile` | A small torn tape: label, `figure`, optional sub line. Name kept |
 | `Verdict` | A printed stamp line `*** VERIFIED ***` (the `***` are `aria-hidden`) and one Atkinson sentence below. `ok` = ink, `error`/`critical` = ribbon, `degraded` = on highlight. Heading level rules unchanged |
-| **`Totals`** (new) | The totals slip: one `◇` line per token, a dashed rule, the `✱` line; optional `#` lines. Used on `/run`, `/dashboard`, the `/new` summary and Result |
-| **`Notice`** (new, only if needed) | Alert as a tape with a margin glyph: `i` info, `!` on highlight for warning, `✗` in ribbon for error. A thin wrapper over antd `Alert` if CSS cannot replace antd's icons; then all 11 call sites switch import |
+| **`Totals`** (new) | The totals slip: one `◇` line per token, dotted leaders, an optional `✱` total line. Used in the `/run` Payments stat and the `/new` summary. (`/dashboard` already has one stat per token; Result has no per-token totals) |
+| Alert glyphs | Alert as a tape with a margin glyph: `i` info, `✓` success, `!` on highlight for warning, `✗` in ribbon for error. Set once through `ConfigProvider`'s `alert.{info,success,warning,error}Icon` (antd 6.6.5, `[measured]` from its types), so no wrapper and no call-site changes |
 | **`Mark`** (new) | The ✱ logo as inline SVG: three square-capped bars at 0°, 60°, 120° |
 | Receipt ladder | Printed lines: label left, ✓ / ✗ / – at the right margin. Long labels wrap with a hanging indent; the mark stays with the first line |
 
@@ -271,12 +271,12 @@ Tokens first; CSS only where a token cannot reach.
 | Button | Primary: ink block, `onAccent` text, Martian caps 12px +0.06em, hover `accentHover`, 1px press. Default: transparent with a `control` edge. Danger: ribbon |
 | Table | Header: Martian caps 10.5px `inkSoft`, `1.5px solid ink` below. Rows: dotted `rule`, hover `tapeShade`. Footer: `1.5px dashed ink` above. First and last cells padded 20 (§5.2 rule 4) |
 | Tag | Paid/ok: ink ✓, no fill. Review/unknown: highlight fill. Failed: `ribbonBg` fill, ribbon text. Martian caps 10.5px, radius 0 |
-| Alert | `Notice` (above) |
+| Alert | Glyph icons from `ConfigProvider` (above). A standalone Alert (a direct child of a grid column) is a torn tape; one inside a tape is flat |
 | Steps (`/new`) | Martian caps; current `▸` in ink, done `✓`, waiting `inkSoft`; connectors dashed |
 | Upload.Dragger | A feed slot: dashed `control` edge on tape; copy unchanged |
 | Input | Tape ground, `control` edge, radius 0, focus ring ink 2px |
 | Segmented (theme) | Martian caps; selected item is an ink block |
-| Modal, Dropdown, message | Torn tapes; the only elevated surfaces |
+| Modal, Dropdown, message | Square, tape ground, the popup shadow: the only elevated surfaces. Modal also gets torn edges; Dropdown and message do not, because antd uses their `::before`/`::after` itself `[measured]` |
 | Skeleton | Inside a feeding tape, bars in `tapeShade` |
 | Collapse (receipt) | Martian caps header, `▸` / `▾` |
 
@@ -429,7 +429,7 @@ Public copy follows the plain-language rule in
   **light**; the boot script and cookies are unchanged. The accepted
   trade-off flips: a first-time visitor whose system is dark sees antd
   re-colour once after load.
-- `next/font`: Martian Mono (with `wdth` if available) as `--font-mono`,
+- `next/font`: Martian Mono (variable, `axes: ["wdth"]`) as `--font-mono`,
   Atkinson Hyperlegible 400/700 as `--font-sans`; IBM Plex is removed.
 
 ## 11. Testing and definition of done
@@ -485,7 +485,7 @@ Each step leaves the app working and is its own commit.
 1. Tokens and theme infrastructure, tests first (§4.1, §10, §11.1).
 2. Fonts, `Mark`, favicon.
 3. Frame and shells, including the hidden-logo fix (§5, §6.5).
-4. `Tape`, `StatTile`, `Verdict`, `Totals`, `Notice` (§6.1–6.3).
+4. `Tape`, `StatTile`, `Verdict`, `Totals` (§6.1–6.3).
 5. antd component tokens and the CSS they cannot reach (§6.4).
 6. Pages, in order: `/r` (what a judge is most likely to open), `/`,
    `/run`, `/new`, `/dashboard`, `/runs`, `/why`.
@@ -495,8 +495,8 @@ Each step leaves the app working and is its own commit.
 
 | Risk | Mitigation |
 |---|---|
-| `next/font` cannot set Martian Mono's `wdth` axis `[unverified]` | Check the docs before step 2; fall back to the default width and tighter letter-spacing |
-| antd `Alert` icons resist CSS | `Notice` wrapper; 11 call sites switch import |
+| `next/font` and Martian Mono's `wdth` axis | Resolved: Next 16.3.5's font data lists `wdth` 75–112.5 for Martian Mono `[measured]`; load it with `axes: ["wdth"]` |
+| antd internals move between minor versions | Selectors are checked against antd 6.6.5's own style source; the browser pass (§11.2) catches a miss |
 | "Every block is tape" flattens hierarchy | The tear carries state; only exceptions get colour; the stamp and the amount are the only large elements on a receipt |
 | Martian Mono is wide; many-column tables on phones | Tables scroll inside their own tape, as today |
 | Renaming tokens misses a consumer | The guard test names every retired variable; `typecheck` catches `Palette` keys |
