@@ -16,7 +16,7 @@ state that another one depends on to be correct.
 
 ```text
                      ┌──────────────────────────────────────────────┐
-  CSV ──► apps/web ──┤  packages/core                               │
+  CSV ──► frontend ──┤  packages/core                               │
           (/new)     │   validate → build → preflight → executeRun  │──► one transaction on Arc
   scripts/ ──────────┤                                              │
   run-payout.ts      └──────────────────────────────────────────────┘
@@ -25,7 +25,7 @@ state that another one depends on to be correct.
                                                                         ▼
                      ┌──────────────────────────────────────────────┐
   packages/cli ──────┤  packages/core                               │
-  apps/web (/run,    │   reconcile · verifyReceipt ·                │◄── PayoutAnchor.runs(runId)
+  frontend (/run,    │   reconcile · verifyReceipt ·                │◄── PayoutAnchor.runs(runId)
   /r, /dashboard,    │   assessCompleteness · checkManifestAgainstRoot  (root, itemCount)
   /why)              └──────────────────────────────────────────────┘
 ```
@@ -135,7 +135,7 @@ the run file against the anchored root.
 - `format.ts` prints amounts in the token's own decimals, or unscaled with the
   token address when decimals cannot be read.
 
-### `apps/web`
+### `frontend`
 
 Next.js App Router with Ant Design. Pages are thin server components that pass
 URL parameters to client components, and every chain read is made from the browser. The network is chosen per URL with `?n=mainnet|testnet`
@@ -160,7 +160,7 @@ Two route groups, each with its own shell:
 `app/**` holds components. Decisions that can be unit-tested live in
 `lib/*-view.ts` as pure functions (`run-view`, `receipt-view`, `dashboard-view`,
 `preflight-view`, `funding-view`, `reconcile-view`, `run-summary-view`).
-`apps/web/test` tests those functions. The repository has no React test
+`frontend/test` tests those functions. The repository has no React test
 library, so behaviour at the wallet seam is checked in a real browser (see
 Testing).
 
@@ -174,7 +174,7 @@ Wallet handling:
   group.
 
 Theming uses CSS tokens (`app/globals.css`, `lib/theme-tokens.ts`) mapped onto
-antd's `ConfigProvider`. `apps/web/test/no-legacy-css.test.ts` guards against
+antd's `ConfigProvider`. `frontend/test/no-legacy-css.test.ts` guards against
 colour aliases and hardcoded colours, and `plain-language.test.ts` keeps
 internal terms such as "manifest" or "Merkle" out of user-facing copy.
 
@@ -311,7 +311,7 @@ Measured on Arc, and not visible from the code. Details are in the design spec
 | Core | `packages/core/test` (vitest) | Reconciler, joins, Merkle vectors and the send sequence, against golden fixtures captured from real mainnet and testnet receipts (`test/fixtures`). `execute.test.ts` drives `executeRun` through a fake `ExecuteIO` |
 | Contract | `contracts/test` (Foundry) | Anchor behaviour, replay protection, audit findings, TypeScript proofs verifying on chain |
 | CLI | `packages/cli/test` | Argument parsing, trusted-anchor lookup, amount formatting |
-| Web | `apps/web/test` | The pure `lib/*` view functions, plain-language copy, CSS guards |
+| Web | `frontend/test` | The pure `lib/*` view functions, plain-language copy, CSS guards |
 | Wallet seam | Playwright against `next start` with an injected EIP-6963 provider | What unit tests cannot reach: provider events, effect ordering, wallet echoes. Every wallet-facing defect in this project's history passed build, typecheck and unit tests |
 | Chain behaviour | Real testnet and mainnet transactions | The caller rules, log shapes and the gas floor, which simulation cannot show |
 

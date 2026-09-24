@@ -53,7 +53,7 @@ docs/notes/*-manifest.json
 
 # screenshots from browser checks are evidence for a moment, not artifacts
 *.png
-!apps/web/app/**/*.png
+!frontend/app/**/*.png
 
 # visual companion mockups from brainstorming sessions
 .superpowers/

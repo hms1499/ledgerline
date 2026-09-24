@@ -10,7 +10,7 @@ import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
 import { runSummaryView } from "@/lib/run-summary-view";
-import fixture from "../../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
+import fixture from "../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
 
 /**
  * The words the protocol is built from, which the people using it should

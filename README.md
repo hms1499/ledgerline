@@ -181,7 +181,7 @@ cd contracts && forge test
 ### Run the web app
 
 ```bash
-cp apps/web/.env.example apps/web/.env.local   # every value is public: contract addresses and tx hashes
+cp frontend/.env.example frontend/.env.local   # every value is public: contract addresses and tx hashes
 pnpm --filter @ledgerline/core build
 pnpm --filter @ledgerline/web dev
 ```
@@ -206,7 +206,7 @@ packages/core     The reconciler and everything that must agree between script a
                   CSV validation, run building, Merkle proofs, preflight, gas policy,
                   receipt verification, completeness. reconcile() is a pure function over logs.
 packages/cli      arc-reconcile: rebuilds a run's table from a tx hash and an RPC URL.
-apps/web          Next.js app: create a run, the payer's dashboard, run pages, receipts, /why.
+frontend          Next.js app: create a run, the payer's dashboard, run pages, receipts, /why.
 contracts         PayoutAnchor (Foundry), its tests, and the deploy script.
 scripts           run-payout.ts and naive-batch.ts, used for the testnet and mainnet proofs.
 docs              Design specs, implementation plans, and dated notes of what was measured on chain.

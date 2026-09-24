@@ -1,4 +1,4 @@
-// apps/web/lib/wallet.ts
+// frontend/lib/wallet.ts
 "use client";
 
 import { createWalletClient, createPublicClient, custom, http, type Address, type WalletClient } from "viem";

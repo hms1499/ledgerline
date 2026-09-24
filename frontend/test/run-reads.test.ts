@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import type { RawLog } from "@ledgerline/core";
 import { readRuns, readRunsWith, describeCoverage, type GetReceipt, type RunRead } from "@/lib/run-reads";
 import { networkFor } from "@/lib/chain";
-import mainnet from "../../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
+import mainnet from "../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
 
 const net = networkFor("testnet");
 const PAYER = "0x1111111111111111111111111111111111111111";
