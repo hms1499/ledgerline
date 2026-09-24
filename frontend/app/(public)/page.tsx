@@ -104,7 +104,8 @@ export default function Home() {
           <Link href="/why">How this differs from an ordinary batch payment</Link>
           <span>
             For developers: rebuild any run&apos;s reconciliation with{" "}
-            <code>npx arc-reconcile</code>.
+            <code>pnpm reconcile &lt;tx&gt;</code> from the{" "}
+            <a href="https://github.com/hms1499/ledgerline" target="_blank" rel="noreferrer">source</a>.
           </span>
         </footer>
       </Col>
