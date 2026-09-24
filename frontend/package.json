@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
+    "dev": "pnpm --filter @ledgerline/core build && next dev",
+    "build": "pnpm --filter @ledgerline/core build && next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"

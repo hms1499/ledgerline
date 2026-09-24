@@ -182,8 +182,7 @@ cd contracts && forge test
 
 ```bash
 cp frontend/.env.example frontend/.env.local   # every value is public: contract addresses and tx hashes
-pnpm --filter @ledgerline/core build
-pnpm --filter @ledgerline/web dev
+pnpm --filter @ledgerline/web dev              # builds packages/core first
 ```
 
 The app runs on Arc mainnet and says so before anything is signed. Add

@@ -5,7 +5,7 @@
   "scripts": {
     "test": "pnpm --filter @ledgerline/core build && pnpm -r test",
     "typecheck": "pnpm -r typecheck",
-    "build": "pnpm --filter @ledgerline/core build && pnpm --filter @ledgerline/web build",
+    "build": "pnpm --filter @ledgerline/web build",
     "reconcile": "pnpm --silent --filter @ledgerline/core build && tsx packages/cli/src/index.ts"
   },
   "devDependencies": {
