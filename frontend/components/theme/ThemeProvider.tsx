@@ -59,7 +59,22 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider value={{ choice, mode, setChoice }}>
-      <ConfigProvider theme={antdTheme(mode)}>{children}</ConfigProvider>
+      <ConfigProvider
+        theme={antdTheme(mode)}
+        // Glyphs in the tape's margin (spec §6.3). Decorative: the alert's
+        // title carries the meaning.
+        alert={{
+          infoIcon: <span className="notice-glyph" aria-hidden="true">i</span>,
+          successIcon: <span className="notice-glyph" aria-hidden="true">✓</span>,
+          warningIcon: <span className="notice-glyph is-look" aria-hidden="true">!</span>,
+          errorIcon: <span className="notice-glyph is-bad" aria-hidden="true">✗</span>,
+        }}
+        collapse={{
+          expandIcon: ({ isActive }) => <span className="fold-glyph" aria-hidden="true">{isActive ? "▾" : "▸"}</span>,
+        }}
+      >
+        {children}
+      </ConfigProvider>
     </ThemeContext.Provider>
   );
 }

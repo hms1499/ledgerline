@@ -24,21 +24,27 @@ export function themeCookie(name: string, value: string): string {
   return `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }
 
-/** antd computes colour in JS; these tokens pin it to our palette. Task 5 of
- *  the tape plan adds shape, faces and the component tokens. */
+/** antd computes colour in JS; these tokens pin it to the tape system
+ *  (spec §6.4). CSS covers the rest, in app/styles/antd.css. */
 export function antdTheme(mode: Mode): ThemeConfig {
   const p = palettes[mode];
+  const popup = `0 1px 0 ${p.rule}, 0 12px 28px -12px rgb(0 0 0 / 0.35)`;
   return {
     algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
     token: {
+      // Paper is cut square.
+      borderRadius: 0, borderRadiusLG: 0, borderRadiusSM: 0, borderRadiusXS: 0, borderRadiusOuter: 0,
       colorPrimary: p.accent,
-      colorLink: p.ink,
+      colorPrimaryHover: p.accentHover,
+      colorPrimaryActive: p.accentHover,
+      colorLink: p.ink, colorLinkHover: p.ink, colorLinkActive: p.ink,
       colorInfo: p.ink,
       // Only exceptions get colour: a success is black ink with ✓ and words.
       colorSuccess: p.ink,
       colorWarning: p.warning,
       colorError: p.ribbon,
       colorText: p.ink,
+      colorTextHeading: p.ink,
       colorTextSecondary: p.inkSoft,
       colorTextTertiary: p.inkSoft,
       colorTextDescription: p.inkSoft,
@@ -54,19 +60,35 @@ export function antdTheme(mode: Mode): ThemeConfig {
       colorWarningBg: p.highlight,
       colorErrorBg: p.ribbonBg,
       colorInfoBg: p.tapeShade,
-      borderRadius: 6,
       fontFamily: "var(--font-sans)",
+      fontFamilyCode: "var(--font-mono)",
       fontSize: 15,
       lineHeight: 1.6,
+      // Only popups rise off the page.
+      boxShadow: popup,
+      boxShadowSecondary: popup,
     },
     components: {
-      Table: { headerBg: p.tape, rowHoverBg: p.tapeShade, borderColor: p.rule, footerBg: p.tape },
-      Tag: { defaultBg: p.tapeShade, defaultColor: p.ink },
+      Button: { primaryShadow: "none", defaultShadow: "none", dangerShadow: "none", fontWeight: 600 },
+      Table: {
+        headerBg: p.tape, headerColor: p.inkSoft, headerSplitColor: "transparent",
+        rowHoverBg: p.tapeShade, borderColor: p.rule, footerBg: p.tape,
+      },
+      Tag: {
+        defaultBg: "transparent", defaultColor: p.ink,
+        colorSuccess: p.ink, colorSuccessBg: "transparent", colorSuccessBorder: "transparent",
+        colorWarning: p.onHighlight, colorWarningBg: p.highlight, colorWarningBorder: p.highlight,
+        colorError: p.ribbon, colorErrorBg: p.ribbonBg, colorErrorBorder: p.ribbonBg,
+      },
       Alert: {
-        colorInfoBorder: p.rule, colorSuccessBorder: p.rule,
-        colorWarningBorder: p.rule, colorErrorBorder: p.rule,
+        colorInfoBg: p.tape, colorSuccessBg: p.tape, colorWarningBg: p.tape, colorErrorBg: p.tape,
+        colorInfoBorder: "transparent", colorSuccessBorder: "transparent",
+        colorWarningBorder: "transparent", colorErrorBorder: "transparent",
       },
       Steps: { colorTextDescription: p.inkSoft },
+      Segmented: { itemSelectedBg: p.accent, itemSelectedColor: p.onAccent, trackBg: "transparent" },
+      Input: { activeBorderColor: p.ink, hoverBorderColor: p.ink, activeShadow: `0 0 0 1px ${p.ink}` },
+      Modal: { contentBg: p.tape, headerBg: p.tape, footerBg: p.tape },
     },
   };
 }

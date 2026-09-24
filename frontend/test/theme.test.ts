@@ -82,3 +82,27 @@ describe("themeCookie", () => {
     expect(themeCookie("theme", "light")).toBe("theme=light; path=/; max-age=31536000; samesite=lax");
   });
 });
+
+describe("antdTheme cuts paper square and prints in the right faces (spec §6.4)", () => {
+  it("has no rounded corners anywhere", () => {
+    const t = antdTheme("light").token!;
+    for (const k of ["borderRadius", "borderRadiusLG", "borderRadiusSM", "borderRadiusXS", "borderRadiusOuter"] as const) {
+      expect(t[k]).toBe(0);
+    }
+  });
+  it("sets sentences in the sans and code in the mono", () => {
+    const t = antdTheme("dark").token!;
+    expect(t.fontFamily).toBe("var(--font-sans)");
+    expect(t.fontFamilyCode).toBe("var(--font-mono)");
+  });
+  it("hovers the primary button to accentHover, which keeps its text readable", () => {
+    expect(antdTheme("light").token!.colorPrimaryHover).toBe(palettes.light.accentHover);
+  });
+  it("prints Tag statuses by the colour rules", () => {
+    const tag = antdTheme("dark").components!.Tag!;
+    expect(tag.colorSuccessBg).toBe("transparent");
+    expect(tag.colorWarningBg).toBe(palettes.dark.highlight);
+    expect(tag.colorWarning).toBe(palettes.dark.onHighlight);
+    expect(tag.colorErrorBg).toBe(palettes.dark.ribbonBg);
+  });
+});

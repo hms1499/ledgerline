@@ -1,0 +1,104 @@
+/* The tape design system: what antd's tokens cannot reach (spec §6.4). The
+   selectors are checked against antd 6.6.5's own style source. */
+
+/* ── buttons print in mono capitals and press like a key ─────────────── */
+/* `html` lifts these above antd's own single-class rules, which set
+   font-family too and are injected after this sheet. */
+html .ant-btn {
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ant-btn:not(:disabled):active { transform: translateY(1px); }
+}
+/* The wallet chip shows an address: data never changes case (spec §3.6).
+   antd switches a Button's text to colorPrimaryHover on hover and keeps it
+   while a Dropdown stays open; the address stays ink in every state. */
+.wallet-chip { text-transform: none; letter-spacing: 0; }
+.wallet-chip,
+.wallet-chip:hover,
+.wallet-chip:focus,
+.wallet-chip:focus-visible,
+.wallet-chip:active { color: var(--ink) !important; }
+/* On the wrong chain, this button is the one thing to look at. */
+.wallet-wrong-chain,
+.wallet-wrong-chain:hover,
+.wallet-wrong-chain:focus,
+.wallet-wrong-chain:active {
+  background: var(--highlight) !important;
+  color: var(--on-highlight) !important;
+  border-color: var(--highlight) !important;
+}
+
+/* ── tables print like tape ───────────────────────────────────────────── */
+.ant-table-wrapper .ant-table-thead > tr > th {
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 10.5px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
+  border-bottom: 1.5px solid var(--ink) !important;
+}
+.ant-table-wrapper .ant-table-tbody > tr > td { border-bottom: 1.5px dotted var(--rule) !important; }
+.ant-table-wrapper .ant-table-summary > tr > td { border-top: 1.5px dashed var(--ink); border-bottom: 0 !important; }
+/* Inside a tape, a table runs to the tape's edges and its first column sits
+   under the tape's title (spec §5.2 rule 4). Specificity (0,5,2) beats
+   antd's cell padding (0,4,2) without !important. */
+.tape .ant-table-wrapper { margin-inline: calc(-1 * var(--tape-pad)); }
+.tape .ant-table-wrapper .ant-table :is(.ant-table-thead, .ant-table-tbody, .ant-table-summary) > tr > :is(th, td):first-child {
+  padding-inline-start: var(--tape-pad);
+}
+.tape .ant-table-wrapper .ant-table :is(.ant-table-thead, .ant-table-tbody, .ant-table-summary) > tr > :is(th, td):last-child {
+  padding-inline-end: var(--tape-pad);
+}
+
+/* ── tags: only exceptions get colour ─────────────────────────────────── */
+html .ant-tag {
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.ant-tag.ant-tag-success { padding-inline: 0; }
+.ant-tag.ant-tag-success::before { content: "✓ " / ""; }
+.ant-tag.ant-tag-warning::before { content: "! " / ""; }
+.ant-tag.ant-tag-error::before { content: "✗ " / ""; }
+
+/* ── alerts: a glyph in the margin, no border ─────────────────────────── */
+.ant-alert { border: 0 !important; }
+.ant-alert-title { font-weight: 700; }
+.notice-glyph {
+  display: inline-grid; place-items: center; width: 1.5em; height: 1.5em;
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: 13px; font-weight: 700; line-height: 1;
+  color: var(--ink);
+}
+.notice-glyph.is-look { background: var(--highlight); color: var(--on-highlight); }
+.notice-glyph.is-bad { color: var(--ribbon); }
+
+/* ── steps: printed labels, the current one marked ────────────────────── */
+.ant-steps .ant-steps-item-title {
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.ant-steps .ant-steps-item-process .ant-steps-item-title::before { content: "▸ " / ""; }
+.ant-steps .ant-steps-item-rail { border-style: dashed !important; }
+
+/* ── the upload slot, where the list feeds in ─────────────────────────── */
+.ant-upload-wrapper .ant-upload-drag { background: var(--tape) !important; border: 1.5px dashed var(--control) !important; }
+.ant-upload-wrapper .ant-upload-drag:hover { border-color: var(--ink) !important; }
+
+/* ── the theme toggle ─────────────────────────────────────────────────── */
+html .ant-segmented {
+  border: 1px solid var(--control);
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+
+/* ── folds ────────────────────────────────────────────────────────────── */
+.ant-collapse .ant-collapse-header {
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.fold-glyph { font-family: var(--font-mono), ui-monospace, monospace; }
+
+/* ── popups: the only raised surfaces ─────────────────────────────────── */
+.ant-modal .ant-modal-container { box-shadow: 0 1px 0 var(--rule), 0 12px 28px -12px rgb(0 0 0 / 0.35); }
+.ant-modal .ant-modal-title {
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+}

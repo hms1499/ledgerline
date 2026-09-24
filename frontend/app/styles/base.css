@@ -105,10 +105,11 @@ p.because { margin-bottom: 0; }
 .linkish:disabled { color: var(--ink-soft); cursor: not-allowed; text-decoration: none; }
 
 dl.detail { margin: 0; display: grid; grid-template-columns: minmax(8rem, auto) 1fr; gap: 6px 20px; font-size: 14px; }
+/* A term can be data (/why lists memo ids here), so it keeps its case. */
 dl.detail dt {
-  padding-top: 3px;
+  padding-top: 2px;
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
-  font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);
+  font-size: 12px; color: var(--ink-soft);
 }
 dl.detail dd { margin: 0; min-width: 0; }
 

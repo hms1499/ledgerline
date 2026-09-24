@@ -33,22 +33,10 @@
   width: 100%; display: flex; align-items: center; gap: 0.75rem;
   padding: 0.7rem 0.85rem; font: inherit; text-align: left; cursor: pointer;
   background: var(--tape-shade); color: var(--ink);
-  border: 1px solid var(--control); border-radius: 10px;
+  border: 1px solid var(--control);
 }
 .wallet-list button:hover { border-color: var(--ink); }
-.wallet-list img { border-radius: 6px; }
-.wallet-list__blank { width: 26px; height: 26px; border-radius: 6px; background: var(--rule); }
-
-/* ── wallet chip ──────────────────────────────────────────────────────── */
-.wallet-wrong-chain { border-color: var(--warning); color: var(--warning); }
-/* antd's default Button switches text to colorPrimaryHover on hover and
-   keeps it while a Dropdown trigger stays open. The address is the one thing
-   this chip exists to show, in every state a pointer or keyboard can put it in. */
-.wallet-chip,
-.wallet-chip:hover,
-.wallet-chip:focus,
-.wallet-chip:focus-visible,
-.wallet-chip:active { color: var(--ink) !important; }
+.wallet-list__blank { width: 26px; height: 26px; background: var(--rule); }
 
 /* ── dashboard ────────────────────────────────────────────────────────── */
 .coverage-line { margin: 0; color: var(--ink-soft); }

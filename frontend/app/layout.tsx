@@ -8,6 +8,7 @@ import { resolveTheme, BOOT_SCRIPT, THEME_COOKIE, SYSTEM_COOKIE } from "@/lib/th
 import "./styles/base.css";
 import "./styles/shell.css";
 import "./styles/tape.css";
+import "./styles/antd.css";
 import "./styles/pages.css";
 
 // Atkinson for sentences. Martian, variable with its width axis, for all the

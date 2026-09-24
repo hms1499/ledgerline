@@ -53,4 +53,24 @@ describe("guards that keep fixed mistakes fixed", () => {
       /--(bg|surface|raised|sidebar|border|text|text-soft|link|success|danger|success-bg|warning-bg|danger-bg|ground|tick|flag|pending|ruleStrong)(?![\w-])/,
     )).toEqual([]);
   });
+
+  const CSS = () => SOURCES.filter((f) => f.endsWith(".css"))
+    .map((f) => readFileSync(f, "utf8")).join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+
+  it("paper is cut square: no rounded corners", () => {
+    const radii = [...CSS().matchAll(/border-radius:\s*([^;}]+)/g)]
+      .map((m) => m[1]!.trim())
+      .filter((v) => !/^0(px)?(\s*!important)?$/.test(v));
+    expect(radii).toEqual([]);
+    expect(hits(/borderRadius:\s*[1-9]/)).toEqual([]);
+  });
+
+  it("text on a highlight is always on-highlight", () => {
+    // Ink on the dark highlighter is 1.28:1 (spec §4.1).
+    const offenders = [...CSS().matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, , body]) => /background(-color)?:\s*var\(--highlight\)/.test(body!))
+      .filter(([, , body]) => !/(^|[;\s])color:\s*var\(--on-highlight\)/.test(body!))
+      .map(([, sel]) => sel!.trim());
+    expect(offenders).toEqual([]);
+  });
 });
