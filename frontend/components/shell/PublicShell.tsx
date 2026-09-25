@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { withNet } from "@/lib/nav";
+import { LEARN_NAV, withNet } from "@/lib/nav";
 import NetworkBadge from "./NetworkBadge";
 import ThemeToggle from "./ThemeToggle";
 import MoreMenu from "./MoreMenu";
@@ -19,7 +19,7 @@ export default function PublicShell({ children }: { children: React.ReactNode })
         <div className="frame public-bar-inner">
           <Brand href={withNet("/", search)} />
           <nav className="public-links" aria-label="Main">
-            <Link href={withNet("/why", search)} className="nav-link hide-sm">How it works</Link>
+            <Link href={withNet(LEARN_NAV[0]!.href, search)} className="nav-link hide-sm">{LEARN_NAV[0]!.label}</Link>
             <NetworkBadge />
             <span className="hide-sm"><ThemeToggle /></span>
             <span className="only-sm"><MoreMenu /></span>

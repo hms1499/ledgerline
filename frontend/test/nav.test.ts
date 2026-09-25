@@ -1,10 +1,22 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { APP_NAV, LEARN_NAV, activeHref, pageTitle, withNet } from "@/lib/nav";
 
 describe("navigation", () => {
-  it("lists the app's three destinations in order, then How it works", () => {
+  it("lists the app's three destinations in order, then Compare", () => {
     expect(APP_NAV.map((i) => i.href)).toEqual(["/dashboard", "/new", "/runs"]);
-    expect(LEARN_NAV.map((i) => i.href)).toEqual(["/why"]);
+    // /why compares a run with an ordinary batch. "How it works" named it
+    // after the home page's own section, which it is not.
+    expect(LEARN_NAV.map((i) => [i.href, i.label])).toEqual([["/why", "Compare"]]);
+  });
+
+  it("takes /why's label from one place, so the menus cannot drift", () => {
+    for (const f of ["../components/shell/PublicShell.tsx", "../components/shell/MoreMenu.tsx"]) {
+      const src = readFileSync(fileURLToPath(new URL(f, import.meta.url)), "utf8");
+      expect(src, f).not.toMatch(/>\s*How it works\s*</);
+      expect(src, f).toContain("LEARN_NAV");
+    }
   });
 
   it("marks the right item for every route, including dynamic ones", () => {

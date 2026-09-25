@@ -8,7 +8,7 @@ export const APP_NAV: NavItem[] = [
 ];
 
 export const LEARN_NAV: NavItem[] = [
-  { href: "/why", label: "How it works", icon: "learn" },
+  { href: "/why", label: "Compare", icon: "learn" },
 ];
 
 const under = (path: string, base: string) => path === base || path.startsWith(`${base}/`);
