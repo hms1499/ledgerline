@@ -57,7 +57,7 @@ describe("parseCsv", () => {
     const { rows, issues } = parseCsv("id,coin,address,value\na,b,c,d");
     expect(rows).toEqual([]);
     expect(issues[0]!.line).toBe(1);
-    expect(issues[0]!.message).toMatch(/invoiceId,token,to,amount/);
+    expect(issues[0]!.message).toMatch(/Missing: invoiceId, token\./);
   });
 
   it("rejects a file with no header at all", () => {
@@ -74,6 +74,9 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     expect(issues[0]!.line).toBe(2);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.line).toBe(3);
+    expect(issues[0]!.message).toBe(
+      "This line has 3 values but the first line names 4 columns. A value that contains a comma needs quotes around it.",
+    );
   });
 
   it("accepts header names in any case, since Excel retitles columns", () => {
@@ -90,6 +93,79 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     // looks valid and pays the wrong thing.
     expect(rows).toEqual([]);
     expect(issues.length).toBeGreaterThan(0);
+  });
+
+  it("maps columns by name, in any order, through a spreadsheet's own names", () => {
+    const { rows, issues, delimiter } = parseCsv(
+      `Amount,Recipient,Invoice ID,Currency\n12.50,0xe48A096B9E74f064b13c17734af29F85E02d732a,INV-1,USDC`,
+    );
+    expect(issues).toEqual([]);
+    expect(delimiter).toBe(",");
+    expect(rows[0]).toEqual({
+      line: 2, invoiceId: "INV-1", tokenSymbol: "USDC",
+      to: "0xe48A096B9E74f064b13c17734af29F85E02d732a", amount: "12.50",
+    });
+  });
+
+  it("ignores a column it does not know, such as a name", () => {
+    const { rows, issues } = parseCsv(
+      `Name,invoiceId,token,to,amount\n"Nguyen, An",INV-1,USDC,0xe48A096B9E74f064b13c17734af29F85E02d732a,5`,
+    );
+    expect(issues).toEqual([]);
+    expect(rows[0]!.invoiceId).toBe("INV-1");
+    expect(rows[0]!.amount).toBe("5");
+  });
+
+  it("reads a row with a trailing delimiter under a header that has one too", () => {
+    const { rows, issues } = parseCsv(
+      `invoiceId,token,to,amount,\nINV-1,USDC,0xe48A096B9E74f064b13c17734af29F85E02d732a,10,`,
+    );
+    expect(issues).toEqual([]);
+    expect(rows).toHaveLength(1);
+  });
+
+  it("refuses a file where two columns could be the same field", () => {
+    const { rows, issues } = parseCsv(`invoiceId,token,to,Amount,Value\na,b,c,1,2`);
+    expect(rows).toEqual([]);
+    expect(issues[0]!.message).toBe('Two columns could be the amount: "Amount" and "Value". Keep one.');
+  });
+
+  it("names what is missing and what it found", () => {
+    const { issues } = parseCsv(`Invoice ID,Token,Recipient,Salary\na,b,c,1`);
+    expect(issues[0]).toEqual({
+      line: 1,
+      message: "The first line must name the columns invoiceId, token, to and amount, in any order. Missing: amount. Found: Invoice ID, Token, Recipient, Salary.",
+    });
+  });
+
+  it("reads a semicolon file and its decimal commas", () => {
+    const { rows, issues, delimiter } = parseCsv(
+      `invoiceId;token;to;amount\nINV,1;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;0,10`,
+    );
+    expect(issues).toEqual([]);
+    expect(delimiter).toBe(";");
+    expect(rows[0]!.invoiceId).toBe("INV,1");
+    expect(rows[0]!.amount).toBe("0.10");
+  });
+
+  it("refuses a dot in a semicolon file's amount, since 1.000 may mean a thousand", () => {
+    const text = `invoiceId;token;to;amount
+INV-1;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.000
+INV-2;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1,000,50
+INV-3;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;2`;
+    const { rows, issues } = parseCsv(text);
+    expect(rows.map((r) => r.invoiceId)).toEqual(["INV-3"]);
+    expect(issues.map((i) => i.line)).toEqual([2, 3]);
+    expect(issues[0]!.message).toBe(
+      'In a file separated by ";", write amounts with a comma for decimals and no other marks, like 1250,50. Found "1.000".',
+    );
+  });
+
+  it("says which mark to quote when a semicolon row has the wrong number of values", () => {
+    const { issues } = parseCsv(`invoiceId;token;to;amount\nINV-1;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a`);
+    expect(issues[0]!.message).toBe(
+      "This line has 3 values but the first line names 4 columns. A value that contains a semicolon needs quotes around it.",
+    );
   });
 });
 
