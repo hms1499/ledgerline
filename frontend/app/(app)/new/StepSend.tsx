@@ -8,7 +8,7 @@ import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import { describeError } from "@/lib/errors";
 import type { PreparedRun } from "./StepPreflight";
-import { isCancelled, CANCELLED, BLOCKED_COPY, FEE_ADVICE } from "@/lib/pay-copy";
+import { sendStop, blockedCopy, FEE_ADVICE, type SendStop } from "@/lib/pay-copy";
 import TechnicalDetails from "@/components/ui/TechnicalDetails";
 
 const STAGE_LABEL: Record<RunStage, string> = {
@@ -45,9 +45,10 @@ export default function StepSend({
   // receipt ends. Holding it until then would leave the payer watching a
   // spinner that already knows why nothing is arriving.
   const [liveFeeWarning, setLiveFeeWarning] = useState<string>();
-  // The payer clicked Reject in the wallet: noted where the wallet is called,
-  // so execute.ts stays an orchestrator that decides nothing.
-  const [cancelled, setCancelled] = useState(false);
+  // The payer clicked Reject, or the wallet is on another network: noted
+  // where the wallet is called, so execute.ts stays an orchestrator that
+  // decides nothing.
+  const [stop, setStop] = useState<SendStop>();
 
   const go = useCallback(async () => {
     const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
@@ -60,7 +61,7 @@ export default function StepSend({
           try {
             return await wallet.walletClient.sendTransaction({ account: wallet.address, chain: net.chain, ...tx });
           } catch (err) {
-            if (isCancelled(err)) setCancelled(true);
+            setStop(sendStop(err));
             throw err;
           }
         },
@@ -94,7 +95,7 @@ export default function StepSend({
     setStarted(false);
     setCrash(undefined);
     setLiveFeeWarning(undefined);
-    setCancelled(false);
+    setStop(undefined);
   }, [prepared]);
 
   if (crash) {
@@ -169,17 +170,17 @@ export default function StepSend({
 
   return (
     <OutcomeView
-      outcome={outcome} net={net} cancelled={cancelled}
+      outcome={outcome} net={net} stop={stop}
       onRetry={() => {
-        setOutcome(undefined); setStarted(false); setLiveFeeWarning(undefined); setCancelled(false);
+        setOutcome(undefined); setStarted(false); setLiveFeeWarning(undefined); setStop(undefined);
       }}
     />
   );
 }
 
 function OutcomeView({
-  outcome, net, cancelled, onRetry,
-}: { outcome: RunOutcome; net: NetworkView; cancelled: boolean; onRetry: () => void }) {
+  outcome, net, stop, onRetry,
+}: { outcome: RunOutcome; net: NetworkView; stop?: SendStop; onRetry: () => void }) {
   if (outcome.state === "confirmed") return null; // the parent has moved on
 
   const explorer = "txHash" in outcome
@@ -188,10 +189,9 @@ function OutcomeView({
   const copy: Record<string, { tone: string; title: string; body: string }> = {
     blocked: {
       tone: "error",
-      title: cancelled ? CANCELLED.payment.title : "Nothing was signed",
-      body: cancelled
-        ? CANCELLED.payment.body
-        : outcome.state === "blocked" ? BLOCKED_COPY[outcome.reason] : "",
+      ...(outcome.state === "blocked"
+        ? blockedCopy(outcome.reason, stop, net.name)
+        : { title: "", body: "" }),
     },
     dropped: {
       tone: "error",
@@ -218,7 +218,7 @@ function OutcomeView({
         <p>{c.body}</p>
       </section>
 
-      {outcome.state === "blocked" && !cancelled && (
+      {outcome.state === "blocked" && stop !== "cancelled" && (
         <TechnicalDetails><p className="raw-reason" style={{ margin: 0 }}>{outcome.details}</p></TechnicalDetails>
       )}
 
