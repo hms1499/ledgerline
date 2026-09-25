@@ -12,6 +12,7 @@ import {
   networkFor, decodeProof, short, formatHeadline, type NetworkView,
 } from "@/lib/chain";
 import { absentHeadline, paidAtText, RECEIPT_COPY } from "@/lib/receipt-view";
+import { readPaidAt } from "@/lib/paid-at";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import Verdict from "@/components/ui/Verdict";
@@ -49,7 +50,8 @@ interface Loaded {
   blockNumber: bigint;
   logs: RawLog[];
   anchorChecked: boolean;
-  /** The block's timestamp, when the node could say. */
+  /** The block's timestamp, when the node could say. Filled in after the
+   *  verdict, by readPaidAt. */
   paidAt?: bigint;
 }
 
@@ -68,6 +70,11 @@ export default function Receipt(props: Props) {
         const loaded = await verifyAgainst(endpoint, net, props);
         setData(loaded);
         setPhase("ready");
+        // The time follows the verdict and never holds it up. Only the run
+        // that asked may fill it in: a newer endpoint's answer wins.
+        void readPaidAt(endpoint, net.chain, loaded.blockNumber).then((paidAt) => {
+          if (paidAt !== undefined) setData((d) => (d === loaded ? { ...loaded, paidAt } : d));
+        });
       } catch (err) {
         const msg = describeError(err);
         if (/not be found|not found/i.test(msg)) setPhase("tx_not_found");
@@ -297,11 +304,6 @@ async function verifyAgainst(
 ): Promise<Loaded> {
   const client = createPublicClient({ chain: net.chain, transport: http(endpoint) });
   const receipt = await client.getTransactionReceipt({ hash: props.txHash as Hex });
-  // The block's timestamp is when the payment landed. A node that cannot say
-  // leaves the line off; it is never estimated.
-  const paidAt = await client.getBlock({ blockNumber: receipt.blockNumber })
-    .then((b) => b.timestamp)
-    .catch(() => undefined);
 
   const logs: RawLog[] = receipt.logs.map((l, i) => ({
     address: l.address as Address,
@@ -343,7 +345,7 @@ async function verifyAgainst(
 
   if (first.payment && net.anchor && props.runSalt) {
     const runId = runIdFromLogs(logs, net.anchor);
-    if (!runId) return { result: first, decimals, symbol, blockNumber: receipt.blockNumber, logs, anchorChecked: false, paidAt };
+    if (!runId) return { result: first, decimals, symbol, blockNumber: receipt.blockNumber, logs, anchorChecked: false };
     try {
       runCommitted = await client.readContract({
         address: net.anchor, abi: anchorAbi, functionName: "isCommitted", args: [runId],
@@ -372,7 +374,7 @@ async function verifyAgainst(
     runCommitted,
   });
 
-  return { result, decimals, symbol, blockNumber: receipt.blockNumber, logs, anchorChecked, paidAt };
+  return { result, decimals, symbol, blockNumber: receipt.blockNumber, logs, anchorChecked };
 }
 
 /**
