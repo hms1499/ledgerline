@@ -12,6 +12,8 @@ import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
 import { preflightRows, type PreflightRow } from "@/lib/preflight-view";
+import { isCancelled, CANCELLED, CHECK_FAILED } from "@/lib/pay-copy";
+import TechnicalDetails from "@/components/ui/TechnicalDetails";
 
 export interface PreparedRun {
   manifest: Manifest;
@@ -35,9 +37,15 @@ export default function StepPreflight({
   // never reaches the simulation — and the difference is exactly what the
   // payer is trying to work out when they read a failure screen.
   const [signed, setSigned] = useState(false);
+  // A dismissed prompt is the payer's choice, not a failure of the run.
+  const [cancelled, setCancelled] = useState(false);
+  // Whether the error is one this app decoded into plain words.
+  const [known, setKnown] = useState(false);
 
   const prepare = useCallback(async () => {
     setError(undefined);
+    setCancelled(false);
+    setKnown(false);
     // A retry re-signs, which re-derives the salt, which changes every memoId
     // and therefore the manifest root. The abandoned attempt's ladder and
     // identifiers must not linger under the Skeleton describing a commitment
@@ -86,7 +94,13 @@ export default function StepPreflight({
       setPrepared(next);
       setPhase(outcomes.every((o) => o.ok) ? "ready" : "failed");
     } catch (err) {
+      if (isCancelled(err)) {
+        setCancelled(true);
+        setPhase("failed");
+        return;
+      }
       const { name, message } = explainRevert(err);
+      setKnown(!!name);
       setError(name ? `${name}: ${message}` : message);
       setPhase("failed");
     }
@@ -102,6 +116,7 @@ export default function StepPreflight({
             : phase === "signing" ? "Waiting for your signature"
             : phase === "checking" ? "Checking every payment against the chain"
             : allOk ? "Every payment would go through"
+            : cancelled ? "Nothing was signed"
             : "This run would not go through"}
         </h2>
         <p>
@@ -134,7 +149,12 @@ export default function StepPreflight({
         </ul>
       )}
 
-      {phase === "failed" && (
+      {phase === "failed" && cancelled && (
+        <Alert style={{ marginTop: 20 }} type="info" showIcon
+          title={CANCELLED.message.title} description={CANCELLED.message.body} />
+      )}
+
+      {phase === "failed" && !cancelled && (
         <Alert style={{ marginTop: 20 }} type="error" showIcon
           // Not "nothing was signed": by this point the payer has usually
           // signed the salt message, and telling someone who just approved a
@@ -143,9 +163,12 @@ export default function StepPreflight({
           title="No transaction was signed, and no money moved"
           description={
             <>
-              {error ??
-                "One or more payments would fail if sent to Arc — each failing row above says why. " +
-                  "Fix those and check again; nothing has been paid."}
+              {error === undefined
+                ? "One or more payments would fail if sent to Arc — each failing row above says why. Fix those and check again; nothing has been paid."
+                : known ? error : CHECK_FAILED}
+              {error !== undefined && !known && (
+                <TechnicalDetails><p className="raw-reason" style={{ margin: 0 }}>{error}</p></TechnicalDetails>
+              )}
               <p style={{ marginTop: 10, marginBottom: 0 }}>
                 {signed
                   ? "Your wallet did sign the short message a moment ago. That one only created this run's reference code — it costs nothing, moves nothing, and is not a payment. Nothing else has been signed."
@@ -156,10 +179,12 @@ export default function StepPreflight({
       )}
 
       {prepared && (
-        <dl className="detail" style={{ marginTop: 26 }}>
-          <dt>List fingerprint</dt>
-          <dd className="hex">{prepared.built.root}</dd>
-        </dl>
+        <TechnicalDetails>
+          <dl className="detail">
+            <dt>List fingerprint</dt>
+            <dd className="hex">{prepared.built.root}</dd>
+          </dl>
+        </TechnicalDetails>
       )}
 
       <div style={{ marginTop: 26, display: "flex", gap: 12, flexWrap: "wrap" }}>

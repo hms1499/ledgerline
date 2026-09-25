@@ -8,6 +8,8 @@ import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import { describeError } from "@/lib/errors";
 import type { PreparedRun } from "./StepPreflight";
+import { isCancelled, CANCELLED, BLOCKED_COPY, FEE_ADVICE } from "@/lib/pay-copy";
+import TechnicalDetails from "@/components/ui/TechnicalDetails";
 
 const STAGE_LABEL: Record<RunStage, string> = {
   balances: "Checking balances",
@@ -43,6 +45,9 @@ export default function StepSend({
   // receipt ends. Holding it until then would leave the payer watching a
   // spinner that already knows why nothing is arriving.
   const [liveFeeWarning, setLiveFeeWarning] = useState<string>();
+  // The payer clicked Reject in the wallet: noted where the wallet is called,
+  // so execute.ts stays an orchestrator that decides nothing.
+  const [cancelled, setCancelled] = useState(false);
 
   const go = useCallback(async () => {
     const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
@@ -51,9 +56,14 @@ export default function StepSend({
         manifest: prepared.manifest,
         anchor: net.anchor!,
         io: ioFromPublicClient(client),
-        send: (tx) => wallet.walletClient.sendTransaction({
-          account: wallet.address, chain: net.chain, ...tx,
-        }),
+        send: async (tx) => {
+          try {
+            return await wallet.walletClient.sendTransaction({ account: wallet.address, chain: net.chain, ...tx });
+          } catch (err) {
+            if (isCancelled(err)) setCancelled(true);
+            throw err;
+          }
+        },
         onProgress: setStage,
         onFeeWarning: setLiveFeeWarning,
       });
@@ -84,6 +94,7 @@ export default function StepSend({
     setStarted(false);
     setCrash(undefined);
     setLiveFeeWarning(undefined);
+    setCancelled(false);
   }, [prepared]);
 
   if (crash) {
@@ -101,7 +112,7 @@ export default function StepSend({
             before anything is signed — but confirm rather than assume.
           </p>
         </section>
-        <Alert style={{ marginTop: 20 }} type="warning" showIcon title={crash} />
+        <TechnicalDetails><p className="raw-reason" style={{ margin: 0 }}>{crash}</p></TechnicalDetails>
       </>
     );
   }
@@ -112,9 +123,7 @@ export default function StepSend({
         <section className="verdict">
           <h2>Ready to send</h2>
           <p>
-            One transaction pays every line and records the list on chain. Your wallet will
-            ask about fees — <strong>do not lower them below 25 Gwei</strong>. Arc discards
-            transactions priced under 20 Gwei without a receipt, an error or a revert.
+            One transaction pays every line and records the list on chain. {FEE_ADVICE}
           </p>
         </section>
 
@@ -160,17 +169,17 @@ export default function StepSend({
 
   return (
     <OutcomeView
-      outcome={outcome} net={net}
+      outcome={outcome} net={net} cancelled={cancelled}
       onRetry={() => {
-        setOutcome(undefined); setStarted(false); setLiveFeeWarning(undefined);
+        setOutcome(undefined); setStarted(false); setLiveFeeWarning(undefined); setCancelled(false);
       }}
     />
   );
 }
 
 function OutcomeView({
-  outcome, net, onRetry,
-}: { outcome: RunOutcome; net: NetworkView; onRetry: () => void }) {
+  outcome, net, cancelled, onRetry,
+}: { outcome: RunOutcome; net: NetworkView; cancelled: boolean; onRetry: () => void }) {
   if (outcome.state === "confirmed") return null; // the parent has moved on
 
   const explorer = "txHash" in outcome
@@ -179,8 +188,10 @@ function OutcomeView({
   const copy: Record<string, { tone: string; title: string; body: string }> = {
     blocked: {
       tone: "error",
-      title: "Nothing was signed",
-      body: outcome.state === "blocked" ? outcome.details : "",
+      title: cancelled ? CANCELLED.payment.title : "Nothing was signed",
+      body: cancelled
+        ? CANCELLED.payment.body
+        : outcome.state === "blocked" ? BLOCKED_COPY[outcome.reason] : "",
     },
     dropped: {
       tone: "error",
@@ -206,6 +217,10 @@ function OutcomeView({
         <h2>{c.title}</h2>
         <p>{c.body}</p>
       </section>
+
+      {outcome.state === "blocked" && !cancelled && (
+        <TechnicalDetails><p className="raw-reason" style={{ margin: 0 }}>{outcome.details}</p></TechnicalDetails>
+      )}
 
       {"feeWarning" in outcome && outcome.feeWarning && (
         <Alert style={{ marginTop: 20 }} type="error" showIcon
