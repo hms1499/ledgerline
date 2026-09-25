@@ -128,3 +128,9 @@ dl.detail.run-summary dd { overflow-wrap: anywhere; }
 /* The totals print across the whole slip: in the 4-column aside, beside the
    terms, "0.00001 cirBTC" would break from its symbol. */
 dl.detail.run-summary dd.is-wide { grid-column: 1 / -1; margin-top: -2px; }
+
+/* ── open a run by its hash ───────────────────────────────────────────── */
+.open-run { margin-top: 24px; max-width: 40rem; }
+.open-run .label { display: block; margin-bottom: 6px; }
+.open-run-row { display: flex; gap: 8px; }
+.open-run-row .ant-input { min-width: 0; }

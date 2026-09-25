@@ -8,6 +8,7 @@ import { runsFor, forgetRun, type RunRecord } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
+import OpenRunByHash from "@/components/OpenRunByHash";
 import Verdict from "@/components/ui/Verdict";
 
 export default function RunHistory() {
@@ -62,6 +63,7 @@ export default function RunHistory() {
             <Verdict title="Runs you sent from this browser"
               body="Connect the wallet that paid them. This list lives in this browser only — Ledgerline has no account and no server that remembers you." />
             <Button type="primary" style={{ marginTop: 24 }} onClick={connect}>Connect a wallet</Button>
+            <OpenRunByHash network={net.name} />
           </Tape>
         </Col>
       ) : rows.length === 0 ? (
@@ -82,6 +84,7 @@ export default function RunHistory() {
                 Find an earlier one on the explorer
               </a>
             </p>
+            <OpenRunByHash network={net.name} />
           </Tape>
         </Col>
       ) : (
@@ -111,6 +114,9 @@ export default function RunHistory() {
                 scroll={{ x: "max-content" }}
               />
             </Tape>
+          </Col>
+          <Col span={12}>
+            <Tape><OpenRunByHash network={net.name} /></Tape>
           </Col>
         </>
       )}

@@ -14,6 +14,7 @@ import { readRuns, describeCoverage, type RunRead } from "@/lib/run-reads";
 import { readTokenMeta } from "@/lib/token-meta";
 import { coverageView, excludedNote, RUN_STATUS, amountText, paidLine, type TokenMeta } from "@/lib/dashboard-view";
 import { withNet } from "@/lib/nav";
+import OpenRunByHash from "@/components/OpenRunByHash";
 
 const RECENT = 5;
 
@@ -72,6 +73,7 @@ export default function Dashboard() {
               </p>
             </section>
             <Button type="primary" style={{ marginTop: 20 }} onClick={connect}>Connect a wallet</Button>
+            <OpenRunByHash network={net.name} />
           </Tape>
         </Col>
       </Grid>
@@ -93,6 +95,7 @@ export default function Dashboard() {
             <p style={{ marginTop: 20, marginBottom: 0 }}>
               <Link href={withNet("/new", search)} className="button-primary">Create a payout run</Link>
             </p>
+            <OpenRunByHash network={net.name} />
           </Tape>
         </Col>
       </Grid>
