@@ -21,10 +21,24 @@ describe("validateRun", () => {
     expect(r.warnings).toEqual([]);
   });
 
+  it("words every refusal as what to do", () => {
+    const to = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+    const token = "0x3600000000000000000000000000000000000000";
+    const r = validateRun([
+      { line: 2, invoiceId: "INV-1", token, to, amount: 1n },
+      { line: 3, invoiceId: "INV-1", token, to: "0x0000000000000000000000000000000000000000", amount: 1n },
+    ]);
+    expect(r.errors.map((e) => e.message)).toEqual([
+      "This pays 0x0000…0000, an address nobody owns. Arc refuses the payment. Check the recipient.",
+      'Invoice "INV-1" is also on line 2. Give each payment its own invoice reference, or the two cannot be told apart.',
+    ]);
+    expect(validateRun([]).errors[0]!.message).toBe("This file has no payments in it.");
+  });
+
   it("rejects the zero address, which Arc reverts on", () => {
     const r = validateRun([row({ to: "0x0000000000000000000000000000000000000000" })]);
     expect(r.errors[0]!.line).toBe(2);
-    expect(r.errors[0]!.message).toMatch(/zero address/i);
+    expect(r.errors[0]!.message).toMatch(/nobody owns/);
   });
 
   it("rejects a duplicate invoice id and names the line that repeats it", () => {
@@ -81,6 +95,6 @@ describe("validateRun", () => {
   });
 
   it("rejects an empty run", () => {
-    expect(validateRun([]).errors[0]!.message).toMatch(/no rows/i);
+    expect(validateRun([]).errors[0]!.message).toMatch(/no payments/i);
   });
 });

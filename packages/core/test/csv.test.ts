@@ -201,9 +201,20 @@ describe("toBaseUnits", () => {
   });
 
   it("refuses more precision than the token has, rather than rounding", () => {
-    const r = toBaseUnits("0.0000001", 6);
+    const r = toBaseUnits("0.0000001", 6, "USDC");
     expect(r.ok).toBe(false);
-    expect((r as { reason: string }).reason).toMatch(/6 decimal/);
+    expect((r as { reason: string }).reason).toBe(
+      '"0.0000001" has 7 decimal places, but USDC has 6. Round it yourself, so the amount paid is exactly what you mean.',
+    );
+  });
+
+  it("says how to write an amount it cannot read, and what to do with a zero", () => {
+    expect(toBaseUnits("1,000", 6)).toEqual({
+      ok: false, reason: '"1,000" is not an amount this page can read. Write it with digits and a dot only, like 1000 or 12.50.',
+    });
+    expect(toBaseUnits("0", 6)).toEqual({
+      ok: false, reason: "The amount is zero. Enter the amount owed, or remove this line.",
+    });
   });
 
   it("refuses scientific notation, separators, negatives, zero and empty", () => {
@@ -263,6 +274,23 @@ describe("resolveRows", () => {
     );
     expect(issues).toHaveLength(2);
     expect(items).toHaveLength(1);
+  });
+
+  it("names the tokens it pays and what an address looks like", () => {
+    const { issues } = resolveRows(
+      [row({ line: 2, tokenSymbol: "USDT" }), row({ line: 3, to: "vitalik.eth" }), row({ line: 4, invoiceId: "" })],
+      TOKENS, DECIMALS,
+    );
+    expect(issues.map((i) => i.message)).toEqual([
+      '"USDT" is not a token this page pays. Use one of: USDC, EURC, cirBTC.',
+      '"vitalik.eth" is not a wallet address. Use the full address: 0x followed by 40 letters and digits.',
+      "The invoice reference is empty. Every payment needs one.",
+    ]);
+  });
+
+  it("passes the token's own symbol to the precision message", () => {
+    const { issues } = resolveRows([row({ amount: "0.0000001" })], TOKENS, DECIMALS);
+    expect(issues[0]!.message).toMatch(/but USDC has 6/);
   });
 
   it("fails loudly when the decimals table is missing a token it was given", () => {

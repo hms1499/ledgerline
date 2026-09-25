@@ -27,7 +27,7 @@ export function validateRun(items: ResolvedRow[]): {
   const warnings: RowIssue[] = [];
 
   if (items.length === 0) {
-    return { errors: [{ message: "This file has no rows to pay." }], warnings };
+    return { errors: [{ message: "This file has no payments in it." }], warnings };
   }
 
   if (items.length > MAX_ITEMS_PER_RUN) {
@@ -46,7 +46,7 @@ export function validateRun(items: ResolvedRow[]): {
       errors.push({
         line: item.line,
         invoiceId: item.invoiceId,
-        message: "Pays the zero address. Arc reverts on this, and burning a payroll is not a thing this tool will do.",
+        message: "This pays 0x0000…0000, an address nobody owns. Arc refuses the payment. Check the recipient.",
       });
     }
 
@@ -55,7 +55,7 @@ export function validateRun(items: ResolvedRow[]): {
       errors.push({
         line: item.line,
         invoiceId: item.invoiceId,
-        message: `Invoice "${item.invoiceId}" already appears on line ${seenInvoice}. Two payments under one reference cannot be told apart when reconciling.`,
+        message: `Invoice "${item.invoiceId}" is also on line ${seenInvoice}. Give each payment its own invoice reference, or the two cannot be told apart.`,
       });
     } else {
       invoiceLine.set(item.invoiceId, item.line);

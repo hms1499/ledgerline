@@ -163,7 +163,7 @@ export function verifyReceipt(input: ReceiptInput): ReceiptResult {
   at("payment_found").status = "pass";
   at("invoice_match").status = "pass";
   at("invoice_match").detail =
-    "Proven by rebuilding the transfer calldata and matching its hash against the reference — not by position or amount.";
+    "Proven by rebuilding this payment and matching it to the invoice's reference — not by its position or amount.";
 
   // ── rung 4: the payer on record is the sender of funds ─────────────────
   if (payment.identityBroken) {

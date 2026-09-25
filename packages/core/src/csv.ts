@@ -205,13 +205,14 @@ export interface ResolvedRow extends ManifestItem {
 export function toBaseUnits(
   text: string,
   decimals: number,
+  symbol = "this token",
 ): { ok: true; value: bigint } | { ok: false; reason: string } {
   const t = text.trim();
-  if (t === "") return { ok: false, reason: "Amount is empty." };
+  if (t === "") return { ok: false, reason: "The amount is empty. Enter the amount owed." };
   if (!/^\d*\.?\d*$/.test(t) || t === ".") {
     return {
       ok: false,
-      reason: `"${text}" is not a plain decimal number. Scientific notation, thousands separators and negative values are not accepted.`,
+      reason: `"${text}" is not an amount this page can read. Write it with digits and a dot only, like 1000 or 12.50.`,
     };
   }
 
@@ -219,13 +220,13 @@ export function toBaseUnits(
   if (frac.length > decimals) {
     return {
       ok: false,
-      reason: `"${text}" has ${frac.length} decimal places but this token has ${decimals} decimal place${decimals === 1 ? "" : "s"}. Rounding a payment is not something this tool will do quietly.`,
+      reason: `"${text}" has ${frac.length} decimal places, but ${symbol} has ${decimals}. Round it yourself, so the amount paid is exactly what you mean.`,
     };
   }
 
   const value = BigInt((whole || "0") + frac.padEnd(decimals, "0"));
   if (value === 0n) {
-    return { ok: false, reason: "Amount is zero, which is legal on chain but meaningless in a payout." };
+    return { ok: false, reason: "The amount is zero. Enter the amount owed, or remove this line." };
   }
   return { ok: true, value };
 }
@@ -248,10 +249,11 @@ export function resolveRows(
   const bySymbol = new Map<string, `0x${string}`>(
     Object.entries(tokens).map(([symbol, address]) => [symbol.toLowerCase(), address]),
   );
+  const spelled = new Map<string, string>(Object.keys(tokens).map((s) => [s.toLowerCase(), s]));
 
   for (const row of rows) {
     if (row.invoiceId === "") {
-      issues.push({ line: row.line, message: "Invoice reference is empty." });
+      issues.push({ line: row.line, message: "The invoice reference is empty. Every payment needs one." });
       continue;
     }
 
@@ -259,7 +261,7 @@ export function resolveRows(
     if (!token) {
       issues.push({
         line: row.line,
-        message: `Unknown token "${row.tokenSymbol}". This chain has ${[...bySymbol.keys()].join(", ")}.`,
+        message: `"${row.tokenSymbol}" is not a token this page pays. Use one of: ${Object.keys(tokens).join(", ")}.`,
       });
       continue;
     }
@@ -274,11 +276,14 @@ export function resolveRows(
     }
 
     if (!isAddress(row.to)) {
-      issues.push({ line: row.line, message: `"${row.to}" is not a valid address.` });
+      issues.push({
+        line: row.line,
+        message: `"${row.to}" is not a wallet address. Use the full address: 0x followed by 40 letters and digits.`,
+      });
       continue;
     }
 
-    const amount = toBaseUnits(row.amount, d);
+    const amount = toBaseUnits(row.amount, d, spelled.get(row.tokenSymbol.toLowerCase()));
     if (!amount.ok) {
       issues.push({ line: row.line, message: amount.reason });
       continue;

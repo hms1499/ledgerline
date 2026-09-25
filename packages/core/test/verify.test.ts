@@ -40,6 +40,12 @@ describe("verifyReceipt — the happy path", () => {
     expect(r.payment!.token.toLowerCase()).toBe(USDC_ADDRESS.toLowerCase());
   });
 
+  it("explains the invoice match without engineering words", () => {
+    expect(rung(verifyReceipt(input()), "invoice_match").detail).toBe(
+      "Proven by rebuilding this payment and matching it to the invoice's reference — not by its position or amount.",
+    );
+  });
+
   it("is `verified` only when the anchor proof also passed", () => {
     expect(verifyReceipt(input({ anchorProofValid: true })).state).toBe("verified");
   });
