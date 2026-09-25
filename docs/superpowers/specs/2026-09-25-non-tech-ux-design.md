@@ -267,8 +267,10 @@ ordering; `plain-language.test.ts` extended to the new copy; CSS guards for
 
 1. Reject at Pay: `scrollWidth` equals the viewport at 1280 and 390, and the
    screen shows the cancellation sentence, not viem's text.
-2. `excel.csv` and `semicolon.csv` reach Review with the right amounts
-   (`1250.00` and `0.10`); `mistakes.csv` shows one list in line order.
+2. `excel.csv` passes its header and stops only on its amounts, each with how
+   to write it (`"1,250.00"` carries a thousands comma, which a `,` file never
+   guesses; `$20` a sign); `semicolon.csv` reaches Review with `0.10`;
+   `mistakes.csv` shows one list in line order.
 3. "Choose another file" keeps the name; a file dropped with an empty name is
    kept and the name field asks for one.
 4. Connect with no wallet opens the dialog, with both install links.
