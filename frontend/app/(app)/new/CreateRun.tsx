@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Alert, Steps } from "antd";
 import { tokensForChain } from "@ledgerline/core";
-import type { ResolvedRow, CsvIssue, RowIssue, RunOutcome } from "@ledgerline/core";
+import type { ResolvedRow, CsvIssue, RowIssue, RunOutcome, ParsedRow } from "@ledgerline/core";
 import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
@@ -12,6 +12,7 @@ import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import { summarySource, runSummaryView } from "@/lib/run-summary-view";
 import { realFundsNotice } from "@/lib/network-notice";
+import { defaultRunLabel } from "@/lib/run-label";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
 import StepPreflight, { type PreparedRun } from "./StepPreflight";
@@ -22,6 +23,8 @@ import CsvHelp from "./CsvHelp";
 
 export interface RunDraft {
   rows: ResolvedRow[];
+  /** Every row as read, by line, so a problem can name its invoice. */
+  parsed: ParsedRow[];
   runLabel: string;
   issues: CsvIssue[];
   errors: RowIssue[];
@@ -38,6 +41,10 @@ export default function CreateRun() {
   const [prepared, setPrepared] = useState<PreparedRun>();
   const [outcome, setOutcome] = useState<Extract<RunOutcome, { state: "confirmed" }>>();
   const { net, wallet, wrongChain, held, error: walletError, switchError, connect, setHold } = useWallet();
+  // Owned here, so "Choose another file" returns to a filled field. Set after
+  // mount: the server's clock and time zone are not the payer's.
+  const [runLabel, setRunLabel] = useState("");
+  useEffect(() => { setRunLabel((l) => l || defaultRunLabel(new Date())); }, []);
 
   // A prepared run belongs to one account on one chain; the provider tells us
   // when either changes. A confirmed run, or one being sent, is kept.
@@ -117,7 +124,8 @@ export default function CreateRun() {
         {/* The whole flow is a tape still feeding; the Result tears it off (spec §6.1). */}
         <Tape state={step === 4 ? "torn" : "feeding"} title={step === 1 ? "Payments in this run" : undefined}>
           {step === 0 && (
-            <StepUpload net={net} onReady={(d) => { setDraft(d); setStep(1); }} />
+            <StepUpload net={net} runLabel={runLabel} onRunLabel={setRunLabel}
+              onReady={(d) => { setDraft(d); setStep(1); }} />
           )}
           {step === 1 && draft && (
             <StepPreview

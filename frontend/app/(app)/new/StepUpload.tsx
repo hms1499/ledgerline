@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Alert, Input, Upload } from "antd";
+import { useRef, useState } from "react";
+import { Alert, Button, Input, Upload, type InputRef } from "antd";
 import { parseCsv, resolveRows, validateRun, tokensForChain } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
@@ -9,11 +9,20 @@ import type { RunDraft } from "./CreateRun";
 import { readTokenMeta } from "@/lib/token-meta";
 
 export default function StepUpload({
-  net, onReady,
-}: { net: NetworkView; onReady: (draft: RunDraft) => void }) {
-  const [runLabel, setRunLabel] = useState("");
+  net, runLabel, onRunLabel, onReady,
+}: {
+  net: NetworkView;
+  runLabel: string;
+  onRunLabel: (label: string) => void;
+  onReady: (draft: RunDraft) => void;
+}) {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
+  // A file chosen before the run had a name is kept, so it need not be chosen again.
+  const [pending, setPending] = useState<{ name: string; text: string }>();
+  const [askedForName, setAskedForName] = useState(false);
+  const nameRef = useRef<InputRef>(null);
+  const named = runLabel.trim().length > 0;
 
   const handle = async (text: string) => {
     setBusy(true);
@@ -26,6 +35,7 @@ export default function StepUpload({
       const { errors, warnings } = validateRun(resolved.items);
       onReady({
         rows: resolved.items,
+        parsed: rows,
         runLabel: runLabel.trim(),
         issues: [...issues, ...resolved.issues],
         errors, warnings, decimals, symbols,
@@ -37,7 +47,15 @@ export default function StepUpload({
     }
   };
 
-  const labelReady = runLabel.trim().length > 0;
+  const receive = (name: string, text: string) => {
+    if (!runLabel.trim()) {
+      setPending({ name, text });
+      setAskedForName(true);
+      nameRef.current?.focus();
+      return;
+    }
+    void handle(text);
+  };
 
   return (
     <>
@@ -55,30 +73,32 @@ export default function StepUpload({
           Run name
         </span>
         <Input
-          placeholder="Payroll 2026-09"
+          ref={nameRef}
           value={runLabel}
-          onChange={(e) => setRunLabel(e.target.value)}
+          status={askedForName && !named ? "error" : undefined}
+          aria-describedby="run-name-help"
+          onChange={(e) => onRunLabel(e.target.value)}
         />
-        <span className="because">
-          You will need this again to rebuild the receipt links later. Write it down.
-        </span>
+        {askedForName && !named ? (
+          <span id="run-name-help" className="because field-error" role="alert">Name the run first</span>
+        ) : (
+          <span id="run-name-help" className="because">Saved in the run file you download after paying.</span>
+        )}
       </label>
 
-      {/* Disabled until the run is named, but never faded: the words say what
-          comes next, so they stay readable (soft colour, not opacity). */}
-      <div style={{ marginTop: 24, pointerEvents: labelReady ? "auto" : "none" }}>
+      <div style={{ marginTop: 24 }}>
         <Upload.Dragger
           accept=".csv,text/csv"
           showUploadList={false}
-          disabled={busy || !labelReady}
+          disabled={busy}
           beforeUpload={(file) => {
             const reader = new FileReader();
-            reader.onload = () => void handle(String(reader.result));
+            reader.onload = () => receive(file.name, String(reader.result));
             reader.readAsText(file);
             return false;
           }}
         >
-          <p style={{ margin: "1.4rem 0 0.4rem", fontWeight: 500, color: labelReady ? "var(--ink)" : "var(--ink-soft)" }}>
+          <p style={{ margin: "1.4rem 0 0.4rem", fontWeight: 500 }}>
             Drop a CSV, or click to choose one
           </p>
           <p className="because" style={{ margin: "0 0 1.4rem" }}>
@@ -86,6 +106,14 @@ export default function StepUpload({
           </p>
         </Upload.Dragger>
       </div>
+
+      {pending && (
+        <div style={{ marginTop: 14 }}>
+          <Button type="primary" disabled={!named || busy} loading={busy} onClick={() => void handle(pending.text)}>
+            Continue with {pending.name}
+          </Button>
+        </div>
+      )}
 
       {error && <Alert style={{ marginTop: 18 }} type="error" showIcon title={error} />}
     </>
