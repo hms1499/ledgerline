@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { defaultNetwork } from "@/lib/chain";
 import { sampleCsvHref } from "@/lib/sample-csv";
-import { MAINNET_PROOF as P } from "@/lib/mainnet-proof";
+import { MAINNET_PROOF as P, controlComparison } from "@/lib/mainnet-proof";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import SiteFooter from "@/components/ui/SiteFooter";
@@ -141,12 +141,41 @@ export default function Home() {
               <dd className="proof-fig">{P.feeUsdc}</dd>
               <dd className="because">{P.gasUsed.toLocaleString("en-US")} gas at {P.gasPriceGwei} Gwei, measured on the run itself.</dd>
             </div>
-            <div>
-              <dt>Referenced by a plain batch</dt>
-              <dd className="proof-fig">{P.control.referenced}<span className="proof-of"> / {P.control.payments}</span></dd>
-              <dd className="because">The same payment through the standard Multicall3, same day, as a control.</dd>
-            </div>
           </dl>
+          <section className="versus" aria-labelledby="versus-title">
+            <h3 id="versus-title" className="label">The same payment, the ordinary way</h3>
+            <p className="because">
+              The same day, 0.10 USDC went to the same recipient through the standard Multicall3
+              batch, as a control. Both are on Arc mainnet.
+            </p>
+            <table className="versus-table">
+              <thead>
+                <tr>
+                  <th scope="col"><span className="sr-only">Measured</span></th>
+                  <th scope="col">Ledgerline</th>
+                  <th scope="col">Standard batch</th>
+                </tr>
+              </thead>
+              <tbody>
+                {controlComparison().map((r) => (
+                  <tr key={r.key}>
+                    <th scope="row">
+                      {r.claim}
+                      {r.same && <span className="because">No difference here.</span>}
+                    </th>
+                    <td>{r.ours}</td>
+                    <td>{r.ordinary}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="because versus-links">
+              The control on the explorer:{" "}
+              <a href={`https://explorer.arc.io/tx/${P.control.approveTx}`} target="_blank" rel="noreferrer">approval ↗</a>
+              {" · "}
+              <a href={`https://explorer.arc.io/tx/${P.control.batchTx}`} target="_blank" rel="noreferrer">batch ↗</a>
+            </p>
+          </section>
           <div className="proof-foot">
             <span className="hex">
               <span aria-hidden="true"># </span>{shortHash(P.txHash)} <span aria-hidden="true">✱</span>
@@ -154,7 +183,7 @@ export default function Home() {
             <span className="proof-links">
               <a href={`https://explorer.arc.io/tx/${P.txHash}`} target="_blank" rel="noreferrer">View on explorer ↗</a>
               <Link href={`/run/${P.txHash}?n=mainnet`}>Open the run here</Link>
-              <Link href="/why?n=mainnet">Compare with the control</Link>
+              <Link href="/why?n=mainnet">Check the comparison live</Link>
             </span>
           </div>
         </Tape>

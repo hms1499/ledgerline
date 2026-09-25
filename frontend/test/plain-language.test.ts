@@ -16,6 +16,7 @@ import { noWalletHelp } from "@/lib/wallet-help";
 import { topUpHint } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
 import { TX_HASH_HINT } from "@/lib/tx-hash";
+import { controlComparison } from "@/lib/mainnet-proof";
 import fixture from "../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
 
 /**
@@ -36,6 +37,10 @@ const memoIdFor = () =>
 const SALT = ("0x" + "00".repeat(32)) as `0x${string}`;
 
 describe("copy a payer or recipient reads is free of protocol jargon", () => {
+  it("the home page's comparison with an ordinary batch", () => {
+    for (const r of controlComparison()) { clean(r.claim); clean(r.ours); clean(r.ordinary); }
+  });
+
   it("the receipt page's verdicts", () => {
     for (const state of Object.keys(RECEIPT_COPY) as ReceiptState[]) {
       clean(RECEIPT_COPY[state]!.headline);

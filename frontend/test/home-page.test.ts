@@ -13,4 +13,14 @@ describe("the home page", () => {
     expect(src).toContain("You need a browser wallet (MetaMask or Rabby) and USDC on Arc for the network fee.");
     expect(src).not.toMatch(/\bdp\b/);
   });
+  it("sets the ordinary way beside the proof, before the footer, with a way to check it live", () => {
+    const proof = src.indexOf("Proof · Arc mainnet");
+    const versus = src.indexOf("The same payment, the ordinary way");
+    expect(versus).toBeGreaterThan(proof);
+    expect(versus).toBeLessThan(src.indexOf("<SiteFooter"));
+    expect(src).toContain("controlComparison()");
+    expect(src).toContain('href="/why?n=mainnet"');
+    // The table says it; the old single figure would repeat it.
+    expect(src).not.toContain("Referenced by a plain batch");
+  });
 });
