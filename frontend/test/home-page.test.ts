@@ -1,0 +1,16 @@
+import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+
+const src = readFileSync(fileURLToPath(new URL("../app/(public)/page.tsx", import.meta.url)), "utf8");
+
+describe("the home page", () => {
+  it("says how a run works before it shows the proof", () => {
+    expect(src.indexOf("How a run works")).toBeGreaterThan(-1);
+    expect(src.indexOf("How a run works")).toBeLessThan(src.indexOf("Proof · Arc mainnet"));
+  });
+  it("says what a payer needs, and names tokens without decimal jargon", () => {
+    expect(src).toContain("You need a browser wallet (MetaMask or Rabby) and USDC on Arc for the network fee.");
+    expect(src).not.toMatch(/\bdp\b/);
+  });
+});

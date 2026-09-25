@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   verifyReceipt, assessCompleteness, checkManifestAgainstRoot, explainRevert,
   RUN_EXISTS_SELECTOR, EMPTY_RUN_SELECTOR, reconcile,
+  parseCsv, resolveRows, validateRun, tokensForChain,
   type Manifest, type RawLog, type ReconcileStatus, type ReceiptState,
 } from "@ledgerline/core";
 import { statusView } from "@/lib/reconcile-view";
@@ -10,6 +11,11 @@ import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
 import { runSummaryView } from "@/lib/run-summary-view";
+import { reviewView } from "@/lib/review-view";
+import { noWalletHelp } from "@/lib/wallet-help";
+import { topUpHint } from "@/lib/funding-view";
+import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
+import { TX_HASH_HINT } from "@/lib/tx-hash";
 import fixture from "../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
 
 /**
@@ -113,5 +119,36 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     const v = runSummaryView("Payroll", { items: [], runId: "0x1" }, [], {}, {});
     clean(v.name); clean(v.payments); v.toPay.forEach(clean);
     for (const label of ["This run", "Name", "Payments", "To pay", "Network", "Paying wallet", "Run ID", "Not connected"]) clean(label);
+  });
+  it("the create flow's new words, and the file and row messages", () => {
+    // Engineering words the audit found on screen; never again.
+    const ENGINEERING = /\b(calldata|zero address|scientific notation|base units|burning)\b/i;
+    const plain = (t?: string) => { clean(t); if (t) expect(t, t).not.toMatch(ENGINEERING); };
+
+    const TOKENS = tokensForChain(5042002);
+    const DECIMALS = { [TOKENS.USDC.toLowerCase()]: 6, [TOKENS.EURC.toLowerCase()]: 6, [TOKENS.cirBTC.toLowerCase()]: 8 };
+    const A = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+    for (const text of [
+      `invoiceId,token,to,amount\nINV-1,USDC,${A},1250.00\nINV-2,USDC,${A.slice(0, 40)},10\nINV-3,USDT,${A},10\nINV-4,EURC,${A},"1,000"\nINV-5,USDC,vitalik.eth,5\nINV-1,USDC,${A},3\nINV-7,USDC,0x0000000000000000000000000000000000000000,1\nINV-8,USDC,${A},0`,
+      `Invoice ID,Token,Recipient,Salary\na,b,c,1`,
+      `invoiceId;token;to;amount\nINV-1;USDC;${A};1.000`,
+      ``,
+    ]) {
+      const { rows, issues } = parseCsv(text);
+      const resolved = resolveRows(rows, TOKENS, DECIMALS);
+      const { errors, warnings } = validateRun(resolved.items);
+      const v = reviewView({ issues: [...issues, ...resolved.issues], errors, warnings, parsed: rows });
+      plain(v.title); plain(v.summary); plain(v.fixFirst);
+      for (const i of v.items) plain(i.message);
+    }
+
+    for (const n of ["mainnet", "testnet"] as const) {
+      const h = noWalletHelp(n);
+      plain(h.title); plain(h.install); plain(h.funds); plain(h.kind);
+      plain(topUpHint("USDC", n).text); plain(topUpHint("cirBTC", n).text);
+    }
+    Object.values(BLOCKED_COPY).forEach(plain);
+    plain(CANCELLED.message.title); plain(CANCELLED.payment.title); plain(CANCELLED.payment.body);
+    plain(FEE_ADVICE); plain(CHECK_FAILED); plain(RUN_FILE_COPY); plain(TX_HASH_HINT);
   });
 });

@@ -11,7 +11,6 @@
   padding: 3px 8px; border: 1px solid var(--control); background: var(--tape);
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; font-size: 12px;
 }
-.chip-soft { color: var(--ink-soft); }
 .home-note { margin: 14px 0 0; font-size: 14px; max-width: var(--measure); }
 .home-note-mark { margin-right: 6px; padding: 0 6px; font-family: var(--font-mono), ui-monospace, monospace; font-weight: 700; }
 .example-caption { margin: 14px 0 0; text-align: center; }
@@ -134,3 +133,4 @@ dl.detail.run-summary dd.is-wide { grid-column: 1 / -1; margin-top: -2px; }
 .open-run .label { display: block; margin-bottom: 6px; }
 .open-run-row { display: flex; gap: 8px; }
 .open-run-row .ant-input { min-width: 0; }
+.how-need { margin-top: 18px; padding-top: 12px; border-top: 1.5px dotted var(--rule); max-width: none; }

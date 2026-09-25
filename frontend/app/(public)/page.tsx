@@ -6,11 +6,7 @@ import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import SiteFooter from "@/components/ui/SiteFooter";
 
-const PAYS_IN = [
-  { symbol: "USDC", decimals: 6 },
-  { symbol: "EURC", decimals: 6 },
-  { symbol: "cirBTC", decimals: 8 },
-] as const;
+const PAYS_IN = ["USDC", "EURC", "cirBTC"] as const;
 
 const shortHash = (h: string) => `${h.slice(0, 10)}…${h.slice(-8)}`;
 
@@ -34,10 +30,8 @@ export default function Home() {
         </div>
         <p className="pays-in">
           <span className="label">Pays in</span>
-          {PAYS_IN.map((t) => (
-            <span key={t.symbol} className="chip">
-              {t.symbol} <span className="chip-soft">{t.decimals} dp</span>
-            </span>
+          {PAYS_IN.map((symbol) => (
+            <span key={symbol} className="chip">{symbol}</span>
           ))}
         </p>
         {testnet ? (
@@ -80,6 +74,43 @@ export default function Home() {
           <p className="stamp">Verified</p>
         </Tape>
         <p className="label example-caption">What a recipient sees</p>
+      </Col>
+
+      <Col span={12}>
+        <Tape head={<><strong>How a run works</strong><span>3 steps · one transaction</span></>}>
+          <ol className="how">
+            <li>
+              <span className="label">1 · Upload</span>
+              <h3>Upload a list of invoices</h3>
+              <p className="because">
+                A CSV with one line per payment: invoice, token, recipient, amount.{" "}
+                <a href={sampleCsvHref()} download="ledgerline-sample.csv">Download a sample</a>{" "}
+                to start from. It stays in your browser.
+              </p>
+            </li>
+            <li>
+              <span className="label">2 · Check, then pay</span>
+              <h3>Check it, then pay in one transaction</h3>
+              <p className="because">
+                Every payment is tried against the chain before you pay, so a short balance or
+                a transfer the token would refuse shows up before any money moves. Then one
+                transaction pays every line.
+              </p>
+            </li>
+            <li>
+              <span className="label">3 · Send receipts</span>
+              <h3>Send each recipient their receipt link</h3>
+              <p className="because">
+                The link shows what was paid and which invoice it settles, checked against the
+                chain in their own browser. They need no account and nothing from us.
+              </p>
+            </li>
+          </ol>
+          <p className="because how-need">
+            You need a browser wallet (MetaMask or Rabby) and USDC on Arc for the network fee.
+            {!testnet && <> <Link href="/new?n=testnet">Try it on testnet first</Link>.</>}
+          </p>
+        </Tape>
       </Col>
 
       <Col span={12}>
@@ -126,39 +157,6 @@ export default function Home() {
               <Link href="/why?n=mainnet">Compare with the control</Link>
             </span>
           </div>
-        </Tape>
-      </Col>
-
-      <Col span={12}>
-        <Tape head={<><strong>How a run works</strong><span>3 steps · one transaction</span></>}>
-          <ol className="how">
-            <li>
-              <span className="label">1 · Upload</span>
-              <h3>Upload a list of invoices</h3>
-              <p className="because">
-                A CSV with one line per payment: invoice, token, recipient, amount.{" "}
-                <a href={sampleCsvHref()} download="ledgerline-sample.csv">Download a sample</a>{" "}
-                to start from. It stays in your browser.
-              </p>
-            </li>
-            <li>
-              <span className="label">2 · Check, then pay</span>
-              <h3>Check it, then pay in one transaction</h3>
-              <p className="because">
-                Every payment is tried against the chain before you pay, so a short balance or
-                a transfer the token would refuse shows up before any money moves. Then one
-                transaction pays every line.
-              </p>
-            </li>
-            <li>
-              <span className="label">3 · Send receipts</span>
-              <h3>Send each recipient their receipt link</h3>
-              <p className="because">
-                The link shows what was paid and which invoice it settles, checked against the
-                chain in their own browser. They need no account and nothing from us.
-              </p>
-            </li>
-          </ol>
         </Tape>
       </Col>
 
