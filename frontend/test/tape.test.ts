@@ -87,3 +87,21 @@ describe("antd's own rules, injected after our sheets", () => {
     }
   });
 });
+
+describe("on a phone and with a long string", () => {
+  it("hides antd's step bar on a phone: the phone classes sit above antd", () => {
+    // antd's `.ant-steps { display: flex }` is injected later at the same
+    // specificity, so a bare `.hide-sm` showed both progress indicators.
+    const shell = readFileSync(join(STYLES, "shell.css"), "utf8");
+    expect(shell).toMatch(/html \.hide-sm\s*\{\s*display:\s*none;?\s*\}/);
+    expect(shell).toMatch(/html \.only-sm\s*\{\s*display:\s*inline-flex;?\s*\}/);
+  });
+
+  it("wraps a verdict, an alert's description and a raw reason anywhere", () => {
+    // A rejected payment once printed viem's hex and made the page 31,900px wide.
+    const css = allCss();
+    expect(css).toMatch(/\.verdict p\s*\{[^}]*overflow-wrap:\s*anywhere/);
+    expect(css).toMatch(/html \.ant-alert-description\s*\{[^}]*overflow-wrap:\s*anywhere/);
+    expect(css).toMatch(/\.raw-reason\s*\{[^}]*overflow-wrap:\s*anywhere/);
+  });
+});

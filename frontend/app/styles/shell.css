@@ -114,8 +114,8 @@
   .side-nav { display: none; }
   .app-main { padding-bottom: 96px; }
   .public-main { padding-block: 24px 48px; }
-  .only-sm { display: inline-flex; }
-  .hide-sm { display: none; }
+  html .only-sm { display: inline-flex; }
+  html .hide-sm { display: none; }
   .network-badge { font-size: 10px; padding: 4px 6px; }
   /* The header must fit down to 320px (WCAG 1.4.10): tighter tracking and
      gaps, "Arc" only spoken, a smaller ⋯. */
