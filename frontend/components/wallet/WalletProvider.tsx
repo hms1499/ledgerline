@@ -24,6 +24,9 @@ export interface WalletApi {
   switching: boolean;
   switchError?: string;
   connect(): void;
+  /** For a page that connects on its own, such as rebuilding receipt links:
+   *  the same dialog as every Connect button when there is no wallet. */
+  showNoWallet(): void;
   disconnect(): Promise<void>;
   switchToArc(): Promise<void>;
   /** Set by the send screen while it holds the only copy of a tx hash. */
@@ -129,13 +132,14 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [wallet, net]);
 
   const setHold = useCallback((on: boolean) => dispatch({ type: "hold", on }), []);
+  const showNoWallet = useCallback(() => setNoWallet(true), []);
 
   const api: WalletApi = {
     net, wallet,
     wrongChain: !!wallet && wallet.chainId !== net.chain.id,
     held: session.held,
     connecting, error, switching, switchError,
-    connect, disconnect, switchToArc, setHold, setUnsavedRun,
+    connect, showNoWallet, disconnect, switchToArc, setHold, setUnsavedRun,
     leaveWarning: leaveWarning({ held: session.held, unsavedRun }),
   };
 

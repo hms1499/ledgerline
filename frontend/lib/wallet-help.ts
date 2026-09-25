@@ -1,5 +1,7 @@
-/** Where a payer with no wallet goes next. Both links resolved (200) on
- *  2026-09-25; no bridge or swap link is offered, since none is verified. */
+/** Where a payer with no wallet goes next. Any browser wallet holding an
+ *  ordinary account works; these two are examples, not the supported list.
+ *  Both links resolved (200) on 2026-09-25; no bridge or swap link is
+ *  offered, since none is verified. */
 export const WALLET_INSTALL = [
   { name: "MetaMask", href: "https://metamask.io/download" },
   { name: "Rabby", href: "https://rabby.io" },
@@ -16,7 +18,7 @@ export function noWalletHelp(network: "mainnet" | "testnet"): {
 } {
   return {
     title: "You need a browser wallet",
-    install: "Install one, then reload this page:",
+    install: "Any browser wallet works. Install one, then reload this page. Two common ones:",
     funds: network === "testnet"
       ? "Get free test tokens at"
       : "Your wallet also needs USDC on Arc mainnet: it pays each run's network fee.",

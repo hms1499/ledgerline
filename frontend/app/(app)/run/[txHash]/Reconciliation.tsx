@@ -11,7 +11,8 @@ import {
   type PaymentRecord,
 } from "@ledgerline/core";
 import { networkFor, short, receiptUrl, type NetworkView } from "@/lib/chain";
-import { connect, knownWallets, watchWalletList, type WalletChoice } from "@/lib/wallet";
+import { connect, knownWallets, watchWalletList, NoWalletError, type WalletChoice } from "@/lib/wallet";
+import { useWallet } from "@/components/wallet/WalletProvider";
 import { describeError } from "@/lib/errors";
 import WalletPicker from "@/components/WalletPicker";
 import { SEVERITY, statusView } from "@/lib/reconcile-view";
@@ -575,6 +576,7 @@ function RecoverLinks({
   const [label, setLabel] = useState(initialLabel ?? "");
   const [invoices, setInvoices] = useState("");
   const [state, setState] = useState<"idle" | "working" | "ok" | "mismatch" | "error">("idle");
+  const { showNoWallet } = useWallet();
   const [error, setError] = useState<string>();
   const [links, setLinks] = useState<{ invoiceId: string; url: string }[]>([]);
   const [copied, setCopied] = useState<string>();
@@ -649,6 +651,12 @@ function RecoverLinks({
       })));
       setState("ok");
     } catch (err) {
+      // No wallet is a next step, not a failure: the dialog says what to get.
+      if (err instanceof NoWalletError) {
+        setState("idle");
+        showNoWallet();
+        return;
+      }
       setError(describeError(err));
       setState("error");
     }
