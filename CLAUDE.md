@@ -107,7 +107,7 @@ logistics only — **never hardcode them in the product.**
 Mainnet          https://rpc.mainnet.arc.io          no debug_traceCall
 Mainnet (trace)  https://rpc.drpc.mainnet.arc.io     debug_traceCall + stateOverrides — use for dev
 Explorer         https://explorer.arc.io             Blockscout, public, supports source verification
-Testnet          https://rpc.testnet.arc.io          viem says rpc.testnet.arc.network — verify before relying on it
+Testnet          https://arc-testnet.drpc.org        the project default. rpc.testnet.arc.io and viem's rpc.testnet.arc.network also live (2026-09-25)
 Faucet           https://faucet.circle.com
 ```
 

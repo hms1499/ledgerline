@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { networkFromSearch } from "@/lib/use-network";
-import { defaultNetwork } from "@/lib/chain";
+import { defaultNetwork, networkFor } from "@/lib/chain";
 
 const search = (q: string) => new URLSearchParams(q);
 
@@ -34,5 +34,12 @@ describe("defaultNetwork — the network a URL without ?n= opens on", () => {
   it("is testnet only when asked for by name", () => {
     expect(withDefault("testnet")).toBe("testnet");
     expect(withDefault("mainnet")).toBe("mainnet");
+  });
+});
+
+describe("the node each network reads from", () => {
+  it("reads testnet through dRPC and mainnet through Arc's own node", () => {
+    expect(networkFor("testnet").defaultRpc).toBe("https://arc-testnet.drpc.org");
+    expect(networkFor("mainnet").defaultRpc).toBe("https://rpc.mainnet.arc.io");
   });
 });

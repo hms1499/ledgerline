@@ -4,7 +4,7 @@ export type Network = "mainnet" | "testnet";
 
 const RPC: Record<Network, string> = {
   mainnet: "https://rpc.mainnet.arc.io",
-  testnet: "https://rpc.testnet.arc.io",
+  testnet: "https://arc-testnet.drpc.org",
 };
 
 /**

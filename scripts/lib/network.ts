@@ -50,7 +50,7 @@ export function resolveNetwork(): NetworkConfig {
     chain,
     rpcUrl:
       (isMainnet ? process.env.ARC_MAINNET_RPC : process.env.ARC_TESTNET_RPC) ||
-      (isMainnet ? "https://rpc.mainnet.arc.io" : "https://rpc.testnet.arc.io"),
+      (isMainnet ? "https://rpc.mainnet.arc.io" : "https://arc-testnet.drpc.org"),
     anchor,
     tokens: tokensForChain(chain.id),
     explorer: isMainnet ? "https://explorer.arc.io" : "https://explorer.testnet.arc.io",

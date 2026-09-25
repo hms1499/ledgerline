@@ -15,7 +15,7 @@ describe("parseArgs", () => {
   it("--network testnet switches the default RPC", () => {
     const a = parseArgs([TX, "--network", "testnet"]);
     expect(a.network).toBe("testnet");
-    expect(a.rpcUrl).toBe("https://rpc.testnet.arc.io");
+    expect(a.rpcUrl).toBe("https://arc-testnet.drpc.org");
   });
 
   it("an explicit --rpc wins over the network default", () => {

@@ -38,7 +38,7 @@ const MAINNET: NetworkView = {
 const TESTNET: NetworkView = {
   name: "testnet",
   chain: arcTestnet,
-  defaultRpc: "https://rpc.testnet.arc.io",
+  defaultRpc: "https://arc-testnet.drpc.org",
   explorer: "https://explorer.testnet.arc.io",
   anchor: process.env.NEXT_PUBLIC_ANCHOR_TESTNET as `0x${string}` | undefined,
   demo: {
