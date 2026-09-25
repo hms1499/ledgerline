@@ -147,9 +147,7 @@ export function watchWalletList(onChange: () => void): () => void {
 export async function connect(net: NetworkView, choice?: WalletChoice): Promise<ConnectedWallet> {
   const picked = choice ?? knownWallets()[0];
   if (!picked) {
-    throw new Error(
-      "No wallet found. Ledgerline needs a browser wallet such as MetaMask or Rabby, and the payer must sign directly — Arc rejects smart-contract wallets for these payments.",
-    );
+    throw new NoWalletError("No wallet found in this browser.");
   }
   const provider = picked.provider;
 
@@ -268,6 +266,9 @@ async function ensureChain(provider: Eip1193Provider, net: NetworkView): Promise
  * matching on message text — that text is product copy and free to change.
  */
 export class EoaRequiredError extends Error {}
+
+/** No wallet answered discovery: the page shows how to get one, not an error. */
+export class NoWalletError extends Error {}
 
 /**
  * Arc's Memo predeploy reverts for contract callers with "sender spoofing

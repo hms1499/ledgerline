@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useState } from "react";
 import {
   connect as connectWallet, disconnect as disconnectWallet, switchChain,
-  watchWallet, watchWalletList, knownWallets,
+  watchWallet, watchWalletList, knownWallets, NoWalletError,
   type ConnectedWallet, type WalletChoice,
 } from "@/lib/wallet";
 import { describeError, errorCode } from "@/lib/errors";
@@ -12,6 +12,7 @@ import { initialSession, leaveWarning, sessionReducer } from "@/lib/wallet-sessi
 import { useNetwork } from "@/lib/use-network";
 import type { NetworkView } from "@/lib/chain";
 import WalletPicker from "@/components/WalletPicker";
+import NoWalletDialog from "@/components/NoWalletDialog";
 
 export interface WalletApi {
   net: NetworkView;
@@ -61,6 +62,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [switching, setSwitching] = useState(false);
   const [switchError, setSwitchError] = useState<string>();
   const [unsavedRun, setUnsavedRun] = useState(false);
+  const [noWallet, setNoWallet] = useState(false);
   const wallet = session.wallet;
 
   // Wallets announce themselves asynchronously; one that wakes late must
@@ -82,7 +84,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setError(undefined);
     setConnecting(true);
     try { dispatch({ type: "connected", wallet: await connectWallet(net, choice) }); }
-    catch (err) { setError(describeConnectError(err)); }
+    catch (err) {
+      // No wallet is a next step, not a failure: the dialog says what to get.
+      if (err instanceof NoWalletError) setNoWallet(true);
+      else setError(describeConnectError(err));
+    }
     finally { setConnecting(false); }
   }, [net]);
 
@@ -137,6 +143,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     <WalletContext.Provider value={api}>
       {children}
       <WalletPicker choices={choices} open={picking} onPick={(c) => void connectTo(c)} onCancel={() => setPicking(false)} />
+      <NoWalletDialog open={noWallet} network={net.name} onClose={() => setNoWallet(false)} />
     </WalletContext.Provider>
   );
 }
