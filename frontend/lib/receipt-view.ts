@@ -56,3 +56,21 @@ export const RECEIPT_COPY: Record<ReceiptState, { headline: string; body: string
     body: "Some of the evidence is missing from the address bar, so the checks cannot run. Ask the payer to resend the link.",
   },
 };
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/**
+ * When a payment landed, from its block's timestamp: English like the rest of
+ * the page, in the viewer's own zone, with the zone named so a recipient
+ * abroad reads it right. Month names are ours, not Intl's, which prints
+ * "Sept" for en-GB on newer ICU.
+ */
+export function paidAtText(seconds: bigint | number, timeZone?: string): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-GB", {
+      timeZone, year: "numeric", month: "numeric", day: "numeric",
+      hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "shortOffset",
+    }).formatToParts(new Date(Number(seconds) * 1000)).map((p) => [p.type, p.value]),
+  );
+  return `${Number(parts.day)} ${MONTHS[Number(parts.month) - 1]} ${parts.year}, ${parts.hour}:${parts.minute} ${parts.timeZoneName}`;
+}

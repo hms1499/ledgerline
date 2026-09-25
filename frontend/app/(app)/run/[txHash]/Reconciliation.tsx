@@ -202,9 +202,12 @@ function Ready({
     },
     {
       title: "Invoice", dataIndex: "invoiceId", width: 150,
-      render: (id?: string) => id ?? (
-        <span style={{ color: "var(--ink-soft)" }}>{hasManifest ? "not on the list" : "in the run file"}</span>
-      ),
+      render: (id?: string) => id ?? (hasManifest
+        ? <span style={{ color: "var(--ink-soft)" }}>not on the list</span>
+        : <span style={{ color: "var(--ink-soft)" }}>
+            <span aria-hidden="true">—</span>
+            <span className="sr-only">known only from the run file</span>
+          </span>),
     },
     {
       title: "Token", dataIndex: "token", width: 110,
