@@ -9,6 +9,7 @@ import type { RunDraft } from "./CreateRun";
 import { fileSlug, receiptLinksCsv, receiptLinksText, type ReceiptLinkRow } from "@/lib/receipt-export";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
+import { RUN_FILE_COPY } from "@/lib/pay-copy";
 
 /** Hand the payer a file. The object URL is revoked a tick later, not
  *  straight after click(): some browsers start the download asynchronously
@@ -39,6 +40,13 @@ export default function Result({
   const [copied, setCopied] = useState<string>();
   const [manifestSaved, setManifestSaved] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
+
+  // "Copied" is feedback for one click, not a state: it returns to its label.
+  useEffect(() => {
+    if (!copied && !copiedAll) return;
+    const t = setTimeout(() => { setCopied(undefined); setCopiedAll(false); }, 2000);
+    return () => clearTimeout(t);
+  }, [copied, copiedAll]);
 
   // The manifest is the only record of what each invoice was owed; the chain
   // holds what was paid. Until it is saved, leaving asks first. Receipt links
@@ -127,7 +135,7 @@ export default function Result({
           <p className="amount">
             {rows.length}<span className="unit">paid</span>
           </p>
-          <p className="payee">block {outcome.receipt.blockNumber.toLocaleString("en-US")} · {outcome.receipt.gasUsed.toLocaleString("en-US")} gas</p>
+          <p className="payee">Recorded in block {outcome.receipt.blockNumber.toLocaleString("en-US")}</p>
         </div>
         <span className="reference">{draft.runLabel}</span>
       </section>
@@ -149,14 +157,10 @@ export default function Result({
         style={{ marginTop: 24 }}
         type={manifestSaved ? "success" : "warning"}
         showIcon
-        title={manifestSaved ? "Run file saved" : "Save the run file before you leave"}
+        title={manifestSaved ? "Run file saved" : "Save the run file"}
         description={
           <>
-            <p style={{ marginTop: 0 }}>
-              {manifestSaved
-                ? "Keep it with your records. Load it on the run page any time to check each invoice against what was paid."
-                : "It is the only record of what each invoice was owed — the chain holds what was paid, not what was meant. Load it on the run page later to check one against the other. Nothing is stored by us, so this is your copy."}
-            </p>
+            <p style={{ marginTop: 0 }}>{RUN_FILE_COPY}</p>
             <Button type={manifestSaved ? "default" : "primary"} onClick={downloadManifest}>
               {manifestSaved ? "Download it again" : "Download the run file"}
             </Button>
@@ -164,7 +168,8 @@ export default function Result({
         }
       />
 
-      <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
+      <h2 className="label" style={{ margin: "28px 0 0" }}>Send each recipient their link</h2>
+      <div style={{ marginTop: 12, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Button onClick={() => {
           void navigator.clipboard.writeText(receiptLinksText(exportRows));
           setCopiedAll(true);
@@ -182,40 +187,11 @@ export default function Result({
           scroll={{ x: "max-content" }} />
       </div>
 
-      <Alert
-        style={{ marginTop: 24 }}
-        type="info"
-        title="Keep two things"
-        description={
-          <>
-            <p style={{ marginTop: 0 }}>
-              The transaction hash <span className="hex">{outcome.txHash}</span> and the run
-              name <strong>{draft.runLabel}</strong>. With both, these links can be rebuilt
-              from <a href={`/run/${outcome.txHash}?n=${net.name}`}>the run page</a> at any
-              time, by signing the same message again. Neither is stored anywhere by us.
-            </p>
-            <p>
-              This browser has remembered both, so{" "}
-              <a href={`/runs?n=${net.name}`}>your runs</a> can reopen this one without
-              them. That list is a convenience kept on this machine only — it is lost with
-              the site&apos;s data, which is why the two things above are still worth
-              writing down.
-            </p>
-            <p style={{ marginBottom: 0 }}>
-              The hash is also on{" "}
-              <a href={`${net.explorer}/address/${prepared.manifest.payer}`} target="_blank" rel="noreferrer">
-                your address on the explorer
-              </a>
-              , permanently.
-            </p>
-          </>
-        }
-      />
-
-      <div style={{ marginTop: 22, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <Button href={`/run/${outcome.txHash}?n=${net.name}`}>Open the reconciliation</Button>
-        <Button href={`${net.explorer}/tx/${outcome.txHash}`} target="_blank">On the explorer</Button>
-      </div>
+      <p style={{ marginTop: 22, marginBottom: 0 }}>
+        <a href={`/run/${outcome.txHash}?n=${net.name}`}>Open this run</a>
+        {" · "}
+        <a href={`${net.explorer}/tx/${outcome.txHash}`} target="_blank" rel="noreferrer">On the explorer</a>
+      </p>
     </>
   );
 }
