@@ -1,4 +1,4 @@
-import { theme, type ThemeConfig } from "antd";
+import { theme, type MappingAlgorithm, type ThemeConfig } from "antd";
 import { palettes, type Mode } from "@/lib/theme-tokens";
 
 export type ThemeChoice = "dark" | "light" | "system";
@@ -24,13 +24,22 @@ export function themeCookie(name: string, value: string): string {
   return `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }
 
+/** antd takes the status colours as seeds and lets its algorithm move them:
+ *  the dark one printed ink #F2F1EC as #d1d0cc. The palette fixes each one
+ *  (spec §4.1), so this puts the seeds back once the algorithm has run. */
+const keepSeeds: MappingAlgorithm = (seed, map = theme.defaultAlgorithm(seed)) => ({
+  ...map,
+  colorPrimary: seed.colorPrimary, colorLink: seed.colorLink, colorInfo: seed.colorInfo,
+  colorSuccess: seed.colorSuccess, colorWarning: seed.colorWarning, colorError: seed.colorError,
+});
+
 /** antd computes colour in JS; these tokens pin it to the tape system
  *  (spec §6.4). CSS covers the rest, in app/styles/antd.css. */
 export function antdTheme(mode: Mode): ThemeConfig {
   const p = palettes[mode];
   const popup = `0 1px 0 ${p.rule}, 0 12px 28px -12px rgb(0 0 0 / 0.35)`;
   return {
-    algorithm: mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm,
+    algorithm: [mode === "dark" ? theme.darkAlgorithm : theme.defaultAlgorithm, keepSeeds],
     token: {
       // Paper is cut square.
       borderRadius: 0, borderRadiusLG: 0, borderRadiusSM: 0, borderRadiusXS: 0, borderRadiusOuter: 0,

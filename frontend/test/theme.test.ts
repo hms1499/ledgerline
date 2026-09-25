@@ -25,7 +25,7 @@ describe("resolveTheme", () => {
 describe("antdTheme", () => {
   it("uses the dark algorithm and the dark palette in dark mode", () => {
     const t = antdTheme("dark");
-    expect(t.algorithm).toBe(antd.darkAlgorithm);
+    expect((t.algorithm as unknown[])[0]).toBe(antd.darkAlgorithm);
     expect(t.token?.colorPrimary).toBe(palettes.dark.accent);
     expect(t.token?.colorLink).toBe(palettes.dark.ink);
     expect(t.token?.colorBgBase).toBe(palettes.dark.desk);
@@ -35,8 +35,21 @@ describe("antdTheme", () => {
   });
   it("uses the default algorithm and the light palette in light mode", () => {
     const t = antdTheme("light");
-    expect(t.algorithm).toBe(antd.defaultAlgorithm);
+    expect((t.algorithm as unknown[])[0]).toBe(antd.defaultAlgorithm);
     expect(t.token?.colorText).toBe(palettes.light.ink);
+  });
+  it("antd paints every colour the theme sets, in both modes", () => {
+    // antd treats the status colours as seeds, and the dark algorithm moves
+    // them: ink #F2F1EC printed as #d1d0cc, the ribbon #FF7A7A as #dc6b6b.
+    for (const mode of ["light", "dark"] as const) {
+      const config = antdTheme(mode);
+      const painted = antd.getDesignToken(config) as unknown as Record<string, unknown>;
+      const drifted = Object.entries(config.token ?? {})
+        .filter(([k, v]) => /^color/.test(k) && typeof v === "string"
+          && String(painted[k]).toLowerCase() !== v.toLowerCase())
+        .map(([k, v]) => `${mode} ${k}: ${v} → ${painted[k]}`);
+      expect(drifted).toEqual([]);
+    }
   });
   it("gives success no colour of its own: only exceptions get colour", () => {
     for (const mode of ["light", "dark"] as const) {
