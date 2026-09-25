@@ -8,7 +8,7 @@ import { short, type NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
-import { fundingView } from "@/lib/funding-view";
+import { fundingView, topUpHint } from "@/lib/funding-view";
 import { amountFigure, metaFor } from "@/lib/token-meta";
 import { reviewView } from "@/lib/review-view";
 import ReviewIssues from "./ReviewIssues";
@@ -56,6 +56,8 @@ export default function StepPreview({
   // switched account never inherits the last one's balances.
   const usdc = tokensForChain(net.chain.id).USDC as Address;
   const [balances, setBalances] = useState<Record<string, bigint>>();
+  // Bumped by "Check balances again", after the payer tops up.
+  const [reads, setReads] = useState(0);
   const owner = wallet && !wrongChain ? wallet.address : undefined;
   useEffect(() => {
     setBalances(undefined);
@@ -65,7 +67,7 @@ export default function StepPreview({
       .map((t) => t.toLowerCase()))] as Address[];
     void readBalances(net, owner, tokens).then((b) => { if (current) setBalances(b); });
     return () => { current = false; };
-  }, [owner, net, draft.rows, usdc]);
+  }, [owner, net, draft.rows, usdc, reads]);
 
   const funding = balances && fundingView({
     lines: fundingFor(draft.rows, balances),
@@ -118,22 +120,36 @@ export default function StepPreview({
           {checkingFunds ? (
             <p className="because">Reading the wallet&apos;s balances on Arc {net.name}…</p>
           ) : (
-            <ul>
-              {funding!.rows.map((r) => (
-                <li key={r.key} className={`funding-${r.state}`}>
-                  <span className="mark" aria-hidden>
-                    {r.state === "ok" ? "✓" : r.state === "short" ? "✗" : "–"}
-                  </span>
-                  <span>
-                    <strong>{r.need} {r.symbol}</strong> needed
-                    {r.state === "unknown"
-                      ? " — the balance could not be read, so the next step will check it"
-                      : <> · wallet holds <span className="hex">{r.hold}</span></>}
-                    {r.shortBy && <> · <strong>short by {r.shortBy} {r.symbol}</strong></>}
-                  </span>
-                </li>
-              ))}
-            </ul>
+            <>
+              <ul>
+                {funding!.rows.map((r) => (
+                  <li key={r.key} className={`funding-${r.state}`}>
+                    <span className="mark" aria-hidden>
+                      {r.state === "ok" ? "✓" : r.state === "short" ? "✗" : "–"}
+                    </span>
+                    <span>
+                      <strong>{r.need} {r.symbol}</strong> needed
+                      {r.state === "unknown"
+                        ? " — the balance could not be read, so the next step will check it"
+                        : <> · wallet holds <span className="hex">{r.hold}</span></>}
+                      {r.shortBy && <> · <strong>short by {r.shortBy} {r.symbol}</strong></>}
+                      {r.state === "short" && (() => {
+                        const h = topUpHint(r.symbol, net.name);
+                        return (
+                          <span className="because">
+                            {h.text}
+                            {h.link && <> <a href={h.link.href} target="_blank" rel="noreferrer">{h.link.text}</a>.</>}
+                          </span>
+                        );
+                      })()}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+              <Button size="small" style={{ marginTop: 10 }} onClick={() => setReads((n) => n + 1)}>
+                Check balances again
+              </Button>
+            </>
           )}
           {funding?.feeWarning && (
             <Alert style={{ marginTop: 14 }} type="warning" showIcon

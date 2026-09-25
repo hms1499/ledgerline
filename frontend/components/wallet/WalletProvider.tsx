@@ -10,7 +10,7 @@ import { describeError, errorCode } from "@/lib/errors";
 import { describeConnectError, type ConnectError } from "@/lib/connect-error";
 import { initialSession, leaveWarning, sessionReducer } from "@/lib/wallet-session";
 import { useNetwork } from "@/lib/use-network";
-import type { NetworkView } from "@/lib/chain";
+import { chainName, type NetworkView } from "@/lib/chain";
 import WalletPicker from "@/components/WalletPicker";
 import NoWalletDialog from "@/components/NoWalletDialog";
 
@@ -117,7 +117,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const id = await switchChain(wallet, net);
       dispatch({ type: "chain", chainId: id });
       if (id !== net.chain.id) {
-        setSwitchError(`The wallet is still on chain ${id || "unknown"}. Switch it to Arc ${net.name} from the wallet itself, then try again.`);
+        setSwitchError(`The wallet is still on ${chainName(id)}. Switch it to Arc ${net.name} from the wallet itself, then try again.`);
       }
     } catch (err) {
       setSwitchError(errorCode(err) === 4001

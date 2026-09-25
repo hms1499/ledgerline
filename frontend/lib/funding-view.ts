@@ -1,6 +1,7 @@
 import type { Address, FundingLine } from "@ledgerline/core";
 import { short } from "@/lib/chain";
 import { amountFigure } from "@/lib/token-meta";
+import { FAUCET_URL } from "@/lib/wallet-help";
 
 export interface FundingRow {
   key: string;
@@ -57,4 +58,15 @@ export function fundingView({
   }
 
   return { rows, short: rows.filter((r) => r.state === "short").length, feeWarning };
+}
+
+/** What a payer short of one token can do next. The faucet is linked for
+ *  USDC only: it is the one test token the home page has promised it gives. */
+export function topUpHint(
+  symbol: string, network: "mainnet" | "testnet",
+): { text: string; link?: { text: string; href: string } } {
+  if (network === "testnet" && symbol === "USDC") {
+    return { text: "Get free test USDC at", link: { text: "faucet.circle.com", href: FAUCET_URL } };
+  }
+  return { text: `Add ${symbol} to this wallet on Arc ${network}, then check again — or take its lines out of the file.` };
 }

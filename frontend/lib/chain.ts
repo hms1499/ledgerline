@@ -58,6 +58,13 @@ export function defaultNetwork(): NetworkView {
   return process.env.NEXT_PUBLIC_DEFAULT_NETWORK === "testnet" ? TESTNET : MAINNET;
 }
 
+/** A wallet's network, in words: the id only when it is not one of Arc's. */
+export function chainName(id: number | undefined): string {
+  if (id === arc.id) return "Arc mainnet";
+  if (id === arcTestnet.id) return "Arc testnet";
+  return id ? `another network (chain ${id})` : "a network it did not name";
+}
+
 export const tokensFor = tokensForChain;
 
 /** base64url, so a Merkle proof survives being pasted into a chat window. */

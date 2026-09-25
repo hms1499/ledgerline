@@ -12,6 +12,7 @@ import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import { summarySource, runSummaryView } from "@/lib/run-summary-view";
 import { realFundsNotice } from "@/lib/network-notice";
+import { chainName } from "@/lib/chain";
 import { defaultRunLabel } from "@/lib/run-label";
 import StepUpload from "./StepUpload";
 import StepPreview from "./StepPreview";
@@ -94,7 +95,7 @@ export default function CreateRun() {
             description={
               <>
                 <p style={{ margin: 0 }}>
-                  {`Ledgerline pays on Arc ${net.name}, chain ${net.chain.id}. Your wallet is on chain ${wallet.chainId || "an unreadable network"}. Use "Switch to Arc ${net.name}" at the top of the page — your wallet will ask you to confirm.`}
+                  {`Your wallet is on ${chainName(wallet.chainId)}. This run pays on Arc ${net.name}. Use "Switch to Arc ${net.name}" at the top of the page — your wallet will ask you to confirm.`}
                 </p>
                 {switchError && <p role="status" style={{ margin: "12px 0 0" }}>{switchError}</p>}
               </>
