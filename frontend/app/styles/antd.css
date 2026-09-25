@@ -1,9 +1,11 @@
 /* The tape design system: what antd's tokens cannot reach (spec §6.4). The
    selectors are checked against antd 6.6.5's own style source. */
 
+/* antd injects its own rules after this sheet, at the same specificity, and
+   they set fonts too: every rule here that sets a font on an antd part starts
+   with `html` to stay above them (test/tape.test.ts holds it). */
+
 /* ── buttons print in mono capitals and press like a key ─────────────── */
-/* `html` lifts these above antd's own single-class rules, which set
-   font-family too and are injected after this sheet. */
 html .ant-btn {
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
@@ -31,7 +33,7 @@ html .ant-btn.wallet-chip { text-transform: none; letter-spacing: 0; }
 }
 
 /* ── tables print like tape ───────────────────────────────────────────── */
-.ant-table-wrapper .ant-table-thead > tr > th {
+html .ant-table-wrapper .ant-table-thead > tr > th {
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 10.5px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase;
   border-bottom: 1.5px solid var(--ink) !important;
@@ -62,7 +64,7 @@ html .ant-tag {
 
 /* ── alerts: a glyph in the margin, no border ─────────────────────────── */
 .ant-alert { border: 0 !important; }
-.ant-alert-title { font-weight: 700; }
+html .ant-alert-title { font-weight: 700; }
 .notice-glyph {
   display: inline-grid; place-items: center; width: 1.5em; height: 1.5em;
   font-family: var(--font-mono), ui-monospace, monospace; font-size: 13px; font-weight: 700; line-height: 1;
@@ -72,7 +74,7 @@ html .ant-tag {
 .notice-glyph.is-bad { color: var(--ribbon); }
 
 /* ── steps: printed labels, the current one marked ────────────────────── */
-.ant-steps .ant-steps-item-title {
+html .ant-steps .ant-steps-item-title {
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
 }
@@ -91,7 +93,7 @@ html .ant-segmented {
 }
 
 /* ── folds ────────────────────────────────────────────────────────────── */
-.ant-collapse .ant-collapse-header {
+html .ant-collapse .ant-collapse-header {
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
 }
@@ -99,7 +101,7 @@ html .ant-segmented {
 
 /* ── popups: the only raised surfaces ─────────────────────────────────── */
 .ant-modal .ant-modal-container { box-shadow: 0 1px 0 var(--rule), 0 12px 28px -12px rgb(0 0 0 / 0.35); }
-.ant-modal .ant-modal-title {
+html .ant-modal .ant-modal-title {
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
 }

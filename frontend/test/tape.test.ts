@@ -43,3 +43,15 @@ describe("data inside an uppercased control keeps its case", () => {
     expect(antd).toMatch(/html \.ant-btn\.wallet-chip\s*\{[^}]*text-transform:\s*none/);
   });
 });
+
+describe("antd's own rules, injected after our sheets", () => {
+  it("never outrank a font we set: every such rule is lifted with html", () => {
+    // Same specificity, later in the page: a bare `.ant-steps .ant-steps-item-title`
+    // lost its 12px to antd's 18px and broke "REVIEW" in two.
+    const unlifted = [...allCss().matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, sel, body]) => sel!.includes(".ant-") && /font-(size|family|weight)/.test(body!))
+      .flatMap(([, sel]) => sel!.split(",").map((s) => s.trim().replace(/\s+/g, " ")))
+      .filter((s) => !s.startsWith("html "));
+    expect(unlifted).toEqual([]);
+  });
+});
