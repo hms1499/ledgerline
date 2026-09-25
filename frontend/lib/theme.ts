@@ -106,7 +106,8 @@ export function antdTheme(mode: Mode): ThemeConfig {
  * Runs in <head> before first paint. When the user has not chosen, it applies
  * the system preference to our CSS and records it for the next server render.
  * It never touches the `theme` cookie, so "system" keeps following the OS,
- * and it swallows every error — a browser without matchMedia stays dark.
+ * and it swallows every error — a browser without matchMedia keeps what the
+ * server rendered, which is light unless a cookie said otherwise.
  */
 export const BOOT_SCRIPT =
   `(function(){try{var d=document.documentElement;` +

@@ -31,7 +31,7 @@ export function ThemeProvider({
   }, []);
 
   // The boot script may already have moved our CSS to the system theme; antd
-  // follows it here. This is the one re-colour the spec accepts (§5.3).
+  // follows it here. This is the one re-colour the tape spec accepts (§10).
   useEffect(() => {
     const m = document.documentElement.getAttribute("data-theme");
     if (m === "dark" || m === "light") setMode(m);
