@@ -10,6 +10,8 @@ import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
 import { fundingView } from "@/lib/funding-view";
 import { amountFigure, metaFor } from "@/lib/token-meta";
+import { reviewView } from "@/lib/review-view";
+import ReviewIssues from "./ReviewIssues";
 
 const balanceOfAbi = [
   { type: "function", name: "balanceOf", stateMutability: "view",
@@ -45,7 +47,10 @@ export default function StepPreview({
   /** Connected, but not on Arc. The banner above carries the fix. */
   wrongChain?: boolean;
 }) {
-  const blocking = draft.issues.length + draft.errors.length;
+  const review = reviewView({
+    issues: draft.issues, errors: draft.errors, warnings: draft.warnings, parsed: draft.parsed,
+  });
+  const blocking = review.blocking;
 
   // Read for the wallet on screen and dropped the moment it changes, so a
   // switched account never inherits the last one's balances.
@@ -95,18 +100,7 @@ export default function StepPreview({
 
   return (
     <>
-      {draft.issues.map((i) => (
-        <Alert key={`i-${i.line}-${i.message}`} style={{ marginTop: 14 }} type="error" showIcon
-          title={`Line ${i.line}`} description={i.message} />
-      ))}
-      {draft.errors.map((e, n) => (
-        <Alert key={`e-${n}`} style={{ marginTop: 14 }} type="error" showIcon
-          title={e.line ? `Line ${e.line}` : "This run"} description={e.message} />
-      ))}
-      {draft.warnings.map((w, n) => (
-        <Alert key={`w-${n}`} style={{ marginTop: 14 }} type="warning" showIcon
-          title={w.line ? `Line ${w.line}` : "This run"} description={w.message} />
-      ))}
+      <ReviewIssues view={review} />
 
       <div style={{ marginTop: 24 }}>
         <Table<ResolvedRow>
@@ -155,22 +149,22 @@ export default function StepPreview({
 
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Button onClick={onBack}>Choose another file</Button>
-        {wallet ? (
+        {blocking > 0 ? (
+          <Button type="primary" disabled>{review.fixFirst}</Button>
+        ) : wallet ? (
           <Button
             type="primary"
-            disabled={blocking > 0 || wrongChain || checkingFunds || shortTokens > 0}
+            disabled={wrongChain || checkingFunds || shortTokens > 0}
             loading={checkingFunds}
             onClick={onNext}
           >
             {wrongChain
               ? "Switch to Arc first"
-              : blocking > 0
-                ? `${blocking} problem${blocking === 1 ? "" : "s"} to fix first`
-                : checkingFunds
-                  ? "Checking balances"
-                  : shortTokens > 0
-                    ? `Top up ${shortTokens === 1 ? "the short token" : `${shortTokens} tokens`} first`
-                    : "Check it against the chain"}
+              : checkingFunds
+                ? "Checking balances"
+                : shortTokens > 0
+                  ? `Top up ${shortTokens === 1 ? "the short token" : `${shortTokens} tokens`} first`
+                  : "Check it against the chain"}
           </Button>
         ) : (
           <Button type="primary" onClick={onConnect}>Connect a wallet to continue</Button>

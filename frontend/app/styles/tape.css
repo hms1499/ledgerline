@@ -126,6 +126,9 @@
 .rung .because { grid-column: 1 / -1; margin: 0 0 4px; }
 .rung.fail :is(.mark, .claim) { color: var(--ribbon); }
 .rung.skipped :is(.mark, .claim) { color: var(--ink-soft); }
+.rung.warn .mark { background: var(--highlight); color: var(--on-highlight); text-align: center; }
+.review-issues { margin-bottom: 20px; }
+.review-issues .label { margin: 0 0 4px; }
 /* On a receipt the checks are printed labels: capitals, a hanging indent,
    the mark kept on the first line. */
 .ladder--printed .rung { border-top: 0; padding: 1px 0; }
