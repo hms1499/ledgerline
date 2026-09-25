@@ -105,3 +105,12 @@ describe("on a phone and with a long string", () => {
     expect(css).toMatch(/\.raw-reason\s*\{[^}]*overflow-wrap:\s*anywhere/);
   });
 });
+
+describe("a link inside a dialog", () => {
+  it("is underlined like every other link: antd's reset would leave it as plain ink", () => {
+    // The no-wallet dialog's MetaMask, Rabby and faucet links measured
+    // text-decoration none in the same ink as the sentence around them.
+    const antd = readFileSync(join(STYLES, "antd.css"), "utf8");
+    expect(antd).toMatch(/html \.ant-modal-body a\s*\{[^}]*text-decoration:\s*underline/);
+  });
+});

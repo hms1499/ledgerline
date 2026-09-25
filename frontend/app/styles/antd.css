@@ -119,6 +119,9 @@ html .ant-collapse .ant-collapse-header {
 .fold-glyph { font-family: var(--font-mono), ui-monospace, monospace; }
 
 /* ── popups: the only raised surfaces ─────────────────────────────────── */
+/* antd's link reset inside a dialog drops the underline, and the link is ink
+   like the sentence around it: it would not read as a link at all. */
+html .ant-modal-body a { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .ant-modal .ant-modal-container { box-shadow: 0 1px 0 var(--rule), 0 12px 28px -12px rgb(0 0 0 / 0.35); }
 html .ant-modal .ant-modal-title {
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
