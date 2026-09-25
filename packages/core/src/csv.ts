@@ -21,6 +21,9 @@ export interface CsvIssue {
 export interface ParsedCsv {
   rows: ParsedRow[];
   issues: CsvIssue[];
+  /** Rows read as written that are still worth a second look. They do not
+   *  stop a run. */
+  warnings: CsvIssue[];
   /** The file's field separator, read from its first line. */
   delimiter: "," | ";";
 }
@@ -71,10 +74,14 @@ function delimiterOf(header: string): "," | ";" {
  *
  * In a `;` file the comma is the decimal mark, so `0,10` is 0.10. A `.` there
  * is refused rather than read: in the locales that write `;` files, `1.000` is
- * one thousand, and this reader never guesses an amount.
+ * one thousand, and this reader never guesses an amount. A comma followed by
+ * exactly three digits, as in `1,000`, is still read as a decimal — `0,125`
+ * cirBTC is an ordinary amount — but is flagged: a spreadsheet can write `;`
+ * with US grouping, and there it meant a thousand.
  */
 export function parseCsv(text: string): ParsedCsv {
   const issues: CsvIssue[] = [];
+  const warnings: CsvIssue[] = [];
   const rows: ParsedRow[] = [];
 
   // Excel writes a BOM; left in place it becomes part of the first header name.
@@ -88,7 +95,7 @@ export function parseCsv(text: string): ParsedCsv {
 
   const headerIndex = lines.findIndex((l) => l.trim() !== "");
   if (headerIndex === -1) {
-    return { rows, issues: [{ line: 1, message: "The file is empty." }], delimiter: "," };
+    return { rows, issues: [{ line: 1, message: "The file is empty." }], warnings, delimiter: "," };
   }
 
   const delimiter = delimiterOf(lines[headerIndex]!);
@@ -102,7 +109,7 @@ export function parseCsv(text: string): ParsedCsv {
     const seen = at[field];
     if (seen !== undefined) {
       return {
-        rows, delimiter,
+        rows, warnings, delimiter,
         issues: [{
           line: headerLine,
           message: `Two columns could be the ${FIELD_WORD[field]}: "${names[seen]}" and "${names[i]}". Keep one.`,
@@ -116,7 +123,7 @@ export function parseCsv(text: string): ParsedCsv {
   if (missing.length > 0) {
     const found = names.filter((n) => n !== "").join(", ") || "nothing";
     return {
-      rows, delimiter,
+      rows, warnings, delimiter,
       issues: [{
         line: headerLine,
         message: `The first line must name the columns invoiceId, token, to and amount, in any order. Missing: ${missing.join(", ")}. Found: ${found}.`,
@@ -149,6 +156,15 @@ export function parseCsv(text: string): ParsedCsv {
         });
         continue;
       }
+      const group = /^([1-9]\d{0,2}),(\d{3})$/.exec(amount);
+      if (group) {
+        const [, whole, frac] = group as unknown as [string, string, string];
+        const decimals = frac.replace(/0+$/, "");
+        warnings.push({
+          line,
+          message: `In a file separated by ";", the comma marks decimals, so "${amount}" is read as ${decimals ? `${whole},${decimals}` : whole}, not ${whole}${frac}. If you meant ${whole}${frac}, write it without the comma.`,
+        });
+      }
       amount = amount.replace(",", ".");
     }
 
@@ -161,7 +177,7 @@ export function parseCsv(text: string): ParsedCsv {
     });
   }
 
-  return { rows, issues, delimiter };
+  return { rows, issues, warnings, delimiter };
 }
 
 /** One line into fields, honouring double quotes and the doubled-quote escape. */

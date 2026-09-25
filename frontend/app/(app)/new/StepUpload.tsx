@@ -2,11 +2,12 @@
 
 import { useRef, useState } from "react";
 import { Alert, Button, Input, Upload, type InputRef } from "antd";
-import { parseCsv, resolveRows, validateRun, tokensForChain } from "@ledgerline/core";
+import { tokensForChain } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
 import type { RunDraft } from "./CreateRun";
 import { readTokenMeta } from "@/lib/token-meta";
+import { checkRunFile } from "@/lib/review-view";
 
 export default function StepUpload({
   net, runLabel, onRunLabel, onReady,
@@ -28,18 +29,12 @@ export default function StepUpload({
     setBusy(true);
     setError(undefined);
     try {
-      const { rows, issues } = parseCsv(text);
       // Decimals come from the chain before any amount is interpreted.
       const { decimals, symbols } = await readTokenMeta(net.defaultRpc, net.chain, net.chain.id);
-      const resolved = resolveRows(rows, tokensForChain(net.chain.id), decimals);
-      const refused = [...issues, ...resolved.issues];
-      const { errors, warnings } = validateRun(resolved.items, refused.length);
       onReady({
-        rows: resolved.items,
-        parsed: rows,
+        ...checkRunFile(text, tokensForChain(net.chain.id), decimals),
         runLabel: runLabel.trim(),
-        issues: refused,
-        errors, warnings, decimals, symbols,
+        decimals, symbols,
       });
     } catch (err) {
       setError(describeError(err));

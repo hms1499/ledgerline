@@ -138,6 +138,29 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     });
   });
 
+  it("reads a semicolon amount that could be a thousands group, and asks for a second look", () => {
+    // LibreOffice can write ";" with US number formatting: "1,000" there is
+    // a thousand to the person who typed it, and 1 to this reader.
+    const a = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+    const { rows, issues, warnings } = parseCsv(`invoiceId;token;to;amount
+INV-1;USDC;${a};1,000
+INV-2;USDC;${a};12,500
+INV-3;cirBTC;${a};0,125
+INV-4;USDC;${a};1,5
+INV-5;USDC;${a};1234,567`);
+    expect(issues).toEqual([]);
+    expect(rows.map((r) => r.amount)).toEqual(["1.000", "12.500", "0.125", "1.5", "1234.567"]);
+    expect(warnings).toEqual([
+      { line: 2, message: 'In a file separated by ";", the comma marks decimals, so "1,000" is read as 1, not 1000. If you meant 1000, write it without the comma.' },
+      { line: 3, message: 'In a file separated by ";", the comma marks decimals, so "12,500" is read as 12,5, not 12500. If you meant 12500, write it without the comma.' },
+    ]);
+  });
+
+  it("has no second look to ask for in a comma file", () => {
+    const a = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+    expect(parseCsv(`invoiceId,token,to,amount\nINV-1,USDC,${a},1.000`).warnings).toEqual([]);
+  });
+
   it("reads a semicolon file and its decimal commas", () => {
     const { rows, issues, delimiter } = parseCsv(
       `invoiceId;token;to;amount\nINV,1;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;0,10`,

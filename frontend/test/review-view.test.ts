@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv, resolveRows, validateRun, tokensForChain } from "@ledgerline/core";
-import { reviewView } from "@/lib/review-view";
+import { tokensForChain } from "@ledgerline/core";
+import { checkRunFile, reviewView } from "@/lib/review-view";
 
 const TOKENS = tokensForChain(5042002);
 const DECIMALS = {
@@ -8,13 +8,8 @@ const DECIMALS = {
 };
 const A = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
 
-function viewOf(text: string) {
-  const { rows, issues } = parseCsv(text);
-  const resolved = resolveRows(rows, TOKENS, DECIMALS);
-  const refused = [...issues, ...resolved.issues];
-  const { errors, warnings } = validateRun(resolved.items, refused.length);
-  return reviewView({ issues: refused, errors, warnings, parsed: rows });
-}
+// The upload step's own sequence, so this cannot drift from what it runs.
+const viewOf = (text: string) => reviewView(checkRunFile(text, TOKENS, DECIMALS));
 
 describe("reviewView", () => {
   it("lists every problem in line order, naming the line and its invoice", () => {
@@ -61,6 +56,14 @@ INV-4,EURC,${A},"1,000"`);
     expect(v.blocking).toBe(0);
     expect(v.title).toBe("Check these lines");
     expect(v.fixFirst).toBeUndefined();
+  });
+
+  it("asks for a second look at a semicolon amount that could mean a thousand", () => {
+    const v = viewOf(`invoiceId;token;to;amount\nINV-1;USDC;${A};1,000\nINV-2;EURC;${A};2,5`);
+    expect(v.items.map((i) => [i.where, i.level])).toEqual([["Line 2 · INV-1", "warning"]]);
+    expect(v.items[0]!.message).toMatch(/read as 1, not 1000/);
+    expect(v.blocking).toBe(0);
+    expect(v.title).toBe("Check these lines");
   });
 
   it("is empty for a clean file", () => {

@@ -1,4 +1,31 @@
-import type { CsvIssue, ParsedRow, RowIssue } from "@ledgerline/core";
+import {
+  parseCsv, resolveRows, validateRun,
+  type CsvIssue, type ParsedRow, type ResolvedRow, type RowIssue, type TokenSet,
+} from "@ledgerline/core";
+
+export interface CheckedFile {
+  rows: ResolvedRow[];
+  parsed: ParsedRow[];
+  issues: CsvIssue[];
+  errors: RowIssue[];
+  warnings: RowIssue[];
+}
+
+/**
+ * A file's text through every check that needs no wallet: read, resolved
+ * against the chain's tokens and decimals, validated as a run. `issues` are
+ * rows refused outright; `warnings` never stop a run.
+ */
+export function checkRunFile(text: string, tokens: TokenSet, decimals: Record<string, number>): CheckedFile {
+  const csv = parseCsv(text);
+  const resolved = resolveRows(csv.rows, tokens, decimals);
+  const issues = [...csv.issues, ...resolved.issues];
+  const run = validateRun(resolved.items, issues.length);
+  return {
+    rows: resolved.items, parsed: csv.rows, issues,
+    errors: run.errors, warnings: [...csv.warnings, ...run.warnings],
+  };
+}
 
 export interface ReviewItem {
   key: string;
