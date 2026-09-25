@@ -18,8 +18,12 @@ const ZERO = "0x0000000000000000000000000000000000000000";
  *
  * Per-token balances and Arc's runtime blocklist need the chain and belong to
  * preflight, not here.
+ *
+ * `refused` counts the problems parseCsv and resolveRows already reported.
+ * When every row was refused, those problems are the reason nothing is left,
+ * and "no payments" would be a false first line above them.
  */
-export function validateRun(items: ResolvedRow[]): {
+export function validateRun(items: ResolvedRow[], refused = 0): {
   errors: RowIssue[];
   warnings: RowIssue[];
 } {
@@ -27,7 +31,9 @@ export function validateRun(items: ResolvedRow[]): {
   const warnings: RowIssue[] = [];
 
   if (items.length === 0) {
-    return { errors: [{ message: "This file has no payments in it." }], warnings };
+    return refused > 0
+      ? { errors, warnings }
+      : { errors: [{ message: "This file has no payments in it." }], warnings };
   }
 
   if (items.length > MAX_ITEMS_PER_RUN) {

@@ -97,4 +97,10 @@ describe("validateRun", () => {
   it("rejects an empty run", () => {
     expect(validateRun([]).errors[0]!.message).toMatch(/no payments/i);
   });
+
+  it("says nothing about an empty run when the file's rows were refused, not absent", () => {
+    // A misnamed header over 50 payments listed "This file has no payments in
+    // it." first, and counted it as a second problem.
+    expect(validateRun([], 1)).toEqual({ errors: [], warnings: [] });
+  });
 });

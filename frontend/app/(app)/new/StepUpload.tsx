@@ -32,12 +32,13 @@ export default function StepUpload({
       // Decimals come from the chain before any amount is interpreted.
       const { decimals, symbols } = await readTokenMeta(net.defaultRpc, net.chain, net.chain.id);
       const resolved = resolveRows(rows, tokensForChain(net.chain.id), decimals);
-      const { errors, warnings } = validateRun(resolved.items);
+      const refused = [...issues, ...resolved.issues];
+      const { errors, warnings } = validateRun(resolved.items, refused.length);
       onReady({
         rows: resolved.items,
         parsed: rows,
         runLabel: runLabel.trim(),
-        issues: [...issues, ...resolved.issues],
+        issues: refused,
         errors, warnings, decimals, symbols,
       });
     } catch (err) {
