@@ -124,6 +124,8 @@
 .rung .claim { grid-column: 1; grid-row: 1; }
 .rung .mark { grid-column: 2; grid-row: 1; text-align: right; font-family: var(--font-mono), ui-monospace, monospace; }
 .rung .because { grid-column: 1 / -1; margin: 0 0 4px; }
+/* A rung can quote a file's own cell, and a cell can hold anything. */
+.rung :is(.claim, .because) { overflow-wrap: anywhere; }
 .rung.fail :is(.mark, .claim) { color: var(--ribbon); }
 .rung.skipped :is(.mark, .claim) { color: var(--ink-soft); }
 .rung.warn .mark { background: var(--highlight); color: var(--on-highlight); text-align: center; }

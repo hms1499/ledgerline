@@ -104,6 +104,12 @@ describe("on a phone and with a long string", () => {
     expect(css).toMatch(/html \.ant-alert-description\s*\{[^}]*overflow-wrap:\s*anywhere/);
     expect(css).toMatch(/\.raw-reason\s*\{[^}]*overflow-wrap:\s*anywhere/);
   });
+
+  it("wraps a checklist line anywhere: the review quotes the file's own cells", () => {
+    // Two addresses pasted into one cell measured 693px wide on a 390px phone.
+    const tape = readFileSync(join(STYLES, "tape.css"), "utf8");
+    expect(tape).toMatch(/\.rung :is\(\.claim, \.because\)\s*\{[^}]*overflow-wrap:\s*anywhere/);
+  });
 });
 
 describe("a link inside a dialog", () => {
