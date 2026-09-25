@@ -271,6 +271,26 @@ export class EoaRequiredError extends Error {}
 export class NoWalletError extends Error {}
 
 /**
+ * The page could not read the account from Arc's node, after the wallet had
+ * answered. Nothing about the wallet: reporting it as a failed wallet
+ * connection sent a payer looking for a fault in the wrong place. `reason`
+ * keeps what the node said, for Technical details.
+ */
+export class ArcUnreachableError extends Error {
+  constructor(readonly network: "mainnet" | "testnet", readonly reason: string) {
+    super(`Could not reach Arc ${network}: ${reason}`);
+  }
+}
+
+/** viem's HttpRequestError says "HTTP request failed." and keeps the useful
+ *  part — the status, or the browser's fetch failure — beside it. */
+function httpReason(err: unknown): string {
+  const e = err as { status?: number; details?: string; shortMessage?: string; message?: string };
+  const parts = [e.status ? `HTTP ${e.status}` : "", e.details ?? ""].filter(Boolean);
+  return parts.length > 0 ? parts.join(" · ") : e.shortMessage ?? e.message ?? String(err);
+}
+
+/**
  * Arc's Memo predeploy reverts for contract callers with "sender spoofing
  * requires tx.origin as sender" — measured on testnet, since eth_call and
  * debug_traceCall force msg.sender == tx.origin and cannot test the rule.
@@ -280,7 +300,13 @@ export class NoWalletError extends Error {}
  */
 export async function assertEoa(net: NetworkView, address: Address): Promise<void> {
   const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
-  const code = await client.getCode({ address });
+  let code: string | undefined;
+  try {
+    code = await client.getCode({ address });
+  } catch (err) {
+    // The wallet has already answered; this is the page's own read of Arc.
+    throw new ArcUnreachableError(net.name, `${net.defaultRpc}: ${httpReason(err)}`);
+  }
   if (!code || code === "0x") return;
 
   // An EOA carrying an EIP-7702 delegation has code but is still an EOA with a

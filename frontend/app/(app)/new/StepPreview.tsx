@@ -11,6 +11,7 @@ import type { ConnectError } from "@/lib/connect-error";
 import { fundingView, topUpHint } from "@/lib/funding-view";
 import { amountFigure, metaFor } from "@/lib/token-meta";
 import { reviewView } from "@/lib/review-view";
+import TechnicalDetails from "@/components/ui/TechnicalDetails";
 import ReviewIssues from "./ReviewIssues";
 
 const balanceOfAbi = [
@@ -160,7 +161,15 @@ export default function StepPreview({
 
       {walletError && (
         <Alert style={{ marginTop: 18 }} type={walletError.type} showIcon
-          title={walletError.title} description={walletError.description} />
+          title={walletError.title}
+          description={
+            <>
+              {walletError.description}
+              {walletError.detail && (
+                <TechnicalDetails><p className="raw-reason" style={{ margin: 0 }}>{walletError.detail}</p></TechnicalDetails>
+              )}
+            </>
+          } />
       )}
 
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>

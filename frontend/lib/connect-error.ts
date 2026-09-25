@@ -1,4 +1,4 @@
-import { EoaRequiredError } from "@/lib/wallet";
+import { ArcUnreachableError, EoaRequiredError } from "@/lib/wallet";
 import { describeError, errorCode } from "@/lib/errors";
 
 /** The title and body of a connect-failure Alert. Kept together so the two
@@ -9,10 +9,12 @@ export interface ConnectError {
   type: "info" | "error";
   title: string;
   description: string;
+  /** What the node or wallet actually said, for Technical details. */
+  detail?: string;
 }
 
 /**
- * Three cases, each with its own title, because a title is a claim and only
+ * Four cases, each with its own title, because a title is a claim and only
  * one of these three is a claim about the wallet's compatibility:
  *
  * - A dismissed wallet prompt (EIP-1193 code 4001) is the ordinary, expected
@@ -21,6 +23,8 @@ export interface ConnectError {
  *   assertEoa found real contract code at the address, so this wallet truly
  *   cannot sign a Ledgerline run. Checked by type, not by matching the
  *   message text, which is product copy and free to change.
+ * - `ArcUnreachableError` is the page's own read of Arc failing after the
+ *   wallet answered. It names Arc, never the wallet.
  * - Everything else (no injected provider, a dropped RPC, a rejected chain
  *   switch that isn't 4001, ...) is a connection that failed for a reason
  *   that has nothing to do with wallet compatibility, and must not be
@@ -35,6 +39,14 @@ export function describeConnectError(err: unknown): ConnectError {
       type: "info",
       title: "Connection cancelled",
       description: "Click connect again when you're ready.",
+    };
+  }
+  if (err instanceof ArcUnreachableError) {
+    return {
+      type: "error",
+      title: "Couldn't reach Arc",
+      description: `Your wallet answered, but this page could not reach Arc ${err.network} to check your account. Nothing was signed. Try again in a moment.`,
+      detail: err.reason,
     };
   }
   if (err instanceof EoaRequiredError) {
