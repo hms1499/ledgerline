@@ -5,6 +5,20 @@
    they set fonts too: every rule here that sets a font on an antd part starts
    with `html` to stay above them (test/tape.test.ts holds it). */
 
+/* ── before React loads ───────────────────────────────────────────────── */
+/* antd writes its colours into the page for the theme the server rendered.
+   On a first visit the boot script can turn the page to the OS theme before
+   React loads, and these parts' text would keep the old ink: 1.2:1 on the
+   mainnet warning. Their colour variables follow the page instead. They
+   equal what antd sets once it loads, so nothing changes then. */
+html :is(.ant-alert, .ant-steps, .ant-segmented) {
+  --ant-color-text: var(--ink);
+  --ant-color-text-heading: var(--ink);
+  --ant-color-text-description: var(--ink-soft);
+  --ant-color-text-label: var(--ink-soft);
+  --ant-color-link: var(--ink);
+}
+
 /* ── buttons print in mono capitals and press like a key ─────────────── */
 html .ant-btn {
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
@@ -90,6 +104,9 @@ html .ant-segmented {
   border: 1px solid var(--control);
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase;
+  /* antd sets this from a variable on the same element, which a variable
+     here cannot outrank; the value is the one it sets (colorTextLabel). */
+  color: var(--ink-soft);
 }
 
 /* ── folds ────────────────────────────────────────────────────────────── */
