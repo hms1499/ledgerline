@@ -45,6 +45,12 @@ describe("data inside an uppercased control keeps its case", () => {
     const antd = readFileSync(join(STYLES, "antd.css"), "utf8");
     expect(antd).toMatch(/html \.ant-btn\.wallet-chip\s*\{[^}]*text-transform:\s*none/);
   });
+
+  it("a dashboard tile's token symbol is data, not a label", () => {
+    // The review caught "CIRBTC": `.stat-label` prints in capitals.
+    const src = readFileSync(fileURLToPath(new URL("../app/(app)/dashboard/Dashboard.tsx", import.meta.url)), "utf8");
+    expect(src).toMatch(/<StatTile\s+label=\{<span className="keep-case">/);
+  });
 });
 
 describe("antd's own rules, injected after our sheets", () => {

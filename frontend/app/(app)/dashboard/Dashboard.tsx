@@ -160,7 +160,7 @@ export default function Dashboard() {
         return (
           <Col key={t.token} span={4} md={12}>
             <StatTile
-              label={m.symbol || t.token.slice(0, 10)}
+              label={<span className="keep-case">{m.symbol || t.token.slice(0, 10)}</span>}
               value={!current || retrying
                 ? <Skeleton.Input active />
                 : coverage?.tilesBlank ? "—" : amountText(t.value, t.token, m)}

@@ -9,7 +9,7 @@ export type StatTone = "success" | "warning" | "danger";
  */
 export default function StatTile({
   label, value, tone, sub,
-}: { label: string; value: ReactNode; tone?: StatTone; sub?: ReactNode }) {
+}: { label: ReactNode; value: ReactNode; tone?: StatTone; sub?: ReactNode }) {
   return (
     <div className="stat-tile">
       <p className="stat-label">{label}</p>
