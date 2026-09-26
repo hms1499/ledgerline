@@ -246,3 +246,25 @@
 .review-tabs [role="tabpanel"] { padding-top: 10px; }
 .changes-list ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .changes-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; overflow-wrap: anywhere; }
+
+/* The sheet on a phone (spec 2026-09-26-csv-sheet-editor §5.3). */
+.sheet-columns summary, .card-more summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.sheet-columns ul { display: grid; gap: 8px; margin: 0 0 12px; padding: 0; list-style: none; }
+.sheet-columns li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.sheet-cards { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.sheet-card { display: grid; gap: 4px; padding: 10px 12px; border: 1.5px solid var(--rule); background: var(--tape); }
+.sheet-card.is-left-out { color: var(--ink-soft); border-style: dotted; }
+.sheet-card.is-deleted .card-value { text-decoration: line-through; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; overflow-wrap: anywhere; }
+.card-field { display: grid; gap: 2px; padding: 4px 0; border-bottom: 1px dotted var(--rule); }
+.card-label { font-size: 0.8rem; color: var(--ink-soft); }
+.card-value {
+  min-height: 44px; width: 100%; padding: 0 4px; border: none; background: none; color: inherit;
+  text-align: left; overflow-wrap: anywhere; cursor: pointer;
+}
+.card-value:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.card-field.is-edited .card-value { background: var(--tape-shade); }
+.card-field.has-problem .card-value { color: var(--ribbon); background: var(--ribbon-bg); }
+.card-problem { color: var(--ribbon); font-size: 0.87rem; overflow-wrap: anywhere; }
+.sheet-narrow .ant-btn, .sheet-narrow .role-chip { min-height: 44px; }
+.sheet-narrow .cell-input { min-height: 44px; }

@@ -11,7 +11,7 @@ export interface CellPos { line: number; col: ColumnId }
 type Dir = "up" | "down" | "left" | "right";
 const ARROWS: Record<string, Dir> = { ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right" };
 
-function AboveHeader({ above, onUse }: { above: GridView["above"]; onUse: (line: number) => void }) {
+export function AboveHeader({ above, onUse }: { above: GridView["above"]; onUse: (line: number) => void }) {
   const [shown, setShown] = useState(false);
   const first = above[0]!.line;
   const last = above.at(-1)!.line;

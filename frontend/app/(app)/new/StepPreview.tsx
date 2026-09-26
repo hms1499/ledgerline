@@ -25,6 +25,8 @@ import {
 } from "@/lib/sheet-edits";
 import { sheetGrid } from "@/lib/sheet-grid";
 import SheetGrid, { type CellPos } from "./SheetGrid";
+import SheetCards from "./SheetCards";
+import { useNarrow } from "@/lib/use-narrow";
 import type { LineAction } from "./LineMenu";
 import type { Role } from "@ledgerline/core";
 import { addColumn, applyBatch, nextBatchId, numberInvoices, setRole } from "@/lib/sheet-edits";
@@ -95,6 +97,7 @@ export default function StepPreview({
     () => sheetGrid({ lines: draft.lines, sheet: draft.sheet, edits: draft.edits, checked: draft, tokens: draft.tokens }),
     [draft],
   );
+  const narrow = useNarrow();
   const changesList = useMemo(() => changesView({ lines: draft.lines, sheet: draft.sheet, edits: draft.edits }), [draft]);
   const [tab, setTab] = useState<ReviewTab>("problems");
   const [firstAsk, setFirstAsk] = useState<number>();
@@ -234,15 +237,19 @@ export default function StepPreview({
         changes={<ChangesList view={changesList} onEdits={onEdits} />}
       />
 
-      <SheetGrid view={grid} onEdit={onEdit} onLine={onLine} onAddLine={onAddLine} open={openCell} focusSeq={focusSeq}
-        head={head} ghostHead={ghostHead}
-        status={
-          <>
-            <Button size="small" disabled={!onUndo} onClick={onUndo}>Undo last change</Button>
-            <Button size="small" disabled={!onRedo} onClick={onRedo}>Redo</Button>
-            {draftStatus && <span className="because">{draftStatus === "saved" ? DRAFT_SAVED : DRAFT_REFUSED}</span>}
-          </>
-        } />
+      {(() => {
+        const props = {
+          view: grid, onEdit, onLine, onAddLine, open: openCell, focusSeq, head, ghostHead,
+          status: (
+            <>
+              <Button size="small" disabled={!onUndo} onClick={onUndo}>Undo last change</Button>
+              <Button size="small" disabled={!onRedo} onClick={onRedo}>Redo</Button>
+              {draftStatus && <span className="because">{draftStatus === "saved" ? DRAFT_SAVED : DRAFT_REFUSED}</span>}
+            </>
+          ),
+        };
+        return narrow ? <SheetCards {...props} /> : <SheetGrid {...props} />;
+      })()}
 
       <Modal
         open={askHeader !== undefined}
