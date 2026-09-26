@@ -54,7 +54,8 @@ function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApp
 /**
  * One line's card. It stays where it is when fixed or left out, showing what
  * changed, so nothing moves under the pointer; after a button press focus
- * moves to its own Undo, never to the page.
+ * moves to its own Undo, never to the page. An open card shows the changes
+ * whose field it no longer asks for, with the same Undo.
  */
 export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutBack }: {
   card: LineCard;
@@ -80,6 +81,20 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
     else if (el && !el.contains(document.activeElement)) el.querySelector<HTMLElement>("input, button")?.focus();
   }, [card]);
   const apply: Apply = (changes, focusUndo) => { pending.current = focusUndo; onApply(changes); };
+  // What the payer changed on this line, and the one Undo that drops it.
+  const changed = (
+    <>
+      <dl className="fix-changes">
+        {card.changes.map((c) => (
+          <div key={c.label}>
+            <dt>{c.label}</dt>
+            <dd><span className="hex">{c.before || "(empty)"}</span> → <span className="hex">{c.after}</span></dd>
+          </div>
+        ))}
+      </dl>
+      <Button size="small" ref={undoRef} aria-label={`Undo the changes to line ${card.line}`} onClick={() => { pending.current = true; onUndo(); }}>Undo</Button>
+    </>
+  );
 
   if (card.state === "left-out") {
     return (
@@ -93,15 +108,7 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
     return (
       <article ref={cardRef} id={card.id} className="fix-card fixed">
         <p className="fix-heading"><span aria-hidden="true">✓ </span>{card.heading}</p>
-        <dl className="fix-changes">
-          {card.changes.map((c) => (
-            <div key={c.label}>
-              <dt>{c.label}</dt>
-              <dd><span className="hex">{c.before || "(empty)"}</span> → <span className="hex">{c.after}</span></dd>
-            </div>
-          ))}
-        </dl>
-        <Button size="small" ref={undoRef} aria-label={`Undo the changes to line ${card.line}`} onClick={() => { pending.current = true; onUndo(); }}>Undo</Button>
+        {changed}
       </article>
     );
   }
@@ -116,6 +123,7 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
         ))}
       </ul>
       {card.unreadableText !== undefined && <pre className="hex fix-raw">{card.unreadableText}</pre>}
+      {card.changes.length > 0 && changed}
       {card.fields.map((f) => <FieldInput key={f.field} line={card.line} fix={f} onApply={apply} />)}
       <Button size="small" type="text" onClick={() => { pending.current = true; onLeaveOut(); }}>
         Leave out of this run

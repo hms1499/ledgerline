@@ -185,25 +185,32 @@ export function fixList({ checked, source, edits, tokens }: {
     const all = problems.filter((p) => p.line === line);
     const own = all.filter((p) => !(p.field && inOpenGroup.has(`${line}:${p.field}`)));
     const row = current.get(line)!;
+    // The line's own edits; a group's change is undone on the group's card.
+    const edited = (Object.keys(edits.cells[line] ?? {}) as CsvField[]).filter((f) => !byGroup.get(line)?.has(f));
+    const change = (f: CsvField) => ({
+      label: LABEL[f], before: orig.unreadable ? "" : orig[ROW_KEY[f]], after: after(line, f),
+    });
     if (own.length > 0) {
+      // Still open. An edit whose field lost its input is shown as a change,
+      // so the card never hides it: the problem it raised may have no field
+      // (a recipient already paid). A field still wrong keeps its input and
+      // adds nothing, so a blur that commits it moves nothing under the pointer.
       const fields = row.unreadable ? FIELDS : FIELDS.filter((f) => own.some((p) => p.field === f));
       cards.push({
         ...base, state: "open", heading,
         messages: own.map((p) => ({ text: p.message, level: p.level })),
         fields: fields.map((f) => fieldFix(line, f, own.find((p) => p.field === f))),
+        changes: edited.filter((f) => !fields.includes(f)).map(change),
         ...(row.unreadable ? { unreadableText: row.unreadable.text } : {}),
         blocking: own.some((p) => p.level === "error"),
       });
       continue;
     }
-    const edited = (Object.keys(edits.cells[line] ?? {}) as CsvField[]).filter((f) => !byGroup.get(line)?.has(f));
     if (edited.length === 0) continue;
     cards.push({
       ...base, state: "fixed",
       heading: `${heading} · ${all.length === 0 ? "ready to pay" : "changed"}`,
-      changes: edited.map((f) => ({
-        label: LABEL[f], before: orig.unreadable ? "" : orig[ROW_KEY[f]], after: after(line, f),
-      })),
+      changes: edited.map(change),
     });
   }
 

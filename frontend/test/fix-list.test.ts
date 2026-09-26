@@ -137,6 +137,39 @@ describe("fixList: line cards", () => {
     });
   });
 
+  it("keeps an edit that raised a new problem on its open card, so it can be undone", () => {
+    // The payer pasted the address line 2 already pays. The warning has no
+    // field, so without its change the card would hide the edit it came from.
+    const text = csv(`INV-1,USDC,${A},1`, `INV-2,USDC,nope,2`);
+    const c = view(text, withEdits(NO_EDITS, [{ line: 3, field: "to", text: A.toLowerCase() }])).cards[0]!;
+    expect(c).toMatchObject({
+      line: 3, state: "open", heading: "Line 3 · INV-2", fields: [],
+      changes: [{ label: "Recipient", before: "nope", after: A }],
+    });
+    expect(c.messages.map((m) => m.text)).toEqual([expect.stringMatching(/already paid on line 2/)]);
+  });
+
+  it("shows the change of a field that has lost its input, and no other", () => {
+    // Fixing the recipient leaves the amount open: the address shows as a
+    // change. A field still wrong keeps its input, and adds nothing, so a
+    // blur that commits it moves nothing under the pointer.
+    const text = csv(`INV-1,EURC,nope,"1,000"`);
+    const fixedOne = view(text, withEdits(NO_EDITS, [{ line: 2, field: "to", text: A }])).cards[0]!;
+    expect(fixedOne.fields.map((f) => f.field)).toEqual(["amount"]);
+    expect(fixedOne.changes).toEqual([{ label: "Recipient", before: "nope", after: A }]);
+    const stillWrong = view(text, withEdits(NO_EDITS, [{ line: 2, field: "to", text: "0xbad" }])).cards[0]!;
+    expect(stillWrong.fields.map((f) => [f.field, f.value])).toEqual([["to", "0xbad"], ["amount", "1,000"]]);
+    expect(stillWrong.changes).toEqual([]);
+  });
+
+  it("leaves a group's change to the group's own Undo on a line's open card", () => {
+    const text = csv(`INV-1,USD,nope,1`, `INV-2,USD,${A},2`, `INV-3,USD,${B},3`);
+    const e = applyGroup(NO_EDITS, view(text).groups[0]!.actions[0]!);
+    const c = view(text, e).cards[0]!;
+    expect(c).toMatchObject({ line: 2, state: "open", changes: [] });
+    expect(view(csv(`INV-1,USDC,nope,1`)).cards[0]!.changes).toEqual([]);
+  });
+
   it("shows a left-out line as one line to undo", () => {
     const v = view(csv(`INV-1,USDC,nope,1`, `INV-2,USDC,${A},2`), leaveOut(NO_EDITS, 2));
     expect(v.cards[0]).toMatchObject({ state: "left-out", heading: "Line 2 · INV-1 · left out of this run", blocking: false });
