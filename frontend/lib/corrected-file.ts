@@ -49,11 +49,39 @@ export function correctedCsv(text: string, source: ParsedCsv, edits: RunEdits): 
 export function correctedFile(d: {
   text: string; source: ParsedCsv; edits: RunEdits; sourceName: string;
 }): { name: string; text: string; type: string } {
-  const tab = d.source.delimiter === "\t";
-  const base = d.sourceName === PASTED_ROWS ? "pasted-rows" : d.sourceName.replace(/\.(csv|tsv|txt)$/i, "");
+  if (d.sourceName === PASTED_ROWS) {
+    return {
+      name: "pasted-rows-corrected.tsv",
+      text: correctedCsv(d.text, d.source, d.edits),
+      type: "text/tab-separated-values",
+    };
+  }
+
+  // Extract extension from filename (case-insensitive)
+  const extMatch = /\.([^.]+)$/.exec(d.sourceName);
+  const ext = extMatch ? extMatch[1]!.toLowerCase() : "";
+
+  // Determine final extension and type based on the original extension
+  let finalExt: string;
+  let finalType: string;
+  if (ext === "csv") {
+    finalExt = "csv";
+    finalType = "text/csv";
+  } else if (ext === "tsv") {
+    finalExt = "tsv";
+    finalType = "text/tab-separated-values";
+  } else {
+    // For .txt, other extensions, or no extension: use .csv
+    finalExt = "csv";
+    finalType = "text/csv";
+  }
+
+  // Get base name: remove any extension
+  const baseName = d.sourceName.replace(/\.[^.]+$/, "");
+
   return {
-    name: `${base}-corrected.${tab ? "tsv" : "csv"}`,
+    name: `${baseName}-corrected.${finalExt}`,
     text: correctedCsv(d.text, d.source, d.edits),
-    type: tab ? "text/tab-separated-values" : "text/csv",
+    type: finalType,
   };
 }

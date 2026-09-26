@@ -77,4 +77,25 @@ describe("correctedFile", () => {
     expect(f.name).toBe("pasted-rows-corrected.tsv");
     expect(f.type).toBe("text/tab-separated-values");
   });
+
+  it("keeps a tab-separated .csv file as .csv, not .tsv", () => {
+    const text = `invoiceId\ttoken\tto\tamount\nINV-1\tUSDC\t${A}\t1`;
+    const f = correctedFile({ text, source: parseCsv(text), edits: NO_EDITS, sourceName: "X.csv" });
+    expect(f.name).toBe("X-corrected.csv");
+    expect(f.type).toBe("text/csv");
+  });
+
+  it("keeps the original extension when .tsv, case-insensitive", () => {
+    const text = `invoiceId\ttoken\tto\tamount\nINV-1\tUSDC\t${A}\t1`;
+    const f = correctedFile({ text, source: parseCsv(text), edits: NO_EDITS, sourceName: "Payroll.TSV" });
+    expect(f.name).toBe("Payroll-corrected.tsv");
+    expect(f.type).toBe("text/tab-separated-values");
+  });
+
+  it("names a file with no extension as .csv", () => {
+    const text = `invoiceId,token,to,amount\nINV-1,USDC,${A},1`;
+    const f = correctedFile({ text, source: parseCsv(text), edits: NO_EDITS, sourceName: "Payroll" });
+    expect(f.name).toBe("Payroll-corrected.csv");
+    expect(f.type).toBe("text/csv");
+  });
 });
