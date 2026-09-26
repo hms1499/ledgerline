@@ -11,7 +11,9 @@ import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
 import { runSummaryView } from "@/lib/run-summary-view";
-import { reviewView } from "@/lib/review-view";
+import { checkRows, reviewView, ALL_LEFT_OUT } from "@/lib/review-view";
+import { fixList, RECIPIENT_HELP } from "@/lib/fix-list";
+import { NO_EDITS, changesText, correctionReminder } from "@/lib/run-edits";
 import { noWalletHelp } from "@/lib/wallet-help";
 import { topUpHint } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
@@ -139,6 +141,8 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       `Invoice ID,Token,Recipient,Salary\na,b,c,1`,
       `invoiceId;token;to;amount\nINV-1;USDC;${A};1.000`,
       ``,
+      `invoiceId;token;to;amount\nINV-1;EURC;${A};1.000\nINV-2;EURC;${A};2.000\nINV-3;EURC;${A};3.000`,
+      `invoiceId,token,to,amount\nINV-1,USD,${A},1\nINV-2,USD,${A},2\nINV-3,USD,${A},3`,
     ]) {
       const { rows, issues, delimiter } = parseCsv(text);
       const resolved = resolveRows(rows, TOKENS, DECIMALS, delimiter);
@@ -146,7 +150,17 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       const v = reviewView({ issues: [...issues, ...resolved.issues], errors, warnings, parsed: rows });
       plain(v.title); plain(v.summary); plain(v.fixFirst);
       for (const i of v.items) plain(i.message);
+
+      const source = parseCsv(text);
+      const f = fixList({ checked: checkRows(source, NO_EDITS, TOKENS, DECIMALS), source, edits: NO_EDITS, tokens: TOKENS });
+      [f.title, f.summary, f.counts, f.fixFirst, ...f.fileProblems].forEach(plain);
+      for (const g of f.groups) { plain(g.title); plain(g.lead); g.actions.forEach((a) => { plain(a.label); plain(a.applied.title); }); }
+      for (const c of f.cards) { plain(c.heading); c.messages.forEach((m) => plain(m.text)); c.fields.forEach((x) => plain(x.help)); }
     }
+    plain(ALL_LEFT_OUT);
+    plain(RECIPIENT_HELP);
+    plain(changesText({ edited: 3, leftOut: 1 }));
+    plain(correctionReminder({ edited: 3, leftOut: 1 }));
 
     for (const n of ["mainnet", "testnet"] as const) {
       const h = noWalletHelp(n);
