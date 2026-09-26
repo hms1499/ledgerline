@@ -1,21 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Button, Popconfirm, Table, type TableColumnsType } from "antd";
+import { Alert, Button, Modal, Popconfirm } from "antd";
 import { createPublicClient, http, type Address } from "viem";
-import { fundingFor, tokensForChain, totalsByToken, type ResolvedRow } from "@ledgerline/core";
-import { short, type NetworkView } from "@/lib/chain";
+import { fundingFor, tokensForChain, totalsByToken } from "@ledgerline/core";
+import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
 import { fundingView, topUpHint } from "@/lib/funding-view";
-import { amountFigure, metaFor } from "@/lib/token-meta";
 import { fixList } from "@/lib/fix-list";
 import { changeCounts, changeTotal, fileChanged, type SheetEdits } from "@/lib/sheet-edits";
 import { correctedFile } from "@/lib/corrected-file";
 import { saveFile } from "@/lib/save-file";
 import TechnicalDetails from "@/components/ui/TechnicalDetails";
 import FixList from "./FixList";
+import type { ColumnId } from "@ledgerline/core";
+import {
+  addLine, deleteLine, droppedByHeader, editCells, headerWarning, leaveOut, putBack, restoreLine, useAsHeader,
+} from "@/lib/sheet-edits";
+import { sheetGrid } from "@/lib/sheet-grid";
+import SheetGrid, { type CellPos } from "./SheetGrid";
+import type { LineAction } from "./LineMenu";
 
 const balanceOfAbi = [
   { type: "function", name: "balanceOf", stateMutability: "view",
@@ -69,10 +75,37 @@ export default function StepPreview({
     () => fixList({ checked: draft, source: draft.sheet, edits: draft.edits, tokens: draft.tokens }),
     [draft],
   );
+  const grid = useMemo(
+    () => sheetGrid({ lines: draft.lines, sheet: draft.sheet, edits: draft.edits, checked: draft, tokens: draft.tokens }),
+    [draft],
+  );
+  const [openCell, setOpenCell] = useState<CellPos & { seq: number }>();
+  const [focusSeq, setFocusSeq] = useState<number>();
+  const [askHeader, setAskHeader] = useState<number>();
+  const onEdit = (line: number, col: ColumnId, text: string) => onEdits(editCells(draft.edits, [{ line, col, text }]));
+  const toHeader = (line: number) => { onEdits(useAsHeader(draft.edits, line)); setFocusSeq(Date.now()); };
+  const onLine = (line: number, action: LineAction) => {
+    const e = draft.edits;
+    if (action === "leave-out") onEdits(leaveOut(e, line));
+    else if (action === "put-back") onEdits(putBack(e, line));
+    else if (action === "delete") onEdits(deleteLine(e, line));
+    else if (action === "restore") onEdits(restoreLine(e, line));
+    else if (droppedByHeader(e) > 0) setAskHeader(line);
+    else toHeader(line);
+  };
+  const onAddLine = () => {
+    // The empty entry a final line break leaves is not a line of the file:
+    // a 4-line file's first new line is 5 (spec §3.1).
+    const last = draft.lines.at(-1);
+    const count = draft.lines.length - (draft.lines.length > 1 && last?.body === "" && last.end === "" ? 1 : 0);
+    const { edits, line } = addLine(draft.edits, count);
+    onEdits(edits);
+    const first = grid.columns[0];
+    if (first) setOpenCell({ line, col: first.id, seq: Date.now() });
+  };
   const blocking = fix.blocking;
   const changes = changeCounts(draft.edits);
   const changed = changeTotal(changes);
-  const editedLines = new Set(Object.keys(draft.edits.cells).map(Number));
 
   // Read for the wallet on screen and dropped the moment it changes, so a
   // switched account never inherits the last one's balances.
@@ -109,46 +142,23 @@ export default function StepPreview({
   const checkingFunds = !!owner && !balances;
   const shortTokens = funding?.short ?? 0;
 
-  const columns: TableColumnsType<ResolvedRow> = [
-    {
-      title: "Line", dataIndex: "line", width: 70,
-      render: (line: number) => editedLines.has(line)
-        ? <>{line} <span className="edited-mark" title="Edited here" aria-label="edited here">✎</span></>
-        : line,
-    },
-    { title: "Invoice", dataIndex: "invoiceId", width: 160 },
-    {
-      title: "Token", dataIndex: "token", width: 110,
-      render: (t: string) => draft.symbols[t.toLowerCase()] ?? short(t),
-    },
-    {
-      title: "Recipient", dataIndex: "to",
-      render: (to: string) => (
-        <a className="hex addr" href={`${net.explorer}/address/${to}`} target="_blank" rel="noreferrer" title={to}>
-          {short(to)}
-        </a>
-      ),
-    },
-    {
-      title: "Amount", dataIndex: "amount", align: "right",
-      render: (a: bigint, r) => (
-        <span className="hex">{amountFigure(a, r.token, metaFor(r.token, draft.decimals, draft.symbols))}</span>
-      ),
-    },
-  ];
-
   return (
     <>
       <FixList view={fix} edits={draft.edits} onEdits={onEdits} />
 
-      <div style={{ marginTop: 24 }} className="table-scroll" role="region" aria-label="Payments table" tabIndex={0}>
-        <Table<ResolvedRow>
-          columns={columns}
-          dataSource={draft.rows.map((r) => ({ ...r, key: r.line }))}
-          pagination={draft.rows.length > 25 ? { pageSize: 25 } : false}
-          size="middle"
-        />
-      </div>
+      <SheetGrid view={grid} onEdit={onEdit} onLine={onLine} onAddLine={onAddLine} open={openCell} focusSeq={focusSeq} />
+
+      <Modal
+        open={askHeader !== undefined}
+        title={`Use line ${askHeader ?? ""} as the header?`}
+        okText="Use it"
+        cancelText="Keep the header"
+        focusTriggerAfterClose={false}
+        onOk={() => { const line = askHeader!; setAskHeader(undefined); toHeader(line); }}
+        onCancel={() => { setAskHeader(undefined); setFocusSeq(Date.now()); }}
+      >
+        <p>{headerWarning(droppedByHeader(draft.edits))}</p>
+      </Modal>
 
       {owner && (
         <section className="funding" aria-live="polite">

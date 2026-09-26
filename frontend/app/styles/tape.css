@@ -196,3 +196,31 @@
    rather than the whole page. */
 .table-scroll { overflow-x: auto; }
 .table-scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+/* The sheet on the Review step (spec 2026-09-26-csv-sheet-editor §5.2). */
+.sheet { margin-top: 24px; }
+.sheet-status { min-height: 1.4em; margin: 0 0 6px; }
+.sheet-above { margin: 0 0 8px; }
+.sheet-foot { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin: 10px 0 0; }
+.sheet-grid { border-collapse: collapse; width: max-content; min-width: 100%; }
+.sheet-grid th, .sheet-grid td { padding: 6px 8px; border-bottom: 1px dotted var(--rule); text-align: left; vertical-align: top; white-space: nowrap; }
+.sheet-grid thead th { border-bottom: 1.5px solid var(--ink); font-weight: 500; }
+.sheet-grid .line-head { color: var(--ink-soft); font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.87rem; }
+.sheet-grid td[role="gridcell"] { min-width: 6ch; max-width: 30ch; overflow: hidden; text-overflow: ellipsis; cursor: cell; }
+.sheet-grid td[role="gridcell"]:focus { outline: 2px solid var(--focus); outline-offset: -2px; }
+.sheet-grid td.is-edited { background: var(--tape-shade); }
+.sheet-grid td.has-problem { color: var(--ribbon); background: var(--ribbon-bg); box-shadow: inset 0 0 0 1.5px var(--ribbon); }
+.sheet-grid tr.is-left-out td[role="gridcell"] { color: var(--ink-soft); }
+.sheet-grid tr.is-deleted td[role="gridcell"] { color: var(--ink-soft); text-decoration: line-through; }
+.sheet-grid .ghost { border-left: 1.5px dashed var(--ribbon); border-right: 1.5px dashed var(--ribbon); }
+.sheet-grid .line-flag { margin-left: 4px; color: var(--ribbon); }
+.cell-input { width: 100%; min-width: 14ch; padding: 0; border: none; background: transparent; color: inherit; font: inherit; }
+.cell-input:focus { outline: none; }
+.col-name { display: block; }
+.role-chip {
+  margin-top: 4px; padding: 1px 6px; border: 1.5px solid var(--control); background: none; color: inherit;
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.8rem; font-weight: 500;
+}
+.role-chip.is-set { border-color: var(--ink); background: var(--highlight); color: var(--on-highlight); }
+.role-chip.is-unused { border-style: dashed; color: var(--ink-soft); }
+.role-chip.is-missing { border-color: var(--ribbon); color: var(--ribbon); }

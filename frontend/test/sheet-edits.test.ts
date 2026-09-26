@@ -4,7 +4,7 @@ import {
   NO_EDITS, structureOf, applySheetEdits, editCells, applyBatch, undoBatch, undoCell, undoLine,
   leaveOut, putBack, deleteLine, restoreLine, addLine, setRole, addColumn, dropColumn, numberInvoices,
   replaceInColumn, useAsHeader, droppedByHeader, changeCounts, changeTotal, fileChanged, changesText,
-  correctionReminder, type SheetEdits,
+  correctionReminder, headerWarning, type SheetEdits,
 } from "@/lib/sheet-edits";
 
 const A = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
@@ -140,6 +140,10 @@ describe("lines, columns and the header", () => {
     e = leaveOut(deleteLine(e, 4), 3);
     expect(droppedByHeader(e)).toBe(2);
     expect(useAsHeader(e, 2)).toEqual({ ...NO_EDITS, headerLine: 2, deleted: [4], leftOut: [3] });
+  });
+  it("warns how many changes a new header line drops", () => {
+    expect(headerWarning(1)).toBe("The 1 change made under the current header's columns will be dropped.");
+    expect(headerWarning(3)).toBe("The 3 changes made under the current header's columns will be dropped.");
   });
 });
 

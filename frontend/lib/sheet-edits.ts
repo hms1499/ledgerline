@@ -342,3 +342,8 @@ export function correctionReminder(c: ChangeCounts): string | undefined {
   const did = changesText(c);
   return did && `Changed here: ${did}. Download the corrected file to update your spreadsheet.`;
 }
+
+/** The confirmation before `useAsHeader` drops changes. */
+export function headerWarning(dropped: number): string {
+  return `The ${dropped} change${dropped === 1 ? "" : "s"} made under the current header's columns will be dropped.`;
+}

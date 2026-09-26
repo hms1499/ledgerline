@@ -13,7 +13,7 @@ import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
 import { runSummaryView } from "@/lib/run-summary-view";
 import { checkRows, ALL_LEFT_OUT } from "@/lib/review-view";
 import { fixList, RECIPIENT_HELP } from "@/lib/fix-list";
-import { NO_EDITS, changesText, correctionReminder } from "@/lib/sheet-edits";
+import { NO_EDITS, changesText, correctionReminder, headerWarning } from "@/lib/sheet-edits";
 import { noWalletHelp } from "@/lib/wallet-help";
 import { topUpHint } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
@@ -157,6 +157,10 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     const counts = { cells: 3, columns: 2, added: 1, deleted: 1, leftOut: 1, header: 5 };
     plain(changesText(counts));
     plain(correctionReminder(counts));
+    plain(headerWarning(3));
+    for (const label of ["+ Add a line", "Leave out of this run", "Put back in this run", "Delete from the file",
+      "Delete this line", "Use as the header line", "Use it", "Keep the header", "The file as a table",
+      "Line 1 is above the header", "Lines 1–4 are above the header"]) plain(label);
     for (const label of ["Leave out of this run", "Undo", "Download the corrected file", "Choose another file",
       "Show the 3 lines", "Hide the lines", "Keep editing", "Discard your 3 edits?",
       "Undo the changes to line 5", "Put line 5 back in this run",
