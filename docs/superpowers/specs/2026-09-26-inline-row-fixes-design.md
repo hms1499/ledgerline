@@ -220,9 +220,14 @@ button applies at once.
   It has one `Undo`, which drops that line's edits.
 - **Left out:** `Line 7 · left out of this run · Undo`.
 - **New problem:** an edit that causes one (a duplicate invoice) keeps the card
-  open, with the new message.
+  open, with the new message. A field the card no longer asks for shows as a
+  change, before and after, with the card's `Undo`: a recipient already paid
+  has no field, and the card must not hide the address that raised it. A
+  field still wrong keeps its input and adds no change, so a blur that
+  commits it moves nothing under the pointer.
 - **Focus** never falls to the page. After a button press, focus moves to the
-  same card's `Undo`. A polite live region announces `Line 5 is ready to pay`.
+  same card's `Undo`. After an `Undo`, it moves to the reopened card's first
+  control. A polite live region announces `Line 5 is ready to pay`.
 - The payments table shows the line at its line number with `✎ edited here`.
   Undo lives on the card, not in the table.
 
