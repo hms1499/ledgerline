@@ -3,7 +3,7 @@ import {
   type AmountKind, type CsvField, type ParsedCsv, type ParsedRow,
   type ResolvedRow, type TokenSet,
 } from "@ledgerline/core";
-import { applyEdits, NO_EDITS, type RunEdits } from "@/lib/run-edits";
+import { applySheetEdits, NO_EDITS, type SheetEdits } from "@/lib/sheet-edits";
 
 export const ALL_LEFT_OUT = "Every line is left out of this run. Put one back to pay it.";
 
@@ -28,21 +28,21 @@ export interface CheckedFile {
 }
 
 /**
- * The file as read, with the payer's edits over it, through every check that
- * needs no wallet. The same rules read an edited value as a value in the
- * file: there is no second validator.
+ * The sheet as read, with the payer's typed cells over it, through every
+ * check that needs no wallet. The same rules read a typed value as a value
+ * in the file: there is no second validator.
  */
 export function checkRows(
-  source: ParsedCsv, edits: RunEdits, tokens: TokenSet, decimals: Record<string, number>,
+  sheet: ParsedCsv, edits: SheetEdits, tokens: TokenSet, decimals: Record<string, number>,
 ): CheckedFile {
-  const parsed = applyEdits(source.rows, edits);
-  const resolved = resolveRows(parsed, tokens, decimals, source.delimiter);
-  const issues = [...source.issues, ...resolved.issues];
+  const parsed = applySheetEdits(sheet, edits);
+  const resolved = resolveRows(parsed, tokens, decimals, sheet.delimiter);
+  const issues = [...sheet.issues, ...resolved.issues];
   const run = validateRun(resolved.items, issues.length);
 
-  const allLeftOut = parsed.length === 0 && source.rows.length > 0;
+  const allLeftOut = sheet.issues.length === 0 && parsed.length === 0 && edits.leftOut.length > 0;
   const fileProblems = [
-    ...source.issues.map((i) => i.message),
+    ...sheet.issues.map((i) => i.message),
     ...(allLeftOut ? [ALL_LEFT_OUT] : run.errors.filter((e) => e.line === undefined).map((e) => e.message)),
   ];
   // Stable sort: a line's errors were listed before its warnings, and stay so.

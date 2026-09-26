@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button, type GetRef } from "antd";
 import { afterRowFix, rowId, type FixListView, type GroupAction, type GroupCard } from "@/lib/fix-list";
 import {
-  applyGroup, leaveOut, putBack, undoGroup, undoLine, withEdits, type CellEdit, type RunEdits,
-} from "@/lib/run-edits";
+  applyBatch, deleteLine, editCells, leaveOut, putBack, undoBatch, undoLine, type CellEdit, type SheetEdits,
+} from "@/lib/sheet-edits";
 import LineCardView from "./LineCard";
 
 const SHOWN = 25;
@@ -62,7 +62,7 @@ function GroupCardView({ group, onApply, onApplyOne, onUndo }: {
               <span className="hex">line {r.line}: {r.raw || "(empty)"}</span>
               {r.choices.map((c) => (
                 <Button key={c.label} size="small"
-                  onClick={() => onApplyOne(r.line, [{ line: r.line, field: group.field, text: c.text }])}>
+                  onClick={() => onApplyOne(r.line, [{ line: r.line, col: group.col, text: c.text }])}>
                   {c.label}
                 </Button>
               ))}
@@ -76,7 +76,7 @@ function GroupCardView({ group, onApply, onApplyOne, onUndo }: {
 
 /** The Review step's problems, as cards to work down (spec 2026-09-26 §4). */
 export default function FixList({ view, edits, onEdits }: {
-  view: FixListView; edits: RunEdits; onEdits: (e: RunEdits) => void;
+  view: FixListView; edits: SheetEdits; onEdits: (e: SheetEdits) => void;
 }) {
   const [all, setAll] = useState(false);
   const [said, setSaid] = useState("");
@@ -106,6 +106,14 @@ export default function FixList({ view, edits, onEdits }: {
     setSaid(next.said);
   }, [view]);
 
+  // A new line deleted from its card takes the card with it: focus the list.
+  const deleted = useRef(false);
+  useEffect(() => {
+    if (!deleted.current) return;
+    deleted.current = false;
+    document.getElementById("fix-list")?.focus();
+  }, [view]);
+
   if (view.fileProblems.length + view.groups.length + view.cards.length === 0) return null;
   const cards = all ? view.cards : view.cards.slice(0, SHOWN);
   return (
@@ -126,19 +134,20 @@ export default function FixList({ view, edits, onEdits }: {
       )}
       {view.groups.map((g) => (
         <GroupCardView key={g.id} group={g}
-          onApply={(a) => onEdits(applyGroup(edits, a))}
+          onApply={(a) => onEdits(applyBatch(edits, a.batch, a.changes))}
           onApplyOne={(line, changes) => {
             rowFix.current = { key: g.key, lines: g.lines, line };
-            onEdits(withEdits(edits, changes));
+            onEdits(editCells(edits, changes));
           }}
-          onUndo={() => onEdits(undoGroup(edits, g.key))} />
+          onUndo={() => onEdits(undoBatch(edits, g.key))} />
       ))}
       {cards.map((c) => (
         <LineCardView key={c.id} card={c}
-          onApply={(changes) => onEdits(withEdits(edits, changes))}
+          onApply={(changes) => onEdits(editCells(edits, changes))}
           onUndo={() => onEdits(undoLine(edits, c.line))}
           onLeaveOut={() => onEdits(leaveOut(edits, c.line))}
-          onPutBack={() => onEdits(putBack(edits, c.line))} />
+          onPutBack={() => onEdits(putBack(edits, c.line))}
+          onDelete={() => { deleted.current = true; onEdits(deleteLine(edits, c.line)); }} />
       ))}
       {!all && view.cards.length > SHOWN && (
         <Button type="link" onClick={() => setAll(true)}>Show {view.cards.length - SHOWN} more</Button>

@@ -1,6 +1,6 @@
 import { runIdFor, type Manifest } from "@ledgerline/core";
 import { amountText, metaFor } from "@/lib/token-meta";
-import { changesText } from "@/lib/run-edits";
+import { changesText, type ChangeCounts } from "@/lib/sheet-edits";
 
 export interface SummaryItem { token: string; amount: bigint }
 export interface SummarySource { items: SummaryItem[]; payer?: string; runId?: string }
@@ -30,7 +30,7 @@ export interface RunSummaryView { name: string; payments: string; toPay: string[
 export function runSummaryView(
   runLabel: string, src: SummarySource, tokenOrder: string[],
   decimals: Record<string, number>, symbols: Record<string, string>,
-  changes?: { edited: number; leftOut: number },
+  changes?: ChangeCounts,
 ): RunSummaryView {
   const totals = new Map<string, { token: string; total: bigint }>();
   for (const i of src.items) {

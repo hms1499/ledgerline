@@ -1,8 +1,10 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv, tokensForChain } from "@ledgerline/core";
-import { afterRowFix, fixList, rowId, RECIPIENT_HELP } from "@/lib/fix-list";
+import { readLines, readSheet, tokensForChain } from "@ledgerline/core";
+import { afterRowFix, fixList, rowId, RECIPIENT_HELP, type GroupAction } from "@/lib/fix-list";
 import { checkRows } from "@/lib/review-view";
-import { NO_EDITS, applyGroup, leaveOut, withEdits, type RunEdits } from "@/lib/run-edits";
+import {
+  NO_EDITS, addLine, applyBatch, deleteLine, editCells, leaveOut, numberInvoices, structureOf, type SheetEdits,
+} from "@/lib/sheet-edits";
 
 const TOKENS = tokensForChain(5042002);
 const DECIMALS = { [TOKENS.USDC.toLowerCase()]: 6, [TOKENS.EURC.toLowerCase()]: 6, [TOKENS.cirBTC.toLowerCase()]: 8 };
@@ -10,10 +12,15 @@ const A = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
 const B = "0x1111111111111111111111111111111111111111";
 const C = "0x2222222222222222222222222222222222222222";
 
-function view(text: string, edits: RunEdits = NO_EDITS) {
-  const source = parseCsv(text);
+function view(text: string, edits: SheetEdits = NO_EDITS) {
+  const source = readSheet(readLines(text), structureOf(edits));
   return fixList({ checked: checkRows(source, edits, TOKENS, DECIMALS), source, edits, tokens: TOKENS });
 }
+/** Every file here is `invoiceId,token,to,amount` (or `;`), so a field is a column. */
+const COL = { invoiceId: "f0", token: "f1", to: "f2", amount: "f3" } as const;
+const edit = (changes: { line: number; field: keyof typeof COL; text: string }[]) =>
+  editCells(NO_EDITS, changes.map(({ line, field, text }) => ({ line, col: COL[field], text })));
+const apply = (a: GroupAction) => applyBatch(NO_EDITS, a.batch, a.changes);
 const csv = (...rows: string[]) => `invoiceId,token,to,amount\n${rows.join("\n")}`;
 const semi = (...rows: string[]) => `invoiceId;token;to;amount\n${rows.join("\n")}`;
 
@@ -26,7 +33,8 @@ describe("fixList: groups", () => {
     expect(g.title).toBe('3 lines use the token "USD".');
     expect(g.lead).toBe("Change all to");
     expect(g.actions.map((a) => a.label)).toEqual(["USDC", "EURC", "cirBTC"]);
-    expect(g.actions[0]!.edits).toEqual([2, 3, 4].map((line) => ({ line, field: "token", text: "USDC" })));
+    expect(g.actions[0]!.changes).toEqual([2, 3, 4].map((line) => ({ line, col: "f1", text: "USDC" })));
+    expect(g.col).toBe("f1");
     expect(g.examples).toEqual(["line 2: USD", "line 3: usd"]);
     expect(g.blocking).toBe(true);
   });
@@ -41,7 +49,7 @@ describe("fixList: groups", () => {
     const v = view(csv(`INV-1,USDC,nope,1`, `INV-2,USDC,nope,2`, `INV-3,USDC,nope,3`));
     expect(v.groups).toEqual([]);
     expect(v.cards).toHaveLength(3);
-    expect(v.cards[0]!.fields).toEqual([{ field: "to", label: "Recipient", value: "nope", choices: [], help: RECIPIENT_HELP }]);
+    expect(v.cards[0]!.fields).toEqual([{ field: "to", col: "f2", label: "Recipient", value: "nope", choices: [], help: RECIPIENT_HELP }]);
   });
 
   it("offers both readings for a group of 1.000-style amounts, with the file's own marks", () => {
@@ -49,7 +57,7 @@ describe("fixList: groups", () => {
     const g = v.groups[0]!;
     expect(g.title).toBe("3 amounts like 1.000 could be read two ways.");
     expect(g.examples).toEqual(["line 2: 1.000 → 1 or 1000 EURC", "line 3: 2.500 → 2,5 or 2500 EURC"]);
-    expect(g.actions.map((a) => [a.label, a.edits.map((e) => e.text)])).toEqual([
+    expect(g.actions.map((a) => [a.label, a.changes.map((e) => e.text)])).toEqual([
       ["All are thousands", ["1000", "2500", "3000"]],
       ["All are decimals", ["1", "2,5", "3"]],
     ]);
@@ -76,7 +84,7 @@ describe("fixList: groups", () => {
     // Three recipients, so the fixed lines raise no "already paid" warning.
     const text = csv(`INV-1,USD,${A},1`, `INV-2,USD,${B},2`, `INV-3,USD,${C},3`);
     const open = view(text).groups[0]!;
-    const e = applyGroup(NO_EDITS, open.actions[0]!);
+    const e = apply(open.actions[0]!);
     const v = view(text, e);
     expect(v.cards).toEqual([]);
     expect(v.groups).toEqual([expect.objectContaining({
@@ -93,7 +101,7 @@ describe("fixList: groups", () => {
 
   it("breaks a group up when one line is fixed on its own and fewer than three remain", () => {
     const text = csv(`INV-1,USD,${A},1`, `INV-2,USD,${A},2`, `INV-3,USD,${A},3`);
-    const v = view(text, withEdits(NO_EDITS, [{ line: 3, field: "token", text: "EURC" }]));
+    const v = view(text, edit([{ line: 3, field: "token", text: "EURC" }]));
     expect(v.groups).toEqual([]);
     expect(v.cards.map((c) => [c.line, c.state])).toEqual([[2, "open"], [3, "fixed"], [4, "open"]]);
   });
@@ -105,7 +113,7 @@ describe("afterRowFix: one line fixed on its own inside a group", () => {
   const three = semi(`INV-1;EURC;${A};1.000`, `INV-2;EURC;${B};2.000`, `INV-3;EURC;${C};3.000`);
   const fixOne = (text: string, line: number, lines?: number[]) => {
     const g = view(text).groups[0]!;
-    const v = view(text, withEdits(NO_EDITS, [{ line, field: "amount", text: "1000" }]));
+    const v = view(text, edit([{ line, field: "amount", text: "1000" }]));
     return afterRowFix(v, g.key, lines ?? g.lines, line);
   };
 
@@ -133,7 +141,7 @@ describe("fixList: line cards", () => {
     const c = v.cards[0]!;
     expect(c.heading).toBe("Line 2 · INV-1");
     expect(c.fields).toEqual([{
-      field: "amount", label: "Amount", value: "1,000",
+      field: "amount", col: "f3", label: "Amount", value: "1,000",
       choices: [{ label: "1 EURC", text: "1" }, { label: "1000 EURC", text: "1000" }],
     }]);
   });
@@ -158,7 +166,7 @@ describe("fixList: line cards", () => {
 
   it("keeps a fixed card in place, showing before and after, the address in full", () => {
     const text = csv(`INV-1,USDC,nope,1`, `INV-2,USDC,${A},2`);
-    const v = view(text, withEdits(NO_EDITS, [{ line: 2, field: "to", text: A.toLowerCase() }]));
+    const v = view(text, edit([{ line: 2, field: "to", text: A.toLowerCase() }]));
     expect(v.cards[0]).toMatchObject({
       id: "fix-line-2", state: "fixed", heading: "Line 2 · INV-1 · ready to pay",
       changes: [{ label: "Recipient", before: "nope", after: A }],
@@ -169,7 +177,7 @@ describe("fixList: line cards", () => {
     // The payer pasted the address line 2 already pays. The warning has no
     // field, so without its change the card would hide the edit it came from.
     const text = csv(`INV-1,USDC,${A},1`, `INV-2,USDC,nope,2`);
-    const c = view(text, withEdits(NO_EDITS, [{ line: 3, field: "to", text: A.toLowerCase() }])).cards[0]!;
+    const c = view(text, edit([{ line: 3, field: "to", text: A.toLowerCase() }])).cards[0]!;
     expect(c).toMatchObject({
       line: 3, state: "open", heading: "Line 3 · INV-2", fields: [],
       changes: [{ label: "Recipient", before: "nope", after: A }],
@@ -182,20 +190,41 @@ describe("fixList: line cards", () => {
     // change. A field still wrong keeps its input, and adds nothing, so a
     // blur that commits it moves nothing under the pointer.
     const text = csv(`INV-1,EURC,nope,"1,000"`);
-    const fixedOne = view(text, withEdits(NO_EDITS, [{ line: 2, field: "to", text: A }])).cards[0]!;
+    const fixedOne = view(text, edit([{ line: 2, field: "to", text: A }])).cards[0]!;
     expect(fixedOne.fields.map((f) => f.field)).toEqual(["amount"]);
     expect(fixedOne.changes).toEqual([{ label: "Recipient", before: "nope", after: A }]);
-    const stillWrong = view(text, withEdits(NO_EDITS, [{ line: 2, field: "to", text: "0xbad" }])).cards[0]!;
+    const stillWrong = view(text, edit([{ line: 2, field: "to", text: "0xbad" }])).cards[0]!;
     expect(stillWrong.fields.map((f) => [f.field, f.value])).toEqual([["to", "0xbad"], ["amount", "1,000"]]);
     expect(stillWrong.changes).toEqual([]);
   });
 
   it("leaves a group's change to the group's own Undo on a line's open card", () => {
     const text = csv(`INV-1,USD,nope,1`, `INV-2,USD,${A},2`, `INV-3,USD,${B},3`);
-    const e = applyGroup(NO_EDITS, view(text).groups[0]!.actions[0]!);
+    const e = apply(view(text).groups[0]!.actions[0]!);
     const c = view(text, e).cards[0]!;
     expect(c).toMatchObject({ line: 2, state: "open", changes: [] });
     expect(view(csv(`INV-1,USDC,nope,1`)).cards[0]!.changes).toEqual([]);
+  });
+
+  it("gives a new line left empty a card with its problems, which blocks the run", () => {
+    const text = csv(`INV-1,USDC,${A},1`);
+    const { edits, line } = addLine(NO_EDITS, readLines(text).length);
+    const v = view(text, edits);
+    expect(v.cards).toEqual([expect.objectContaining({
+      line, isNew: true, state: "open", heading: `Line ${line} · new`, blocking: true,
+    })]);
+    expect(v.cards[0]!.fields.map((f) => f.field)).toEqual(["invoiceId", "token", "to", "amount"]);
+    expect(v.fixFirst).toBe("Fix 1 problem first");
+  });
+
+  it("shows no card for a deleted line, whatever was typed on it", () => {
+    const text = csv(`INV-1,USDC,nope,1`, `INV-2,USDC,${A},2`);
+    expect(view(text, deleteLine(edit([{ line: 2, field: "to", text: A }]), 2)).cards).toEqual([]);
+  });
+
+  it("leaves cells a numbering wrote to its own undo, not to line cards", () => {
+    const text = `wallet,amount,token\n${A},1,USDC\n${B},2,USDC`;
+    expect(view(text, numberInvoices(NO_EDITS, [2, 3], "Oct")).cards).toEqual([]);
   });
 
   it("shows a left-out line as one line to undo", () => {
@@ -212,7 +241,7 @@ describe("fixList: line cards", () => {
 describe("fixList: the list as a whole", () => {
   it("counts what stops the run, what is fixed and what is left out", () => {
     const text = csv(`INV-1,USDT,${A},1`, `INV-2,USDC,nope,2`, `INV-3,USDC,${A},x`);
-    const e = leaveOut(withEdits(NO_EDITS, [{ line: 3, field: "to", text: A }]), 4);
+    const e = leaveOut(edit([{ line: 3, field: "to", text: A }]), 4);
     const v = view(text, e);
     expect(v.counts).toBe("1 line stops this run · 1 fixed · 1 left out");
     expect(v.title).toBe("Fix these lines");
@@ -242,7 +271,7 @@ describe("fixList: the list as a whole", () => {
   });
 
   it("with only changes, lists them under 'Your changes'", () => {
-    const v = view(csv(`INV-1,USDC,nope,1`), withEdits(NO_EDITS, [{ line: 2, field: "to", text: A }]));
+    const v = view(csv(`INV-1,USDC,nope,1`), edit([{ line: 2, field: "to", text: A }]));
     expect(v.title).toBe("Your changes");
     expect(v.blocking).toBe(0);
   });

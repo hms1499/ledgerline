@@ -13,7 +13,7 @@ import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
 import { runSummaryView } from "@/lib/run-summary-view";
 import { checkRows, ALL_LEFT_OUT } from "@/lib/review-view";
 import { fixList, RECIPIENT_HELP } from "@/lib/fix-list";
-import { NO_EDITS, changesText, correctionReminder } from "@/lib/run-edits";
+import { NO_EDITS, changesText, correctionReminder } from "@/lib/sheet-edits";
 import { noWalletHelp } from "@/lib/wallet-help";
 import { topUpHint } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
@@ -127,7 +127,7 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     const v = runSummaryView("Payroll", { items: [], runId: "0x1" }, [], {}, {});
     clean(v.name); clean(v.payments); v.toPay.forEach(clean);
     for (const label of ["This run", "Name", "Payments", "To pay", "Network", "Paying wallet", "Run ID", "Not connected"]) clean(label);
-    clean(runSummaryView("P", { items: [] }, [], {}, {}, { edited: 1, leftOut: 1 }).changes);
+    clean(runSummaryView("P", { items: [] }, [], {}, {}, { cells: 1, columns: 1, added: 1, deleted: 1, leftOut: 1, header: 2 }).changes);
     for (const label of ["Changed here"]) clean(label);
   });
   it("the create flow's new words, and the file and row messages", () => {
@@ -149,17 +149,18 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       const source = parseCsv(text);
       const f = fixList({ checked: checkRows(source, NO_EDITS, TOKENS, DECIMALS), source, edits: NO_EDITS, tokens: TOKENS });
       [f.title, f.summary, f.counts, f.fixFirst, ...f.fileProblems].forEach(plain);
-      for (const g of f.groups) { plain(g.title); plain(g.lead); g.actions.forEach((a) => { plain(a.label); plain(a.applied.title); }); }
+      for (const g of f.groups) { plain(g.title); plain(g.lead); g.actions.forEach((a) => { plain(a.label); plain(a.batch.title); }); }
       for (const c of f.cards) { plain(c.heading); c.messages.forEach((m) => plain(m.text)); c.fields.forEach((x) => plain(x.help)); }
     }
     plain(ALL_LEFT_OUT);
     plain(RECIPIENT_HELP);
-    plain(changesText({ edited: 3, leftOut: 1 }));
-    plain(correctionReminder({ edited: 3, leftOut: 1 }));
+    const counts = { cells: 3, columns: 2, added: 1, deleted: 1, leftOut: 1, header: 5 };
+    plain(changesText(counts));
+    plain(correctionReminder(counts));
     for (const label of ["Leave out of this run", "Undo", "Download the corrected file", "Choose another file",
       "Show the 3 lines", "Hide the lines", "Keep editing", "Discard your 3 edits?",
       "Undo the changes to line 5", "Put line 5 back in this run",
-      "Undo: 3 lines use the token \"USD\".", "Payments table",
+      "Undo: 3 lines use the token \"USD\".", "Payments table", "Delete this line",
       "Line 3 changed. 4 lines left in this group.", "Line 3 changed."]) plain(label);
 
     for (const n of ["mainnet", "testnet"] as const) {

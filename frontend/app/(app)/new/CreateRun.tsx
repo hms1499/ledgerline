@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Alert, Steps } from "antd";
-import { tokensForChain } from "@ledgerline/core";
+import { readSheet, tokensForChain, type FileLine } from "@ledgerline/core";
 import type { ParsedCsv, RunOutcome, TokenSet } from "@ledgerline/core";
 import { checkRows, type CheckedFile } from "@/lib/review-view";
-import { NO_EDITS, type RunEdits, changeCounts } from "@/lib/run-edits";
+import { NO_EDITS, changeCounts, structureOf, type SheetEdits } from "@/lib/sheet-edits";
 import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
@@ -27,7 +27,8 @@ import CsvHelp from "./CsvHelp";
 /** What the Upload step hands over: the file as read, never written to. */
 export interface RunBase {
   text: string;
-  source: ParsedCsv;
+  /** The file's lines as read, each with its break. */
+  lines: FileLine[];
   /** The file's name, or PASTED_ROWS. */
   sourceName: string;
   runLabel: string;
@@ -37,10 +38,11 @@ export interface RunBase {
   symbols: Record<string, string>;
 }
 
-/** The run as Review shows it: the file, the payer's edits over it, and
- *  everything checked from the two. */
+/** The run as Review shows it: the file, the payer's edits over it, the sheet
+ *  they are read as, and everything checked from the two. */
 export interface RunDraft extends RunBase, CheckedFile {
-  edits: RunEdits;
+  edits: SheetEdits;
+  sheet: ParsedCsv;
 }
 
 const STEP_TITLES = ["Upload", "Review", "Check", "Pay", "Receipts"];
@@ -48,11 +50,12 @@ const STEP_TITLES = ["Upload", "Review", "Check", "Pay", "Receipts"];
 export default function CreateRun() {
   const [step, setStep] = useState(0);
   const [base, setBase] = useState<RunBase>();
-  const [edits, setEdits] = useState<RunEdits>(NO_EDITS);
-  const draft = useMemo<RunDraft | undefined>(
-    () => base && { ...base, edits, ...checkRows(base.source, edits, base.tokens, base.decimals) },
-    [base, edits],
-  );
+  const [edits, setEdits] = useState<SheetEdits>(NO_EDITS);
+  const draft = useMemo<RunDraft | undefined>(() => {
+    if (!base) return undefined;
+    const sheet = readSheet(base.lines, structureOf(edits));
+    return { ...base, edits, sheet, ...checkRows(sheet, edits, base.tokens, base.decimals) };
+  }, [base, edits]);
   const [prepared, setPrepared] = useState<PreparedRun>();
   const [outcome, setOutcome] = useState<Extract<RunOutcome, { state: "confirmed" }>>();
   const { net, wallet, wrongChain, held, error: walletError, switchError, connect, setHold } = useWallet();

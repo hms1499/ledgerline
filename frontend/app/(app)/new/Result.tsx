@@ -11,7 +11,7 @@ import { useWallet } from "@/components/wallet/WalletProvider";
 import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
 import { RUN_FILE_COPY } from "@/lib/pay-copy";
 import { saveFile } from "@/lib/save-file";
-import { changeCounts, correctionReminder } from "@/lib/run-edits";
+import { changeCounts, correctionReminder } from "@/lib/sheet-edits";
 import { correctedFile } from "@/lib/corrected-file";
 
 interface LinkRow {

@@ -11,7 +11,7 @@ import type { ConnectError } from "@/lib/connect-error";
 import { fundingView, topUpHint } from "@/lib/funding-view";
 import { amountFigure, metaFor } from "@/lib/token-meta";
 import { fixList } from "@/lib/fix-list";
-import { changeCounts, type RunEdits } from "@/lib/run-edits";
+import { changeCounts, changeTotal, fileChanged, type SheetEdits } from "@/lib/sheet-edits";
 import { correctedFile } from "@/lib/corrected-file";
 import { saveFile } from "@/lib/save-file";
 import TechnicalDetails from "@/components/ui/TechnicalDetails";
@@ -54,7 +54,7 @@ export default function StepPreview({
   draft, net, onEdits, onBack, onNext, wallet, walletError, onConnect, wrongChain,
 }: {
   draft: RunDraft; net: NetworkView;
-  onEdits: (edits: RunEdits) => void;
+  onEdits: (edits: SheetEdits) => void;
   onBack: () => void; onNext: () => void;
   wallet?: ConnectedWallet; walletError?: ConnectError; onConnect: () => void;
   /** Connected, but not on Arc. The banner above carries the fix. */
@@ -66,12 +66,12 @@ export default function StepPreview({
   // identity, and a fresh object on every render would consume their pending
   // focus intent before the card was actually done being open.
   const fix = useMemo(
-    () => fixList({ checked: draft, source: draft.source, edits: draft.edits, tokens: draft.tokens }),
+    () => fixList({ checked: draft, source: draft.sheet, edits: draft.edits, tokens: draft.tokens }),
     [draft],
   );
   const blocking = fix.blocking;
   const changes = changeCounts(draft.edits);
-  const changed = changes.edited + changes.leftOut;
+  const changed = changeTotal(changes);
   const editedLines = new Set(Object.keys(draft.edits.cells).map(Number));
 
   // Read for the wallet on screen and dropped the moment it changes, so a
@@ -217,7 +217,7 @@ export default function StepPreview({
         ) : (
           <Button onClick={onBack}>Choose another file</Button>
         )}
-        {changes.edited > 0 && (
+        {fileChanged(changes) && (
           <Button onClick={() => { const f = correctedFile(draft); saveFile(f.name, f.text, f.type); }}>
             Download the corrected file
           </Button>

@@ -69,8 +69,8 @@ describe("runSummaryView — the summary's words", () => {
 
 describe("runSummaryView: changes made here", () => {
   it("says what was changed here, so the list being signed is visibly not the file", () => {
-    const v = runSummaryView("Payroll", { items: [] }, [], {}, {}, { edited: 3, leftOut: 1 });
-    expect(v.changes).toBe("3 lines edited here · 1 left out");
+    const v = runSummaryView("Payroll", { items: [] }, [], {}, {}, { cells: 3, columns: 0, added: 0, deleted: 0, leftOut: 1 });
+    expect(v.changes).toBe("3 cells · 1 left out");
   });
   it("says nothing without changes", () => {
     expect(runSummaryView("Payroll", { items: [] }, [], {}, {}).changes).toBeUndefined();

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button, Input, type GetRef } from "antd";
 import type { FieldFix, LineCard } from "@/lib/fix-list";
-import type { CellEdit } from "@/lib/run-edits";
+import type { CellEdit } from "@/lib/sheet-edits";
 
 type Apply = (changes: CellEdit[], focusUndo: boolean) => void;
 
@@ -16,7 +16,7 @@ function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApp
 
   const id = `fix-${line}-${fix.field}`;
   const commit = (focusUndo: boolean) => {
-    if (text.trim() !== fix.value.trim()) onApply([{ line, field: fix.field, text }], focusUndo);
+    if (text.trim() !== fix.value.trim()) onApply([{ line, col: fix.col, text }], focusUndo);
   };
   return (
     <div className="fix-field">
@@ -40,7 +40,7 @@ function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApp
       {fix.choices.length > 0 && (
         <div className="fix-choices" role="group" aria-label={fix.field === "token" ? "Token" : "Read it as"}>
           {fix.choices.map((c) => (
-            <Button key={c.label} size="small" onClick={() => onApply([{ line, field: fix.field, text: c.text }], true)}>
+            <Button key={c.label} size="small" onClick={() => onApply([{ line, col: fix.col, text: c.text }], true)}>
               {c.label}
             </Button>
           ))}
@@ -57,12 +57,13 @@ function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApp
  * moves to its own Undo, never to the page. An open card shows the changes
  * whose field it no longer asks for, with the same Undo.
  */
-export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutBack }: {
+export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutBack, onDelete }: {
   card: LineCard;
   onApply: (changes: CellEdit[]) => void;
   onUndo: () => void;
   onLeaveOut: () => void;
   onPutBack: () => void;
+  onDelete: () => void;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const undoRef = useRef<GetRef<typeof Button>>(null);
@@ -125,9 +126,13 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
       {card.unreadableText !== undefined && <pre className="hex fix-raw">{card.unreadableText}</pre>}
       {card.changes.length > 0 && changed}
       {card.fields.map((f) => <FieldInput key={f.field} line={card.line} fix={f} onApply={apply} />)}
-      <Button size="small" type="text" onClick={() => { pending.current = true; onLeaveOut(); }}>
-        Leave out of this run
-      </Button>
+      {card.isNew ? (
+        <Button size="small" type="text" onClick={onDelete}>Delete this line</Button>
+      ) : (
+        <Button size="small" type="text" onClick={() => { pending.current = true; onLeaveOut(); }}>
+          Leave out of this run
+        </Button>
+      )}
     </article>
   );
 }

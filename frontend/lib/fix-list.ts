@@ -1,6 +1,6 @@
-import { amountInFile, type CsvField, type ParsedCsv, type TokenSet } from "@ledgerline/core";
+import { amountInFile, type ColumnId, type CsvField, type ParsedCsv, type TokenSet } from "@ledgerline/core";
 import type { CheckedFile, RowProblem } from "@/lib/review-view";
-import type { AppliedGroup, CellEdit, RunEdits } from "@/lib/run-edits";
+import type { Batch, CellEdit, SheetEdits } from "@/lib/sheet-edits";
 
 export const GROUP_MIN = 3;
 export const RECIPIENT_HELP = "Paste the full address. Check it against the one you were given.";
@@ -10,7 +10,7 @@ const LABEL: Record<CsvField, string> = { invoiceId: "Invoice", token: "Token", 
 const ROW_KEY = { invoiceId: "invoiceId", token: "tokenSymbol", to: "to", amount: "amount" } as const;
 
 export interface Choice { label: string; text: string }
-export interface FieldFix { field: CsvField; label: string; value: string; choices: Choice[]; help?: string }
+export interface FieldFix { field: CsvField; col: ColumnId; label: string; value: string; choices: Choice[]; help?: string }
 export interface LineCard {
   id: string;
   line: number;
@@ -21,13 +21,16 @@ export interface LineCard {
   changes: { label: string; before: string; after: string }[];
   unreadableText?: string;
   blocking: boolean;
+  /** Added on the Review step: deleted, not left out. */
+  isNew: boolean;
 }
 export interface GroupRow { line: number; raw: string; choices: Choice[] }
-export interface GroupAction { label: string; edits: CellEdit[]; applied: AppliedGroup }
+export interface GroupAction { label: string; changes: CellEdit[]; batch: Omit<Batch, "cells"> }
 export interface GroupCard {
   id: string;
   key: string;
   field: CsvField;
+  col: ColumnId;
   state: "open" | "applied";
   title: string;
   lead?: string;
@@ -62,11 +65,63 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
  * computed; nothing is applied until the payer presses it.
  */
 export function fixList({ checked, source, edits, tokens }: {
-  checked: CheckedFile; source: ParsedCsv; edits: RunEdits; tokens: TokenSet;
+  checked: CheckedFile; source: ParsedCsv; edits: SheetEdits; tokens: TokenSet;
 }): FixListView {
+  const problems = checked.problems;
+  const fileProblems = checked.fileProblems;
+  const { openGroups, appliedGroups, cards } = source.columns
+    ? lists(checked, source, source.columns, edits, tokens)
+    : { openGroups: [], appliedGroups: [], cards: [] };
+
+  const groups = [...appliedGroups, ...openGroups];
+  if (fileProblems.length + groups.length + cards.length === 0) {
+    return { fileProblems, groups, cards, blocking: 0, firstOpen: "fix-list" };
+  }
+
+  const blockingLines = new Set(problems.filter((p) => p.level === "error").map((p) => p.line)).size;
+  const blocking = blockingLines + (fileProblems.length > 0 ? 1 : 0);
+  const withProblem = new Set(problems.map((p) => p.line));
+  // A line a numbering or a find and replace touched is not "fixed" for it.
+  const inColumnBatch = new Set(edits.batches.filter((b) => b.kind === "column")
+    .flatMap((b) => b.cells.map(([l, c]) => `${l}:${c}`)));
+  const ownCells = (l: number) =>
+    (Object.keys(edits.cells[l] ?? {}) as ColumnId[]).some((c) => !inColumnBatch.has(`${l}:${c}`));
+  const fixed = Object.keys(edits.cells).map(Number).filter((l) =>
+    ownCells(l) && !edits.leftOut.includes(l) && !edits.deleted.includes(l)
+    && !edits.newLines.includes(l) && !withProblem.has(l)).length;
+  const leftOut = edits.leftOut.length;
+
+  const counts = [
+    ...(blockingLines > 0 ? [`${plural(blockingLines, "line stops", "lines stop")} this run`] : []),
+    ...(fixed > 0 ? [`${fixed} fixed`] : []),
+    ...(leftOut > 0 ? [`${leftOut} left out`] : []),
+  ].join(" · ") || undefined;
+
+  const one = blocking === 1;
+  const summary =
+    blocking > 0
+      ? `${plural(blocking, "problem stops", "problems stop")} this run from being paid. ${
+        blockingLines > 0 ? `Fix ${one ? "it" : "them"} below, or in your file and choose it again.` : `Fix ${one ? "it" : "them"} in the file and choose it again.`}`
+    : problems.length > 0 ? "Worth a second look before paying. They do not stop the run."
+    : undefined;
+  const title = blocking > 0 ? "Fix these lines" : problems.length > 0 ? "Check these lines" : "Your changes";
+  const firstOpen = openGroups.find((g) => g.blocking)?.id ?? cards.find((c) => c.blocking)?.id ?? "fix-list";
+
+  return {
+    fileProblems, groups, cards, blocking, title, summary, counts, firstOpen,
+    ...(blocking > 0 ? { fixFirst: `Fix ${plural(blocking, "problem", "problems")} first` } : {}),
+  };
+}
+
+function lists(
+  checked: CheckedFile, source: ParsedCsv, columns: Record<CsvField, ColumnId>, edits: SheetEdits, tokens: TokenSet,
+): { openGroups: GroupCard[]; appliedGroups: GroupCard[]; cards: LineCard[] } {
   const inFile = (a: string) => amountInFile(a, source.delimiter);
   const symbols = Object.keys(tokens);
   const spell = (raw: string) => symbols.find((s) => s.toLowerCase() === raw.toLowerCase());
+  const roleOf = new Map<ColumnId, CsvField>(
+    (Object.entries(columns) as [CsvField, ColumnId][]).map(([f, c]) => [c, f]),
+  );
   const current = new Map(checked.parsed.map((r) => [r.line, r]));
   const original = new Map(source.rows.map((r) => [r.line, r]));
   const resolved = new Map(checked.rows.map((r) => [r.line, r]));
@@ -88,13 +143,15 @@ export function fixList({ checked, source, edits, tokens }: {
     const k = keyOf(p);
     if (k) byKey.set(k, [...(byKey.get(k) ?? []), p]);
   }
-  const appliedKeys = new Set(edits.groups.map((g) => g.key));
+  const groupBatches = edits.batches.filter((b) => b.kind === "group");
+  const appliedKeys = new Set(groupBatches.map((b) => b.id));
   const inOpenGroup = new Set<string>();
   const openGroups: GroupCard[] = [];
   for (const [key, ps] of byKey) {
     if (ps.length < GROUP_MIN) continue;
     for (const p of ps) inOpenGroup.add(`${p.line}:${p.field}`);
     const field = ps[0]!.field!;
+    const col = columns[field];
     const lines = ps.map((p) => p.line);
     const n = lines.length;
     const raw = (l: number) => value(l, field);
@@ -102,8 +159,8 @@ export function fixList({ checked, source, edits, tokens }: {
     const blocking = ps.some((p) => p.level === "error");
     const act = (label: string, text: (p: RowProblem) => string, title: string): GroupAction => ({
       label,
-      edits: ps.map((p) => ({ line: p.line, field, text: text(p) })),
-      applied: { key, field, lines, title },
+      changes: ps.map((p) => ({ line: p.line, col, text: text(p) })),
+      batch: { id: key, kind: "group", title },
     });
 
     let title: string;
@@ -140,20 +197,23 @@ export function fixList({ checked, source, edits, tokens }: {
       return readings ? `line ${p.line}: ${raw(p.line)} → ${readings}${sym ? ` ${sym}` : ""}` : `line ${p.line}: ${raw(p.line) || "(empty)"}`;
     });
     const id = `fix-group-${slug(key)}${appliedKeys.has(key) ? "-more" : ""}`;
-    openGroups.push({ id, key, field, state: "open", title, lead, examples, rows, lines, actions, blocking });
+    openGroups.push({ id, key, field, col, state: "open", title, lead, examples, rows, lines, actions, blocking });
   }
 
-  const appliedGroups: GroupCard[] = edits.groups.map((g) => ({
-    id: `fix-group-${slug(g.key)}`, key: g.key, field: g.field, state: "applied", title: g.title,
-    examples: [], rows: [], lines: g.lines, actions: [], blocking: false,
-  }));
+  const appliedGroups: GroupCard[] = groupBatches.map((b) => {
+    const field = roleOf.get(b.cells[0]![1]) ?? "token";
+    return {
+      id: `fix-group-${slug(b.id)}`, key: b.id, field, col: columns[field], state: "applied", title: b.title,
+      examples: [], rows: [], lines: [...new Set(b.cells.map(([l]) => l))], actions: [], blocking: false,
+    };
+  });
 
-  // Fields each line had changed by an applied group: those need no line card.
-  const byGroup = new Map<number, Set<CsvField>>();
-  for (const g of edits.groups) for (const l of g.lines) byGroup.set(l, new Set([...(byGroup.get(l) ?? []), g.field]));
+  // Cells a batch wrote are undone with the batch, not on a line's card.
+  const inBatch = new Set(edits.batches.flatMap((b) => b.cells.map(([l, c]) => `${l}:${c}`)));
 
   const fieldFix = (line: number, field: CsvField, p?: RowProblem): FieldFix => ({
     field,
+    col: columns[field],
     label: LABEL[field],
     value: value(line, field),
     choices: field === "token" ? symbols.map((s) => ({ label: s, text: s }))
@@ -168,27 +228,32 @@ export function fixList({ checked, source, edits, tokens }: {
 
   const cards: LineCard[] = [];
   const touched = new Set<number>([
-    ...problems.map((p) => p.line), ...Object.keys(edits.cells).map(Number), ...edits.removed,
+    ...problems.map((p) => p.line), ...Object.keys(edits.cells).map(Number), ...edits.leftOut,
   ]);
   for (const line of [...touched].sort((a, b) => a - b)) {
+    if (edits.deleted.includes(line)) continue;
+    const isNew = edits.newLines.includes(line);
     const orig = original.get(line);
-    if (!orig) continue;
-    const invoice = current.get(line)?.invoiceId ?? orig.invoiceId;
-    const heading = invoice ? `Line ${line} · ${invoice}` : `Line ${line}`;
+    if (!orig && !isNew) continue;
+    const invoice = current.get(line)?.invoiceId ?? orig?.invoiceId ?? "";
+    const heading = `Line ${line}${isNew ? " · new" : ""}${invoice ? ` · ${invoice}` : ""}`;
     const id = `fix-line-${line}`;
-    const base = { id, line, messages: [], fields: [], changes: [], blocking: false };
+    const base = { id, line, messages: [], fields: [], changes: [], blocking: false, isNew };
 
-    if (edits.removed.includes(line)) {
+    if (edits.leftOut.includes(line)) {
       cards.push({ ...base, state: "left-out", heading: `${heading} · left out of this run` });
       continue;
     }
+    const row = current.get(line);
+    if (!row) continue;
     const all = problems.filter((p) => p.line === line);
     const own = all.filter((p) => !(p.field && inOpenGroup.has(`${line}:${p.field}`)));
-    const row = current.get(line)!;
-    // The line's own edits; a group's change is undone on the group's card.
-    const edited = (Object.keys(edits.cells[line] ?? {}) as CsvField[]).filter((f) => !byGroup.get(line)?.has(f));
+    const edited = [...new Set((Object.keys(edits.cells[line] ?? {}) as ColumnId[])
+      .filter((c) => !inBatch.has(`${line}:${c}`))
+      .map((c) => roleOf.get(c))
+      .filter((f): f is CsvField => f !== undefined))];
     const change = (f: CsvField) => ({
-      label: LABEL[f], before: orig.unreadable ? "" : orig[ROW_KEY[f]], after: after(line, f),
+      label: LABEL[f], before: !orig || orig.unreadable ? "" : orig[ROW_KEY[f]], after: after(line, f),
     });
     if (own.length > 0) {
       // Still open. An edit whose field lost its input is shown as a change,
@@ -214,39 +279,7 @@ export function fixList({ checked, source, edits, tokens }: {
     });
   }
 
-  const groups = [...appliedGroups, ...openGroups];
-  const fileProblems = checked.fileProblems;
-  if (fileProblems.length + groups.length + cards.length === 0) {
-    return { fileProblems, groups, cards, blocking: 0, firstOpen: "fix-list" };
-  }
-
-  const blockingLines = new Set(problems.filter((p) => p.level === "error").map((p) => p.line)).size;
-  const blocking = blockingLines + (fileProblems.length > 0 ? 1 : 0);
-  const withProblem = new Set(problems.map((p) => p.line));
-  const fixed = Object.keys(edits.cells).map(Number)
-    .filter((l) => !edits.removed.includes(l) && !withProblem.has(l)).length;
-  const leftOut = edits.removed.length;
-
-  const counts = [
-    ...(blockingLines > 0 ? [`${plural(blockingLines, "line stops", "lines stop")} this run`] : []),
-    ...(fixed > 0 ? [`${fixed} fixed`] : []),
-    ...(leftOut > 0 ? [`${leftOut} left out`] : []),
-  ].join(" · ") || undefined;
-
-  const one = blocking === 1;
-  const summary =
-    blocking > 0
-      ? `${plural(blocking, "problem stops", "problems stop")} this run from being paid. ${
-        blockingLines > 0 ? `Fix ${one ? "it" : "them"} below, or in your file and choose it again.` : `Fix ${one ? "it" : "them"} in the file and choose it again.`}`
-    : problems.length > 0 ? "Worth a second look before paying. They do not stop the run."
-    : undefined;
-  const title = blocking > 0 ? "Fix these lines" : problems.length > 0 ? "Check these lines" : "Your changes";
-  const firstOpen = openGroups.find((g) => g.blocking)?.id ?? cards.find((c) => c.blocking)?.id ?? "fix-list";
-
-  return {
-    fileProblems, groups, cards, blocking, title, summary, counts, firstOpen,
-    ...(blocking > 0 ? { fixFirst: `Fix ${plural(blocking, "problem", "problems")} first` } : {}),
-  };
+  return { openGroups, appliedGroups, cards };
 }
 
 /** The id of one line's row inside an open group's list. */

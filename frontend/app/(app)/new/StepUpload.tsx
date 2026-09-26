@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Alert, Button, Input, Upload, type InputRef } from "antd";
-import { parseCsv, tokensForChain } from "@ledgerline/core";
+import { readLines, tokensForChain } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
 import type { RunBase } from "./CreateRun";
@@ -33,7 +33,7 @@ export default function StepUpload({
       // Decimals come from the chain before any amount is interpreted.
       const { decimals, symbols } = await readTokenMeta(net.defaultRpc, net.chain, net.chain.id);
       onReady({
-        text, source: parseCsv(text), sourceName: name, runLabel: runLabel.trim(),
+        text, lines: readLines(text), sourceName: name, runLabel: runLabel.trim(),
         tokens: tokensForChain(net.chain.id), decimals, symbols,
       });
     } catch (err) {
