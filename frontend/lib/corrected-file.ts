@@ -39,7 +39,7 @@ export function correctedCsv(text: string, source: ParsedCsv, edits: RunEdits): 
     const cells = row.unreadable ? source.header.map(() => "") : [...row.cells];
     for (const f of Object.keys(e) as CsvField[]) {
       const value = e[f]!.trim();
-      cells[columns[f]] = f === "amount" ? amountCell(value, source.delimiter) : value;
+      cells[Number(columns[f].slice(1))] = f === "amount" ? amountCell(value, source.delimiter) : value;
     }
     lines[row.line - 1]!.body = cells.map((c) => cellText(c, source.delimiter)).join(source.delimiter);
   }

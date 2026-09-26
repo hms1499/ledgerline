@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseCsv } from "../src/csv.js";
+import { parseCsv, readLines, readSheet } from "../src/csv.js";
 
 const GOOD = `invoiceId,token,to,amount
 INV-US-001,USDC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10
@@ -266,9 +266,11 @@ INV-5;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.250,50`;
   });
 
   it("keeps the header as written and where each field sits, for a corrected file", () => {
-    const { header, columns } = parseCsv(`Name,Amount,Recipient,Invoice ID,Currency\nAn,1,0x,INV-1,USDC`);
+    const { header, columns, roles, headerLine } = parseCsv(`Name,Amount,Recipient,Invoice ID,Currency\nAn,1,0x,INV-1,USDC`);
     expect(header).toEqual(["Name", "Amount", "Recipient", "Invoice ID", "Currency"]);
-    expect(columns).toEqual({ invoiceId: 3, token: 4, to: 2, amount: 1 });
+    expect(columns).toEqual({ invoiceId: "f3", token: "f4", to: "f2", amount: "f1" });
+    expect(roles).toEqual({ f0: "unused", f1: "amount", f2: "to", f3: "invoiceId", f4: "token" });
+    expect(headerLine).toBe(1);
     expect(parseCsv("id,coin\n1,2").columns).toBeUndefined();
   });
 });
@@ -283,6 +285,89 @@ const DECIMALS = {
   [TOKENS.cirBTC.toLowerCase()]: 8,
 };
 const TO = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+
+const ADDR = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+
+describe("readLines", () => {
+  it("keeps each line's break, so a file can be written back byte for byte", () => {
+    const text = "\uFEFFa,b\r\nc,d\ne";
+    const lines = readLines(text);
+    expect(lines).toEqual([{ body: "\uFEFFa,b", end: "\r\n" }, { body: "c,d", end: "\n" }, { body: "e", end: "" }]);
+    expect(lines.map((l) => l.body + l.end).join("")).toBe(text);
+  });
+
+  it("numbers lines as splitting on line breaks would", () => {
+    expect(readLines("a\n")).toEqual([{ body: "a", end: "\n" }, { body: "", end: "" }]);
+    expect(readLines("")).toEqual([{ body: "", end: "" }]);
+  });
+});
+
+describe("readSheet", () => {
+  it("reads a file as parseCsv does when given no structure", () => {
+    const text = `invoiceId,token,to,amount\nINV-1,USDC,${ADDR},1`;
+    expect(readSheet(readLines(text))).toEqual(parseCsv(text));
+  });
+
+  it("reads a later line as the header, and its delimiter from that line", () => {
+    const text = `ledgerline-sample\r\ninvoiceId;token;to;amount\r\nINV-1;USDC;${ADDR};0.10`;
+    expect(parseCsv(text).issues[0]!.message).toMatch(/Missing: invoiceId, token, to, amount/);
+    const s = readSheet(readLines(text), { headerLine: 2 });
+    expect(s.issues).toEqual([]);
+    expect(s.delimiter).toBe(";");
+    expect(s.headerLine).toBe(2);
+    expect(s.rows).toEqual([{
+      line: 3, invoiceId: "INV-1", tokenSymbol: "USDC", to: ADDR, amount: "0.10", cells: ["INV-1", "USDC", ADDR, "0.10"],
+    }]);
+  });
+
+  it("gives a column a role its name does not, and takes one away", () => {
+    const text = `Name,Wallet,Amount (USDC),Invoice #,Currency\nAn,${ADDR},5,INV-1,USDC`;
+    const s = readSheet(readLines(text), { roles: { f2: "amount", f3: "invoiceId" } });
+    expect(s.columns).toEqual({ invoiceId: "f3", token: "f4", to: "f1", amount: "f2" });
+    expect(s.roles).toEqual({ f0: "unused", f1: "to", f2: "amount", f3: "invoiceId", f4: "token" });
+    expect(s.rows[0]).toMatchObject({ invoiceId: "INV-1", tokenSymbol: "USDC", to: ADDR, amount: "5" });
+    const off = readSheet(readLines(text), { roles: { f2: "amount", f3: "invoiceId", f4: "unused" } });
+    expect(off.issues[0]!.message).toMatch(/Missing: token\./);
+    expect(off.roles.f4).toBe("unused");
+  });
+
+  it("reads a new column's value on every line, and lets it hold a role", () => {
+    const text = `wallet,amount\n${ADDR},100\n${ADDR},250`;
+    const s = readSheet(readLines(text), { newColumns: [
+      { id: "n1", name: "token", role: "token", fill: "USDC" },
+      { id: "n2", name: "invoiceId", role: "invoiceId", fill: "" },
+    ] });
+    expect(s.issues).toEqual([]);
+    expect(s.columns).toEqual({ invoiceId: "n2", token: "n1", to: "f0", amount: "f1" });
+    expect(s.rows.map((r) => [r.tokenSymbol, r.invoiceId])).toEqual([["USDC", ""], ["USDC", ""]]);
+  });
+
+  it("names both columns when two hold one role, and reads the file once one is not used", () => {
+    const text = `Amount,Value,invoiceId,token,to\n1,2,INV-1,USDC,${ADDR}`;
+    expect(readSheet(readLines(text)).issues[0]!.message)
+      .toBe('Two columns could be the amount: "Amount" and "Value". Keep one.');
+    expect(readSheet(readLines(text), { roles: { f1: "unused" } }).issues).toEqual([]);
+  });
+
+  it("reads a line of empty cells as blank, as a spreadsheet writes an empty row", () => {
+    const text = `invoiceId,token,to,amount\nINV-1,USDC,${ADDR},1\n,,,\nINV-2,USDC,${ADDR},2`;
+    expect(parseCsv(text).rows.map((r) => r.line)).toEqual([2, 4]);
+  });
+
+  it("looks past lines of empty cells for the header", () => {
+    expect(parseCsv(`,,,\ninvoiceId,token,to,amount\nINV-1,USDC,${ADDR},1`).headerLine).toBe(2);
+  });
+
+  it("falls back to the first line with a cell when the chosen header line is blank or past the end", () => {
+    const lines = readLines(`invoiceId,token,to,amount\n\nINV-1,USDC,${ADDR},1`);
+    expect(readSheet(lines, { headerLine: 2 }).headerLine).toBe(1);
+    expect(readSheet(lines, { headerLine: 9 }).headerLine).toBe(1);
+  });
+
+  it("says an empty file is empty, with no header and no roles", () => {
+    expect(readSheet(readLines("\n\n"))).toMatchObject({ headerLine: 0, roles: {}, rows: [] });
+  });
+});
 
 describe("toBaseUnits", () => {
   it("converts a decimal amount at the token's scale", () => {

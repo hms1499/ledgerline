@@ -39,16 +39,45 @@ export interface ParsedCsv {
   rows: ParsedRow[];
   /** Problems with the file as a whole. A row's problems come from `resolveRows`. */
   issues: CsvIssue[];
-  /** The file's field separator, read from its first line. */
+  /** The file's field separator, read from its header line. */
   delimiter: Delimiter;
-  /** The first line's names, as written. */
+  /** The header line's names, as written. */
   header: string[];
-  /** Where each field sits. Undefined when the first line could not name them. */
-  columns?: Record<CsvField, number>;
+  /** 1-based line of the header; 0 for a file with no line to name columns. */
+  headerLine: number;
+  /** What every column holds, the file's then the new ones, read from their
+   *  names and any roles set on the Review step. Empty with no header. */
+  roles: Record<ColumnId, Role>;
+  /** Where each field sits. Undefined when the columns do not name all four once. */
+  columns?: Record<CsvField, ColumnId>;
 }
 
 /** A tab is what a spreadsheet puts on the clipboard when cells are copied. */
 export type Delimiter = "," | ";" | "\t";
+
+/** A column of the sheet: `f<i>` is the file's column at index i on the
+ *  header line; `n<k>` is the k-th column added on the Review step. */
+export type ColumnId = `f${number}` | `n${number}`;
+
+/** What a column holds for the run, or nothing. */
+export type Role = CsvField | "unused";
+
+/** One line of a file and the break that ended it (`""` for the last). */
+export interface FileLine { body: string; end: string }
+
+/** A column the file never had, added on the Review step. `fill` is the value
+ *  of every line that has no cell of its own there. */
+export interface NewColumn { id: `n${number}`; name: string; role: Role; fill: string }
+
+/** How to read a file's lines as a table: which line names the columns, and
+ *  which column holds what. */
+export interface SheetStructure {
+  /** 1-based. Default: the first line with a non-empty cell. */
+  headerLine?: number;
+  /** Roles for the file's columns, over those read from their names. */
+  roles?: Readonly<Partial<Record<`f${number}`, Role>>>;
+  newColumns?: readonly NewColumn[];
+}
 
 const FIELDS: readonly CsvField[] = ["invoiceId", "token", "to", "amount"];
 
@@ -68,7 +97,8 @@ const FIELD_WORD: Record<CsvField, string> = {
 };
 
 const normalise = (name: string) => name.trim().toLowerCase().replace(/[\s_.-]/g, "");
-const fieldFor = (name: string): CsvField | undefined =>
+/** The field a column's name says it holds, if any. */
+export const fieldFor = (name: string): CsvField | undefined =>
   FIELDS.find((f) => ALIASES[f].includes(normalise(name)));
 
 /** A tab outside quotes wins: no column name we read contains one, and it is
@@ -174,76 +204,102 @@ export function readAmount(text: string, delimiter: Delimiter): AmountReading {
 }
 
 /**
+ * The file's lines, each with the break that ended it, so a line not edited
+ * can be written back byte for byte. The one place lines are numbered:
+ * reading and writing a file cannot disagree about which line is which.
+ */
+export function readLines(text: string): FileLine[] {
+  const out: FileLine[] = [];
+  const re = /([^\r\n]*)(\r\n|\n|\r|$)/g;
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    out.push({ body: m[1]!, end: m[2]! });
+    if (m[2] === "") break;
+  }
+  return out;
+}
+
+/** A line with nothing in it: empty, or only delimiters (`,,,,,` is how a
+ *  spreadsheet writes an empty row). It holds no data, so skipping it
+ *  guesses nothing. */
+export function isBlankLine(body: string, delimiter: Delimiter): boolean {
+  return body.trim() === "" || splitCells(body, delimiter).every((c) => c.trim() === "");
+}
+
+/**
  * Minimal RFC 4180. A real CSV library would be a dependency for 40 lines of
  * behaviour we can state exactly, and this file is on the path where a wrong
  * answer sends money to the wrong place.
  *
- * Splits and maps; reads no meaning. The first line is required and names the
- * columns, matched by name in any order; a column that names nothing we pay
- * is kept in `cells` and otherwise ignored. Every data line is returned, even
- * one that cannot be split into the header's columns, so the payer can see it
- * and fix it. What a value means (an amount, a token, an address) is
- * `resolveRows`' job.
+ * Reads a file's lines as a table under a structure: the header line, which
+ * column holds what, and columns added on the Review step. Splits and maps;
+ * reads no meaning. A column that holds nothing we pay is kept in `cells` and
+ * otherwise ignored. Every data line is returned, even one that cannot be
+ * split into the header's columns, so the payer can see it and fix it. What a
+ * value means (an amount, a token, an address) is `resolveRows`' job.
  */
-export function parseCsv(text: string): ParsedCsv {
-  const issues: CsvIssue[] = [];
+export function readSheet(lines: readonly FileLine[], structure: SheetStructure = {}): ParsedCsv {
   const rows: ParsedRow[] = [];
-
   // Excel writes a BOM; left in place it becomes part of the first header name.
-  const clean = text.replace(/^﻿/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-  // Split on newlines before quote-aware parsing: a quoted field containing a
-  // literal newline (RFC 4180 permits it) will fragment. That's intentional — the
-  // four columns are invoiceId, token (symbol), address, and amount; none
-  // legitimately contains a newline, so multi-line quoted fields fail closed via
-  // the column-count check below rather than producing bogus data.
-  const lines = clean.split("\n");
+  const bodies = lines.map((l, i) => (i === 0 ? l.body.replace(/^﻿/, "") : l.body));
+  const blank = (b: string) => isBlankLine(b, delimiterOf(b));
 
-  const headerIndex = lines.findIndex((l) => l.trim() !== "");
+  const chosen = structure.headerLine;
+  const headerIndex = chosen !== undefined && chosen >= 1 && chosen <= bodies.length && !blank(bodies[chosen - 1]!)
+    ? chosen - 1
+    : bodies.findIndex((b) => !blank(b));
   if (headerIndex === -1) {
-    return { rows, issues: [{ line: 1, message: "The file is empty." }], delimiter: ",", header: [] };
+    return { rows, issues: [{ line: 1, message: "The file is empty." }], delimiter: ",", header: [], headerLine: 0, roles: {} };
   }
 
-  const delimiter = delimiterOf(lines[headerIndex]!);
-  const header = splitLine(lines[headerIndex]!, delimiter);
-  const names = header.map((h) => h.trim());
   const headerLine = headerIndex + 1;
+  const delimiter = delimiterOf(bodies[headerIndex]!);
+  const header = splitCells(bodies[headerIndex]!, delimiter);
+  const names = header.map((h) => h.trim());
+  const newColumns = structure.newColumns ?? [];
 
-  const at: Partial<Record<CsvField, number>> = {};
-  for (let i = 0; i < names.length; i++) {
-    const field = fieldFor(names[i]!);
-    if (!field) continue;
-    const seen = at[field];
+  const roles: Record<ColumnId, Role> = {};
+  names.forEach((name, i) => { roles[`f${i}`] = structure.roles?.[`f${i}`] ?? fieldFor(name) ?? "unused"; });
+  for (const c of newColumns) roles[c.id] = c.role;
+  const nameOf = (id: ColumnId) =>
+    id.startsWith("f") ? names[Number(id.slice(1))]! : newColumns.find((c) => c.id === id)!.name;
+
+  const at: Partial<Record<CsvField, ColumnId>> = {};
+  for (const id of Object.keys(roles) as ColumnId[]) {
+    const role = roles[id];
+    if (role === undefined || role === "unused") continue;
+    const seen = at[role];
     if (seen !== undefined) {
       return {
-        rows, delimiter, header,
+        rows, delimiter, header, headerLine, roles,
         issues: [{
           line: headerLine,
-          message: `Two columns could be the ${FIELD_WORD[field]}: "${names[seen]}" and "${names[i]}". Keep one.`,
+          message: `Two columns could be the ${FIELD_WORD[role]}: "${nameOf(seen)}" and "${nameOf(id)}". Keep one.`,
         }],
       };
     }
-    at[field] = i;
+    at[role] = id;
   }
 
   const missing = FIELDS.filter((f) => at[f] === undefined);
   if (missing.length > 0) {
     const found = names.filter((n) => n !== "").join(", ") || "nothing";
     return {
-      rows, delimiter, header,
+      rows, delimiter, header, headerLine, roles,
       issues: [{
         line: headerLine,
         message: `The first line must name the columns invoiceId, token, to and amount, in any order. Missing: ${missing.join(", ")}. Found: ${found}.`,
       }],
     };
   }
-  const columns = at as Record<CsvField, number>;
+  const columns = at as Record<CsvField, ColumnId>;
 
+  const fills = new Map<ColumnId, string>(newColumns.map((c) => [c.id, c.fill.trim()]));
   const mark = { ",": "a comma", ";": "a semicolon", "\t": "a tab" }[delimiter];
-  for (let i = headerIndex + 1; i < lines.length; i++) {
-    const raw = lines[i]!;
-    if (raw.trim() === "") continue;
+  for (let i = headerIndex + 1; i < bodies.length; i++) {
+    const raw = bodies[i]!;
+    if (isBlankLine(raw, delimiter)) continue;
     const line = i + 1;
-    const cells = splitLine(raw, delimiter);
+    const cells = splitCells(raw, delimiter);
 
     if (cells.length !== names.length) {
       rows.push({
@@ -256,17 +312,25 @@ export function parseCsv(text: string): ParsedCsv {
       continue;
     }
 
-    const cell = (f: CsvField) => cells[columns[f]]!.trim();
+    const cell = (f: CsvField) => {
+      const id = columns[f];
+      return id.startsWith("f") ? cells[Number(id.slice(1))]!.trim() : fills.get(id) ?? "";
+    };
     rows.push({
       line, invoiceId: cell("invoiceId"), tokenSymbol: cell("token"), to: cell("to"), amount: cell("amount"), cells,
     });
   }
 
-  return { rows, issues, delimiter, header, columns };
+  return { rows, issues: [], delimiter, header, headerLine, roles, columns };
+}
+
+/** A file's text read as it stands: its first line with a cell is the header. */
+export function parseCsv(text: string): ParsedCsv {
+  return readSheet(readLines(text));
 }
 
 /** One line into fields, honouring double quotes and the doubled-quote escape. */
-function splitLine(line: string, delimiter: Delimiter): string[] {
+export function splitCells(line: string, delimiter: Delimiter): string[] {
   const out: string[] = [];
   let field = "";
   let quoted = false;
