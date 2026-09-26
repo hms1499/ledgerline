@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { tokensForChain } from "@ledgerline/core";
-import { checkRunFile, reviewView } from "@/lib/review-view";
+import { parseCsv, tokensForChain } from "@ledgerline/core";
+import { checkRunFile, checkRows, reviewView, ALL_LEFT_OUT } from "@/lib/review-view";
+import { NO_EDITS, withEdits, leaveOut } from "@/lib/run-edits";
 
 const TOKENS = tokensForChain(5042002);
 const DECIMALS = {
@@ -69,5 +70,45 @@ INV-4,EURC,${A},"1,000"`);
   it("is empty for a clean file", () => {
     const v = viewOf(`invoiceId,token,to,amount\nINV-1,USDC,${A},1`);
     expect(v).toEqual({ items: [], blocking: 0 });
+  });
+});
+
+describe("checkRows", () => {
+  const check = (text: string, edits = NO_EDITS) => checkRows(parseCsv(text), edits, TOKENS, DECIMALS);
+
+  it("gives every row problem its line, field and level, in line order", () => {
+    const c = check(`invoiceId,token,to,amount\nINV-1,USD,${A},1\nINV-2,USDC,${A},1\nINV-3,USDC,${A},2`);
+    expect(c.problems.map((p) => [p.line, p.field, p.level])).toEqual([
+      [2, "token", "error"], [4, undefined, "warning"],
+    ]);
+    expect(c.fileProblems).toEqual([]);
+  });
+
+  it("keeps the file's own problems apart from the rows'", () => {
+    expect(check(`id,coin\n1,2`).fileProblems[0]).toMatch(/^The first line must name the columns/);
+    expect(check(`invoiceId,token,to,amount\n`).fileProblems).toEqual(["This file has no payments in it."]);
+  });
+
+  it("re-reads a line from its edit, through the same rules", () => {
+    const text = `invoiceId,token,to,amount\nINV-1,USD,${A},1`;
+    const c = check(text, withEdits(NO_EDITS, [{ line: 2, field: "token", text: "USDC" }]));
+    expect(c.problems).toEqual([]);
+    expect(c.rows.map((r) => r.line)).toEqual([2]);
+  });
+
+  it("refuses 0,10 typed into a comma file, and reads 0.10 typed into a semicolon file", () => {
+    const comma = check(`invoiceId,token,to,amount\nINV-1,USDC,${A},x`,
+      withEdits(NO_EDITS, [{ line: 2, field: "amount", text: "0,10" }]));
+    expect(comma.rows).toEqual([]);
+    expect(comma.problems[0]).toMatchObject({ line: 2, field: "amount", level: "error" });
+    const semi = check(`invoiceId;token;to;amount\nINV-1;USDC;${A};x`,
+      withEdits(NO_EDITS, [{ line: 2, field: "amount", text: "0.10" }]));
+    expect(semi.rows[0]!.amount).toBe(100_000n);
+  });
+
+  it("says every line is left out, not that the file is empty", () => {
+    const c = check(`invoiceId,token,to,amount\nINV-1,USDC,${A},1`, leaveOut(NO_EDITS, 2));
+    expect(c.fileProblems).toEqual([ALL_LEFT_OUT]);
+    expect(ALL_LEFT_OUT).toBe("Every line is left out of this run. Put one back to pay it.");
   });
 });
