@@ -18,12 +18,12 @@ export interface CheckedFile {
  */
 export function checkRunFile(text: string, tokens: TokenSet, decimals: Record<string, number>): CheckedFile {
   const csv = parseCsv(text);
-  const resolved = resolveRows(csv.rows, tokens, decimals);
+  const resolved = resolveRows(csv.rows, tokens, decimals, csv.delimiter);
   const issues = [...csv.issues, ...resolved.issues];
   const run = validateRun(resolved.items, issues.length);
   return {
     rows: resolved.items, parsed: csv.rows, issues,
-    errors: run.errors, warnings: [...csv.warnings, ...run.warnings],
+    errors: run.errors, warnings: [...resolved.warnings, ...run.warnings],
   };
 }
 

@@ -2,42 +2,58 @@ import { getAddress, isAddress } from "viem";
 import type { TokenSet } from "./constants.js";
 import type { ManifestItem } from "./types.js";
 
-/** One row as it appears in the file. `amount` is still text: converting it
- *  needs the token's on-chain decimals, which is Task 2's job. */
+/** One row as it appears in the file. Every value is still text: an amount
+ *  is read by `readAmount` in `resolveRows`, with the file's delimiter, then
+ *  scaled by the token's on-chain decimals. */
 export interface ParsedRow {
   /** 1-based line in the file, counting the header. Errors are useless without it. */
   line: number;
   invoiceId: string;
   tokenSymbol: string;
   to: string;
+  /** As written: `0,10` in a `;` file stays `0,10`. */
   amount: string;
+  /** Every value on the line, extra columns included, so a corrected file keeps them. */
+  cells: string[];
+  /** Set when the line could not be split into the header's columns. Its four
+   *  fields are then empty, and `text` is the line as written. */
+  unreadable?: { message: string; text: string };
 }
+
+export type CsvField = "invoiceId" | "token" | "to" | "amount";
 
 export interface CsvIssue {
   line: number;
   message: string;
+  /** The field to fix. None when the fix is not one value (a line that
+   *  could not be read, a token whose decimals were not read). */
+  field?: CsvField;
+  /** Each amount the text could mean, dot-decimal, when `readAmount` found any. */
+  readings?: string[];
+  kind?: AmountKind;
 }
 
 export interface ParsedCsv {
   rows: ParsedRow[];
+  /** Problems with the file as a whole. A row's problems come from `resolveRows`. */
   issues: CsvIssue[];
-  /** Rows read as written that are still worth a second look. They do not
-   *  stop a run. */
-  warnings: CsvIssue[];
   /** The file's field separator, read from its first line. */
   delimiter: Delimiter;
+  /** The first line's names, as written. */
+  header: string[];
+  /** Where each field sits. Undefined when the first line could not name them. */
+  columns?: Record<CsvField, number>;
 }
 
 /** A tab is what a spreadsheet puts on the clipboard when cells are copied. */
 export type Delimiter = "," | ";" | "\t";
 
-type Field = "invoiceId" | "token" | "to" | "amount";
-const FIELDS: readonly Field[] = ["invoiceId", "token", "to", "amount"];
+const FIELDS: readonly CsvField[] = ["invoiceId", "token", "to", "amount"];
 
 /** What a spreadsheet calls each field, once lowercased and stripped of
  *  spaces, `_`, `-` and `.`. A column is matched by name, never by place:
  *  a reordered column can no longer be read as the wrong field. */
-const ALIASES: Record<Field, readonly string[]> = {
+const ALIASES: Record<CsvField, readonly string[]> = {
   invoiceId: ["invoiceid", "invoice", "invoiceno", "invoicenumber", "reference", "ref"],
   token: ["token", "currency", "asset"],
   to: ["to", "recipient", "address", "wallet", "recipientaddress", "walletaddress"],
@@ -45,12 +61,12 @@ const ALIASES: Record<Field, readonly string[]> = {
 };
 
 /** How a field is named to a person. */
-const FIELD_WORD: Record<Field, string> = {
+const FIELD_WORD: Record<CsvField, string> = {
   invoiceId: "invoice reference", token: "token", to: "recipient", amount: "amount",
 };
 
 const normalise = (name: string) => name.trim().toLowerCase().replace(/[\s_.-]/g, "");
-const fieldFor = (name: string): Field | undefined =>
+const fieldFor = (name: string): CsvField | undefined =>
   FIELDS.find((f) => ALIASES[f].includes(normalise(name)));
 
 /** A tab outside quotes wins: no column name we read contains one, and it is
@@ -160,27 +176,15 @@ export function readAmount(text: string, delimiter: Delimiter): AmountReading {
  * behaviour we can state exactly, and this file is on the path where a wrong
  * answer sends money to the wrong place.
  *
- * The first line is required and names the columns. They are matched by name,
- * in any order; a column that names nothing we pay is ignored.
- *
- * In a `;` file the comma is the decimal mark, so `0,10` is 0.10. A `.` there
- * is read as the decimal only when it cannot be grouping thousands: `0.10`,
- * `1.5` and `0.000001` can mean nothing else, and Numbers writes them so when
- * the cell was text in a region whose decimal mark is the comma. `1.000` and
- * `12.500` are refused rather than read: in the locales that write `;` files,
- * they are a thousand and twelve thousand, and this reader never guesses an
- * amount. A comma followed by
- * exactly three digits, as in `1,000`, is still read as a decimal — `0,125`
- * cirBTC is an ordinary amount — but is flagged: a spreadsheet can write `;`
- * with US grouping, and there it meant a thousand.
- *
- * Tab-separated text, pasted from a spreadsheet, carries amounts as the sheet
- * displayed them and is read like a `,` file: a dot for decimals and nothing
- * else, so a displayed `1,250.50` is refused by `toBaseUnits`, not guessed.
+ * Splits and maps; reads no meaning. The first line is required and names the
+ * columns, matched by name in any order; a column that names nothing we pay
+ * is kept in `cells` and otherwise ignored. Every data line is returned, even
+ * one that cannot be split into the header's columns, so the payer can see it
+ * and fix it. What a value means (an amount, a token, an address) is
+ * `resolveRows`' job.
  */
 export function parseCsv(text: string): ParsedCsv {
   const issues: CsvIssue[] = [];
-  const warnings: CsvIssue[] = [];
   const rows: ParsedRow[] = [];
 
   // Excel writes a BOM; left in place it becomes part of the first header name.
@@ -194,21 +198,22 @@ export function parseCsv(text: string): ParsedCsv {
 
   const headerIndex = lines.findIndex((l) => l.trim() !== "");
   if (headerIndex === -1) {
-    return { rows, issues: [{ line: 1, message: "The file is empty." }], warnings, delimiter: "," };
+    return { rows, issues: [{ line: 1, message: "The file is empty." }], delimiter: ",", header: [] };
   }
 
   const delimiter = delimiterOf(lines[headerIndex]!);
-  const names = splitLine(lines[headerIndex]!, delimiter).map((h) => h.trim());
+  const header = splitLine(lines[headerIndex]!, delimiter);
+  const names = header.map((h) => h.trim());
   const headerLine = headerIndex + 1;
 
-  const at: Partial<Record<Field, number>> = {};
+  const at: Partial<Record<CsvField, number>> = {};
   for (let i = 0; i < names.length; i++) {
     const field = fieldFor(names[i]!);
     if (!field) continue;
     const seen = at[field];
     if (seen !== undefined) {
       return {
-        rows, warnings, delimiter,
+        rows, delimiter, header,
         issues: [{
           line: headerLine,
           message: `Two columns could be the ${FIELD_WORD[field]}: "${names[seen]}" and "${names[i]}". Keep one.`,
@@ -222,13 +227,14 @@ export function parseCsv(text: string): ParsedCsv {
   if (missing.length > 0) {
     const found = names.filter((n) => n !== "").join(", ") || "nothing";
     return {
-      rows, warnings, delimiter,
+      rows, delimiter, header,
       issues: [{
         line: headerLine,
         message: `The first line must name the columns invoiceId, token, to and amount, in any order. Missing: ${missing.join(", ")}. Found: ${found}.`,
       }],
     };
   }
+  const columns = at as Record<CsvField, number>;
 
   const mark = { ",": "a comma", ";": "a semicolon", "\t": "a tab" }[delimiter];
   for (let i = headerIndex + 1; i < lines.length; i++) {
@@ -238,54 +244,23 @@ export function parseCsv(text: string): ParsedCsv {
     const cells = splitLine(raw, delimiter);
 
     if (cells.length !== names.length) {
-      issues.push({
-        line,
-        message: `This line has ${cells.length} value${cells.length === 1 ? "" : "s"} but the first line names ${names.length} columns. A value that contains ${mark} needs quotes around it.`,
+      rows.push({
+        line, invoiceId: "", tokenSymbol: "", to: "", amount: "", cells,
+        unreadable: {
+          message: `This line has ${cells.length} value${cells.length === 1 ? "" : "s"} but the first line names ${names.length} columns. A value that contains ${mark} needs quotes around it.`,
+          text: raw,
+        },
       });
       continue;
     }
 
-    const cell = (f: Field) => cells[at[f]!]!.trim();
-    let amount = cell("amount");
-    if (delimiter === ";") {
-      // A dot that cannot group thousands can only be the decimal: read as is.
-      const dotted = /^\d*\.\d+$/.test(amount);
-      const group = /^([1-9]\d{0,2})([.,])(\d{3})$/.exec(amount);
-      if (group) {
-        const [, whole, mark, frac] = group as unknown as [string, string, string, string];
-        const decimals = frac.replace(/0+$/, "");
-        const small = decimals ? `${whole},${decimals}` : whole;
-        if (mark === ".") {
-          issues.push({
-            line,
-            message: `In a file separated by ";", "${amount}" could mean ${small} or ${whole}${frac}. Write ${whole}${frac} for the larger amount, or ${small} for the smaller.`,
-          });
-          continue;
-        }
-        warnings.push({
-          line,
-          message: `In a file separated by ";", the comma marks decimals, so "${amount}" is read as ${small}, not ${whole}${frac}. If you meant ${whole}${frac}, write it without the comma.`,
-        });
-      } else if (!dotted && !/^\d*,?\d*$/.test(amount)) {
-        issues.push({
-          line,
-          message: `In a file separated by ";", write amounts with a comma for decimals and no other marks, like 1250,50. Found "${amount}".`,
-        });
-        continue;
-      }
-      if (!dotted) amount = amount.replace(",", ".");
-    }
-
+    const cell = (f: CsvField) => cells[columns[f]]!.trim();
     rows.push({
-      line,
-      invoiceId: cell("invoiceId"),
-      tokenSymbol: cell("token"),
-      to: cell("to"),
-      amount,
+      line, invoiceId: cell("invoiceId"), tokenSymbol: cell("token"), to: cell("to"), amount: cell("amount"), cells,
     });
   }
 
-  return { rows, issues, warnings, delimiter };
+  return { rows, issues, delimiter, header, columns };
 }
 
 /** One line into fields, honouring double quotes and the doubled-quote escape. */
@@ -361,14 +336,20 @@ export function toBaseUnits(
  * `decimals` is keyed by lowercased token address and can only come from
  * `decimals()` on chain. Requiring it here is how the "never hardcode
  * decimals" rule becomes a type signature instead of a comment.
+ *
+ * Every field a row gets wrong is reported at once, each naming its field,
+ * so a payer fixing a line sees everything that line needs. `delimiter` is
+ * the file's: it decides what an amount's marks mean (`readAmount`).
  */
 export function resolveRows(
   rows: ParsedRow[],
   tokens: TokenSet,
   decimals: Record<string, number>,
-): { items: ResolvedRow[]; issues: CsvIssue[] } {
+  delimiter: Delimiter = ",",
+): { items: ResolvedRow[]; issues: CsvIssue[]; warnings: CsvIssue[] } {
   const items: ResolvedRow[] = [];
   const issues: CsvIssue[] = [];
+  const warnings: CsvIssue[] = [];
 
   const bySymbol = new Map<string, `0x${string}`>(
     Object.entries(tokens).map(([symbol, address]) => [symbol.toLowerCase(), address]),
@@ -376,51 +357,58 @@ export function resolveRows(
   const spelled = new Map<string, string>(Object.keys(tokens).map((s) => [s.toLowerCase(), s]));
 
   for (const row of rows) {
-    if (row.invoiceId === "") {
-      issues.push({ line: row.line, message: "The invoice reference is empty. Every payment needs one." });
+    const { line } = row;
+    if (row.unreadable) {
+      issues.push({ line, message: row.unreadable.message });
       continue;
+    }
+
+    const problems: CsvIssue[] = [];
+    if (row.invoiceId === "") {
+      problems.push({ line, field: "invoiceId", message: "The invoice reference is empty. Every payment needs one." });
     }
 
     const token = bySymbol.get(row.tokenSymbol.toLowerCase());
     if (!token) {
-      issues.push({
-        line: row.line,
+      problems.push({
+        line, field: "token",
         message: `"${row.tokenSymbol}" is not a token this page pays. Use one of: ${Object.keys(tokens).join(", ")}.`,
       });
-      continue;
     }
-
-    const d = decimals[token.toLowerCase()];
-    if (d === undefined) {
-      issues.push({
-        line: row.line,
-        message: `No on-chain decimals were read for ${row.tokenSymbol}.`,
-      });
-      continue;
+    const d = token ? decimals[token.toLowerCase()] : undefined;
+    if (token && d === undefined) {
+      problems.push({ line, message: `No on-chain decimals were read for ${row.tokenSymbol}.` });
     }
 
     if (!isAddress(row.to)) {
-      issues.push({
-        line: row.line,
+      problems.push({
+        line, field: "to",
         message: `"${row.to}" is not a wallet address. Use the full address: 0x followed by 40 letters and digits.`,
       });
-      continue;
     }
 
-    const amount = toBaseUnits(row.amount, d, spelled.get(row.tokenSymbol.toLowerCase()));
-    if (!amount.ok) {
-      issues.push({ line: row.line, message: amount.reason });
-      continue;
+    let value: bigint | undefined;
+    const read = readAmount(row.amount, delimiter);
+    if (!read.ok) {
+      problems.push({ line, field: "amount", message: read.message, readings: read.readings, kind: read.kind });
+    } else {
+      if (read.warning) {
+        warnings.push({ line, field: "amount", message: read.warning, readings: read.readings, kind: read.kind });
+      }
+      // With the token unknown its form is still checked. 18 is more places
+      // than any token here has, so only a malformed amount fails; the token's
+      // own precision is checked once the token is known.
+      const scaled = toBaseUnits(read.amount, d ?? 18, spelled.get(row.tokenSymbol.toLowerCase()));
+      if (!scaled.ok) problems.push({ line, field: "amount", message: scaled.reason });
+      else if (d !== undefined) value = scaled.value;
     }
 
-    items.push({
-      line: row.line,
-      invoiceId: row.invoiceId,
-      token,
-      to: getAddress(row.to),
-      amount: amount.value,
-    });
+    if (problems.length > 0 || !token || value === undefined) {
+      issues.push(...problems);
+      continue;
+    }
+    items.push({ line, invoiceId: row.invoiceId, token, to: getAddress(row.to), amount: value });
   }
 
-  return { items, issues };
+  return { items, issues, warnings };
 }

@@ -103,4 +103,14 @@ describe("validateRun", () => {
     // it." first, and counted it as a second problem.
     expect(validateRun([], 1)).toEqual({ errors: [], warnings: [] });
   });
+
+  it("names the field a row problem is in", () => {
+    const TO = "0xe48A096B9E74f064b13c17734af29F85E02d732a" as const;
+    const TOKEN = "0x3600000000000000000000000000000000000000" as const;
+    const r = validateRun([
+      { line: 2, invoiceId: "A", token: TOKEN, to: "0x0000000000000000000000000000000000000000", amount: 1n },
+      { line: 3, invoiceId: "A", token: TOKEN, to: TO, amount: 1n },
+    ]);
+    expect(r.errors.map((e) => [e.line, e.field])).toEqual([[2, "to"], [3, "invoiceId"]]);
+  });
 });

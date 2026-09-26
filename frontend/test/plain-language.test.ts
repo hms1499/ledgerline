@@ -140,8 +140,8 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       `invoiceId;token;to;amount\nINV-1;USDC;${A};1.000`,
       ``,
     ]) {
-      const { rows, issues } = parseCsv(text);
-      const resolved = resolveRows(rows, TOKENS, DECIMALS);
+      const { rows, issues, delimiter } = parseCsv(text);
+      const resolved = resolveRows(rows, TOKENS, DECIMALS, delimiter);
       const { errors, warnings } = validateRun(resolved.items);
       const v = reviewView({ issues: [...issues, ...resolved.issues], errors, warnings, parsed: rows });
       plain(v.title); plain(v.summary); plain(v.fixFirst);

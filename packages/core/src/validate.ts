@@ -1,9 +1,11 @@
 import { MAX_ITEMS_PER_RUN } from "./build.js";
-import type { ResolvedRow } from "./csv.js";
+import type { CsvField, ResolvedRow } from "./csv.js";
 
 export interface RowIssue {
   line?: number;
   invoiceId?: string;
+  /** The field to fix, when the fix is one value. */
+  field?: CsvField;
   message: string;
 }
 
@@ -52,6 +54,7 @@ export function validateRun(items: ResolvedRow[], refused = 0): {
       errors.push({
         line: item.line,
         invoiceId: item.invoiceId,
+        field: "to",
         message: "This pays 0x0000…0000, an address nobody owns. Arc refuses the payment. Check the recipient.",
       });
     }
@@ -61,6 +64,7 @@ export function validateRun(items: ResolvedRow[], refused = 0): {
       errors.push({
         line: item.line,
         invoiceId: item.invoiceId,
+        field: "invoiceId",
         message: `Invoice "${item.invoiceId}" is also on line ${seenInvoice}. Give each payment its own invoice reference, or the two cannot be told apart.`,
       });
     } else {

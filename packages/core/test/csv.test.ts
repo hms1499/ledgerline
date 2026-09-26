@@ -16,6 +16,7 @@ describe("parseCsv", () => {
       tokenSymbol: "USDC",
       to: "0xe48A096B9E74f064b13c17734af29F85E02d732a",
       amount: "0.10",
+      cells: ["INV-US-001", "USDC", "0xe48A096B9E74f064b13c17734af29F85E02d732a", "0.10"],
     });
     expect(rows[1]!.line).toBe(3);
   });
@@ -65,18 +66,22 @@ describe("parseCsv", () => {
     expect(issues[0]!.message).toMatch(/empty/i);
   });
 
-  it("reports a row with the wrong number of columns, and keeps going", () => {
+  it("keeps a row with the wrong number of values, marked unreadable, and keeps going", () => {
     const text = `invoiceId,token,to,amount
 INV-US-001,USDC,0xe48A096B9E74f064b13c17734af29F85E02d732a
 INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     const { rows, issues } = parseCsv(text);
-    expect(issues).toHaveLength(1);
-    expect(issues[0]!.line).toBe(2);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.line).toBe(3);
-    expect(issues[0]!.message).toBe(
-      "This line has 3 values but the first line names 4 columns. A value that contains a comma needs quotes around it.",
-    );
+    expect(issues).toEqual([]);
+    expect(rows.map((r) => r.line)).toEqual([2, 3]);
+    expect(rows[0]!.unreadable).toEqual({
+      message: "This line has 3 values but the first line names 4 columns. A value that contains a comma needs quotes around it.",
+      text: "INV-US-001,USDC,0xe48A096B9E74f064b13c17734af29F85E02d732a",
+    });
+    expect(rows[0]!.invoiceId).toBe("");
+    expect(rows[1]!.unreadable).toBeUndefined();
+    expect(resolveRows(rows, TOKENS, DECIMALS).issues).toEqual([
+      { line: 2, message: rows[0]!.unreadable!.message },
+    ]);
   });
 
   it("accepts header names in any case, since Excel retitles columns", () => {
@@ -91,8 +96,11 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     const { rows, issues } = parseCsv(text);
     // Not supported, and deliberately so — but it must never yield a row that
     // looks valid and pays the wrong thing.
-    expect(rows).toEqual([]);
-    expect(issues.length).toBeGreaterThan(0);
+    expect(issues).toEqual([]);
+    expect(rows.every((r) => r.unreadable)).toBe(true);
+    const resolved = resolveRows(rows, TOKENS, DECIMALS);
+    expect(resolved.items).toEqual([]);
+    expect(resolved.issues.length).toBeGreaterThan(0);
   });
 
   it("maps columns by name, in any order, through a spreadsheet's own names", () => {
@@ -104,6 +112,7 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     expect(rows[0]).toEqual({
       line: 2, invoiceId: "INV-1", tokenSymbol: "USDC",
       to: "0xe48A096B9E74f064b13c17734af29F85E02d732a", amount: "12.50",
+      cells: ["12.50", "0xe48A096B9E74f064b13c17734af29F85E02d732a", "INV-1", "USDC"],
     });
   });
 
@@ -142,23 +151,28 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
     // LibreOffice can write ";" with US number formatting: "1,000" there is
     // a thousand to the person who typed it, and 1 to this reader.
     const a = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
-    const { rows, issues, warnings } = parseCsv(`invoiceId;token;to;amount
+    const { rows, issues, delimiter } = parseCsv(`invoiceId;token;to;amount
 INV-1;USDC;${a};1,000
 INV-2;USDC;${a};12,500
 INV-3;cirBTC;${a};0,125
 INV-4;USDC;${a};1,5
 INV-5;USDC;${a};1234,567`);
     expect(issues).toEqual([]);
-    expect(rows.map((r) => r.amount)).toEqual(["1.000", "12.500", "0.125", "1.5", "1234.567"]);
-    expect(warnings).toEqual([
-      { line: 2, message: 'In a file separated by ";", the comma marks decimals, so "1,000" is read as 1, not 1000. If you meant 1000, write it without the comma.' },
-      { line: 3, message: 'In a file separated by ";", the comma marks decimals, so "12,500" is read as 12,5, not 12500. If you meant 12500, write it without the comma.' },
+    const resolved = resolveRows(rows, TOKENS, DECIMALS, delimiter);
+    expect(resolved.issues).toEqual([]);
+    expect(resolved.items.map((i) => i.amount)).toEqual([1_000_000n, 12_500_000n, 12_500_000n, 1_500_000n, 1_234_567_000n]);
+    expect(resolved.warnings).toEqual([
+      { line: 2, field: "amount", kind: "comma-or-thousands", readings: ["1", "1000"],
+        message: 'In a file separated by ";", the comma marks decimals, so "1,000" is read as 1, not 1000. If you meant 1000, write it without the comma.' },
+      { line: 3, field: "amount", kind: "comma-or-thousands", readings: ["12.5", "12500"],
+        message: 'In a file separated by ";", the comma marks decimals, so "12,500" is read as 12,5, not 12500. If you meant 12500, write it without the comma.' },
     ]);
   });
 
   it("has no second look to ask for in a comma file", () => {
     const a = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
-    expect(parseCsv(`invoiceId,token,to,amount\nINV-1,USDC,${a},1.000`).warnings).toEqual([]);
+    const { rows, delimiter } = parseCsv(`invoiceId,token,to,amount\nINV-1,USDC,${a},1.000`);
+    expect(resolveRows(rows, TOKENS, DECIMALS, delimiter).warnings).toEqual([]);
   });
 
   it("reads a semicolon file and its decimal commas", () => {
@@ -168,7 +182,8 @@ INV-5;USDC;${a};1234,567`);
     expect(issues).toEqual([]);
     expect(delimiter).toBe(";");
     expect(rows[0]!.invoiceId).toBe("INV,1");
-    expect(rows[0]!.amount).toBe("0.10");
+    expect(rows[0]!.amount).toBe("0,10");
+    expect(resolveRows(rows, TOKENS, DECIMALS, delimiter).items[0]!.amount).toBe(100_000n);
   });
 
   it("refuses a dot in a semicolon file's amount when it could group thousands, since 1.000 may mean a thousand", () => {
@@ -178,8 +193,9 @@ INV-2;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1,000,50
 INV-3;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;2
 INV-4;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;12.500
 INV-5;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.250,50`;
-    const { rows, issues } = parseCsv(text);
-    expect(rows.map((r) => r.invoiceId)).toEqual(["INV-3"]);
+    const { rows, delimiter } = parseCsv(text);
+    const { items, issues } = resolveRows(rows, TOKENS, DECIMALS, delimiter);
+    expect(items.map((r) => r.invoiceId)).toEqual(["INV-3"]);
     expect(issues.map((i) => i.line)).toEqual([2, 3, 5, 6]);
     expect(issues[0]!.message).toBe(
       'In a file separated by ";", "1.000" could mean 1 or 1000. Write 1000 for the larger amount, or 1 for the smaller.',
@@ -197,17 +213,18 @@ INV-5;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.250,50`;
   // person gets by opening the sample in Numbers and exporting it again.
   it("reads a dot in a semicolon file's amount as the decimal when it cannot group thousands", () => {
     const a = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
-    const { rows, issues, warnings } = parseCsv(
+    const { rows, delimiter } = parseCsv(
       `invoiceId;token;to;amount\nINV-US-001;USDC;${a};0.10\nINV-EU-002;EURC;${a};0.10\nINV-BTC-003;cirBTC;${a};0.000001\nINV-4;USDC;${a};1.5\nINV-5;USDC;${a};0.100`,
     );
+    const { items, issues, warnings } = resolveRows(rows, TOKENS, DECIMALS, delimiter);
     expect(issues).toEqual([]);
     expect(warnings).toEqual([]);
-    expect(rows.map((r) => r.amount)).toEqual(["0.10", "0.10", "0.000001", "1.5", "0.100"]);
+    expect(items.map((i) => i.amount)).toEqual([100_000n, 100_000n, 100n, 1_500_000n, 100_000n]);
   });
 
   it("says which mark to quote when a semicolon row has the wrong number of values", () => {
-    const { issues } = parseCsv(`invoiceId;token;to;amount\nINV-1;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a`);
-    expect(issues[0]!.message).toBe(
+    const { rows } = parseCsv(`invoiceId;token;to;amount\nINV-1;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a`);
+    expect(rows[0]!.unreadable!.message).toBe(
       "This line has 3 values but the first line names 4 columns. A value that contains a semicolon needs quotes around it.",
     );
   });
@@ -226,24 +243,33 @@ INV-5;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.250,50`;
       tokenSymbol: "USDC",
       to: "0xe48A096B9E74f064b13c17734af29F85E02d732a",
       amount: "0.10",
+      cells: ["INV,1;A", "USDC", "0xe48A096B9E74f064b13c17734af29F85E02d732a", "0.10"],
     }]);
   });
 
   it("leaves a pasted amount as the sheet displayed it, so 1,250.50 is refused later, never guessed", () => {
-    const { rows, issues, warnings } = parseCsv(
+    const { rows, issues, delimiter } = parseCsv(
       "invoiceId\ttoken\tto\tamount\nINV-1\tUSDC\t0xe48A096B9E74f064b13c17734af29F85E02d732a\t1,250.50",
     );
     expect(issues).toEqual([]);
-    expect(warnings).toEqual([]);
     expect(rows[0]!.amount).toBe("1,250.50");
-    expect(toBaseUnits(rows[0]!.amount, 6).ok).toBe(false);
+    expect(resolveRows(rows, TOKENS, DECIMALS, delimiter).issues[0]).toMatchObject({
+      field: "amount", kind: "thousands-marks", readings: ["1250.50"],
+    });
   });
 
   it("says a tab is the mark when a pasted row has the wrong number of values", () => {
-    const { issues } = parseCsv("invoiceId\ttoken\tto\tamount\nINV-1\tUSDC\t0xe48A096B9E74f064b13c17734af29F85E02d732a");
-    expect(issues[0]!.message).toBe(
+    const { rows } = parseCsv("invoiceId\ttoken\tto\tamount\nINV-1\tUSDC\t0xe48A096B9E74f064b13c17734af29F85E02d732a");
+    expect(rows[0]!.unreadable!.message).toBe(
       "This line has 3 values but the first line names 4 columns. A value that contains a tab needs quotes around it.",
     );
+  });
+
+  it("keeps the header as written and where each field sits, for a corrected file", () => {
+    const { header, columns } = parseCsv(`Name,Amount,Recipient,Invoice ID,Currency\nAn,1,0x,INV-1,USDC`);
+    expect(header).toEqual(["Name", "Amount", "Recipient", "Invoice ID", "Currency"]);
+    expect(columns).toEqual({ invoiceId: 3, token: 4, to: 2, amount: 1 });
+    expect(parseCsv("id,coin\n1,2").columns).toBeUndefined();
   });
 });
 
@@ -304,7 +330,7 @@ describe("toBaseUnits", () => {
 
 describe("resolveRows", () => {
   const row = (over: Partial<import("../src/csv.js").ParsedRow> = {}) => ({
-    line: 2, invoiceId: "INV-1", tokenSymbol: "USDC", to: TO, amount: "0.10", ...over,
+    line: 2, invoiceId: "INV-1", tokenSymbol: "USDC", to: TO, amount: "0.10", cells: [], ...over,
   });
 
   it("resolves a symbol to the chain's token address and scales the amount", () => {
@@ -331,7 +357,7 @@ describe("resolveRows", () => {
   it("reports an unknown symbol against its line and drops the row", () => {
     const { items, issues } = resolveRows([row({ tokenSymbol: "DAI" })], TOKENS, DECIMALS);
     expect(items).toEqual([]);
-    expect(issues[0]).toEqual({ line: 2, message: expect.stringMatching(/DAI/) });
+    expect(issues[0]).toEqual({ line: 2, field: "token", message: expect.stringMatching(/DAI/) });
   });
 
   it("reports a malformed recipient address", () => {
@@ -374,6 +400,22 @@ describe("resolveRows", () => {
   it("fails loudly when the decimals table is missing a token it was given", () => {
     const { issues } = resolveRows([row()], TOKENS, {});
     expect(issues[0]!.message).toMatch(/decimals/i);
+  });
+
+  it("names every field a row gets wrong at once, not only the first", () => {
+    const { items, issues } = resolveRows(
+      [row({ invoiceId: "", tokenSymbol: "USD", to: "vitalik.eth", amount: "1,250.50" })], TOKENS, DECIMALS,
+    );
+    expect(items).toEqual([]);
+    expect(issues.map((i) => i.field)).toEqual(["invoiceId", "token", "to", "amount"]);
+  });
+
+  it("checks an amount's form even when the token is unknown", () => {
+    const { issues } = resolveRows([row({ tokenSymbol: "USD", amount: "0" })], TOKENS, DECIMALS);
+    expect(issues.map((i) => [i.field, i.message])).toEqual([
+      ["token", '"USD" is not a token this page pays. Use one of: USDC, EURC, cirBTC.'],
+      ["amount", "The amount is zero. Enter the amount owed, or remove this line."],
+    ]);
   });
 });
 
