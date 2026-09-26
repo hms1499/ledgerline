@@ -34,7 +34,7 @@ function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApp
           aria-describedby={fix.help ? `${id}-help` : undefined}
           onChange={(e) => setText(e.target.value)}
           onBlur={() => commit(false)}
-          onPressEnter={() => commit(true)}
+          onPressEnter={(e) => { e.preventDefault(); commit(true); }}
         />
       )}
       {fix.choices.length > 0 && (
