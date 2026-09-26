@@ -25,8 +25,11 @@ export interface ParsedCsv {
    *  stop a run. */
   warnings: CsvIssue[];
   /** The file's field separator, read from its first line. */
-  delimiter: "," | ";";
+  delimiter: Delimiter;
 }
+
+/** A tab is what a spreadsheet puts on the clipboard when cells are copied. */
+export type Delimiter = "," | ";" | "\t";
 
 type Field = "invoiceId" | "token" | "to" | "amount";
 const FIELDS: readonly Field[] = ["invoiceId", "token", "to", "amount"];
@@ -50,14 +53,17 @@ const normalise = (name: string) => name.trim().toLowerCase().replace(/[\s_.-]/g
 const fieldFor = (name: string): Field | undefined =>
   FIELDS.find((f) => ALIASES[f].includes(normalise(name)));
 
-/** `;` only when the first line uses it and no `,`, both outside quotes: the
- *  file Excel writes where a comma is the decimal mark. */
-function delimiterOf(header: string): "," | ";" {
+/** A tab outside quotes wins: no column name we read contains one, and it is
+ *  how cells copied from a spreadsheet arrive. Otherwise `;` only when the
+ *  first line uses it and no `,`, both outside quotes: the file Excel writes
+ *  where a comma is the decimal mark. */
+function delimiterOf(header: string): Delimiter {
   let quoted = false;
   let comma = false;
   let semi = false;
   for (const ch of header) {
     if (ch === '"') quoted = !quoted;
+    else if (!quoted && ch === "\t") return "\t";
     else if (!quoted && ch === ",") comma = true;
     else if (!quoted && ch === ";") semi = true;
   }
@@ -78,6 +84,10 @@ function delimiterOf(header: string): "," | ";" {
  * exactly three digits, as in `1,000`, is still read as a decimal — `0,125`
  * cirBTC is an ordinary amount — but is flagged: a spreadsheet can write `;`
  * with US grouping, and there it meant a thousand.
+ *
+ * Tab-separated text, pasted from a spreadsheet, carries amounts as the sheet
+ * displayed them and is read like a `,` file: a dot for decimals and nothing
+ * else, so a displayed `1,250.50` is refused by `toBaseUnits`, not guessed.
  */
 export function parseCsv(text: string): ParsedCsv {
   const issues: CsvIssue[] = [];
@@ -131,7 +141,7 @@ export function parseCsv(text: string): ParsedCsv {
     };
   }
 
-  const mark = delimiter === ";" ? "a semicolon" : "a comma";
+  const mark = { ",": "a comma", ";": "a semicolon", "\t": "a tab" }[delimiter];
   for (let i = headerIndex + 1; i < lines.length; i++) {
     const raw = lines[i]!;
     if (raw.trim() === "") continue;
@@ -181,7 +191,7 @@ export function parseCsv(text: string): ParsedCsv {
 }
 
 /** One line into fields, honouring double quotes and the doubled-quote escape. */
-function splitLine(line: string, delimiter: "," | ";"): string[] {
+function splitLine(line: string, delimiter: Delimiter): string[] {
   const out: string[] = [];
   let field = "";
   let quoted = false;

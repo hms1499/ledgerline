@@ -190,6 +190,40 @@ INV-3;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;2`;
       "This line has 3 values but the first line names 4 columns. A value that contains a semicolon needs quotes around it.",
     );
   });
+
+  // Cells copied from Numbers, Excel or Google Sheets reach the clipboard as
+  // tab-separated text, as the sheet displays them.
+  it("reads cells pasted from a spreadsheet, whose commas and semicolons are text", () => {
+    const { rows, issues, delimiter } = parseCsv(
+      "Invoice\tToken\tRecipient\tAmount\r\nINV,1;A\tUSDC\t0xe48A096B9E74f064b13c17734af29F85E02d732a\t0.10\r\n",
+    );
+    expect(issues).toEqual([]);
+    expect(delimiter).toBe("\t");
+    expect(rows).toEqual([{
+      line: 2,
+      invoiceId: "INV,1;A",
+      tokenSymbol: "USDC",
+      to: "0xe48A096B9E74f064b13c17734af29F85E02d732a",
+      amount: "0.10",
+    }]);
+  });
+
+  it("leaves a pasted amount as the sheet displayed it, so 1,250.50 is refused later, never guessed", () => {
+    const { rows, issues, warnings } = parseCsv(
+      "invoiceId\ttoken\tto\tamount\nINV-1\tUSDC\t0xe48A096B9E74f064b13c17734af29F85E02d732a\t1,250.50",
+    );
+    expect(issues).toEqual([]);
+    expect(warnings).toEqual([]);
+    expect(rows[0]!.amount).toBe("1,250.50");
+    expect(toBaseUnits(rows[0]!.amount, 6).ok).toBe(false);
+  });
+
+  it("says a tab is the mark when a pasted row has the wrong number of values", () => {
+    const { issues } = parseCsv("invoiceId\ttoken\tto\tamount\nINV-1\tUSDC\t0xe48A096B9E74f064b13c17734af29F85E02d732a");
+    expect(issues[0]!.message).toBe(
+      "This line has 3 values but the first line names 4 columns. A value that contains a tab needs quotes around it.",
+    );
+  });
 });
 
 import { toBaseUnits, resolveRows } from "../src/csv.js";
