@@ -1,42 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Button, Input, type GetRef } from "antd";
+import { useEffect, useRef } from "react";
+import { Button, type GetRef } from "antd";
+import type { ColumnId } from "@ledgerline/core";
 import type { FieldFix, LineCard } from "@/lib/fix-list";
 import type { CellEdit } from "@/lib/sheet-edits";
 
 type Apply = (changes: CellEdit[], focusUndo: boolean) => void;
 
-/** One field of one line: its input, and a button per reading core found. */
-function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApply: Apply }) {
-  const [text, setText] = useState(fix.value);
-  // A button or an undo changes the value from outside: follow it.
-  const [seen, setSeen] = useState(fix.value);
-  if (seen !== fix.value) { setSeen(fix.value); setText(fix.value); }
-
-  const id = `fix-${line}-${fix.field}`;
-  const commit = (focusUndo: boolean) => {
-    if (text.trim() !== fix.value.trim()) onApply([{ line, col: fix.col, text }], focusUndo);
-  };
+/** One field of one line: what it holds, a button per reading core found,
+ *  and the way to its cell, where it is typed. */
+function FieldRow({ line, fix, onApply, onShow }: {
+  line: number; fix: FieldFix; onApply: Apply; onShow: (line: number, col: ColumnId) => void;
+}) {
   return (
     <div className="fix-field">
-      {fix.field === "token"
-        ? <span className="fix-label">{fix.label}</span>
-        : <label className="fix-label" htmlFor={id}>{fix.label}</label>}
-      {fix.field !== "token" && (
-        <Input
-          id={id}
-          value={text}
-          spellCheck={false}
-          autoComplete="off"
-          className={fix.field === "to" ? "hex" : undefined}
-          inputMode={fix.field === "amount" ? "decimal" : undefined}
-          aria-describedby={fix.help ? `${id}-help` : undefined}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => commit(false)}
-          onPressEnter={(e) => { e.preventDefault(); commit(true); }}
-        />
-      )}
+      <span className="fix-label">{fix.label}: <span className="hex">{fix.value || "(empty)"}</span></span>
       {fix.choices.length > 0 && (
         <div className="fix-choices" role="group" aria-label={fix.field === "token" ? "Token" : "Read it as"}>
           {fix.choices.map((c) => (
@@ -46,7 +25,15 @@ function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApp
           ))}
         </div>
       )}
-      {fix.help && <span id={`${id}-help`} className="because">{fix.help}</span>}
+      <Button
+        id={`fix-${line}-${fix.field}`}
+        size="small"
+        aria-label={`Show line ${line}'s ${fix.label.toLowerCase()} in the table`}
+        onClick={() => onShow(line, fix.col)}
+      >
+        Show in table
+      </Button>
+      {fix.help && <span className="because">{fix.help}</span>}
     </div>
   );
 }
@@ -57,13 +44,14 @@ function FieldInput({ line, fix, onApply }: { line: number; fix: FieldFix; onApp
  * moves to its own Undo, never to the page. An open card shows the changes
  * whose field it no longer asks for, with the same Undo.
  */
-export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutBack, onDelete }: {
+export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutBack, onDelete, onShow }: {
   card: LineCard;
   onApply: (changes: CellEdit[]) => void;
   onUndo: () => void;
   onLeaveOut: () => void;
   onPutBack: () => void;
   onDelete: () => void;
+  onShow: (line: number, col: ColumnId) => void;
 }) {
   const cardRef = useRef<HTMLElement>(null);
   const undoRef = useRef<GetRef<typeof Button>>(null);
@@ -125,7 +113,7 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
       </ul>
       {card.unreadableText !== undefined && <pre className="hex fix-raw">{card.unreadableText}</pre>}
       {card.changes.length > 0 && changed}
-      {card.fields.map((f) => <FieldInput key={f.field} line={card.line} fix={f} onApply={apply} />)}
+      {card.fields.map((f) => <FieldRow key={f.field} line={card.line} fix={f} onApply={apply} onShow={onShow} />)}
       {card.isNew ? (
         <Button size="small" type="text" onClick={onDelete}>Delete this line</Button>
       ) : (

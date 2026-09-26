@@ -230,3 +230,19 @@
 .role-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 .ghost-menu { display: grid; gap: 8px; justify-items: start; max-width: 32ch; }
 .ghost-menu p { margin: 0; }
+
+.run-summary-line {
+  display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: baseline;
+  padding: 10px var(--tape-pad); border: 1px solid var(--rule); background: var(--tape);
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.87rem;
+}
+.review-tabs [role="tablist"] { display: flex; gap: 4px; border-bottom: 1.5px solid var(--ink); }
+.review-tabs [role="tab"] {
+  padding: 6px 12px; border: 1.5px solid var(--control); border-bottom: none; background: none; color: var(--ink-soft);
+  font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.8rem; font-weight: 600; text-transform: uppercase; cursor: pointer;
+}
+.review-tabs [role="tab"].is-on { border-color: var(--ink); color: var(--ink); background: var(--tape); }
+.review-tabs [role="tab"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.review-tabs [role="tabpanel"] { padding-top: 10px; }
+.changes-list ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.changes-list li { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; overflow-wrap: anywhere; }

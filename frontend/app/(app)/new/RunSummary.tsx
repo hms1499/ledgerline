@@ -5,8 +5,19 @@ import type { RunSummaryView } from "@/lib/run-summary-view";
 
 /** What is about to be paid, kept in view while the steps change. */
 export default function RunSummary({
-  view, network, payer,
-}: { view: RunSummaryView; network: string; payer?: string }) {
+  view, network, payer, line,
+}: { view: RunSummaryView; network: string; payer?: string; line?: boolean }) {
+  if (line) {
+    return (
+      <section className="run-summary-line" aria-label="This run">
+        <strong>{view.name}</strong>
+        <span>{view.payments}</span>
+        {view.toPay.length > 0 && <span className="hex">{view.toPay.join(" · ")}</span>}
+        {view.changes && <span>Changed here · {view.changes}</span>}
+        <span>Arc {network}</span>
+      </section>
+    );
+  }
   return (
     <Tape title="This run">
       <dl className="detail run-summary">

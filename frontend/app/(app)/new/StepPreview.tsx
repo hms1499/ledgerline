@@ -15,6 +15,10 @@ import { correctedFile } from "@/lib/corrected-file";
 import { saveFile } from "@/lib/save-file";
 import TechnicalDetails from "@/components/ui/TechnicalDetails";
 import FixList from "./FixList";
+import { changesView } from "@/lib/changes-view";
+import { DRAFT_REFUSED, DRAFT_SAVED, draftPrompt, type Draft } from "@/lib/draft-store";
+import ChangesList from "./ChangesList";
+import ReviewTabs, { type ReviewTab } from "./ReviewTabs";
 import type { ColumnId } from "@ledgerline/core";
 import {
   addLine, deleteLine, droppedByHeader, editCells, headerWarning, leaveOut, putBack, restoreLine, useAsHeader,
@@ -63,6 +67,7 @@ function focusFirst(id: string) {
 
 export default function StepPreview({
   draft, net, onEdits, onBack, onNext, wallet, walletError, onConnect, wrongChain,
+  onUndo, onRedo, offer, onContinue, onStartOver, draftStatus,
 }: {
   draft: RunDraft; net: NetworkView;
   onEdits: (edits: SheetEdits) => void;
@@ -70,6 +75,12 @@ export default function StepPreview({
   wallet?: ConnectedWallet; walletError?: ConnectError; onConnect: () => void;
   /** Connected, but not on Arc. The banner above carries the fix. */
   wrongChain?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  offer?: Draft;
+  onContinue: () => void;
+  onStartOver: () => void;
+  draftStatus?: "saved" | "refused";
 }) {
   // Memoized so its cards/groups keep their object identity across a render
   // that leaves the draft unchanged (a balance read resolving, "Check
@@ -84,6 +95,30 @@ export default function StepPreview({
     () => sheetGrid({ lines: draft.lines, sheet: draft.sheet, edits: draft.edits, checked: draft, tokens: draft.tokens }),
     [draft],
   );
+  const changesList = useMemo(() => changesView({ lines: draft.lines, sheet: draft.sheet, edits: draft.edits }), [draft]);
+  const [tab, setTab] = useState<ReviewTab>("problems");
+  const [firstAsk, setFirstAsk] = useState<number>();
+  useEffect(() => { if (firstAsk) focusFirst(fix.firstOpen); }, [firstAsk]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openProblems = fix.fileProblems.length + fix.groups.filter((g) => g.state === "open").length
+    + fix.cards.filter((c) => c.state === "open").length;
+
+  // Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y) step through the sheet's changes. In a
+  // text field they are the field's own: the cell editor keeps its keys.
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k !== "z" && k !== "y") return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      const act = k === "y" || e.shiftKey ? onRedo : onUndo;
+      if (!act) return;
+      e.preventDefault();
+      act();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onUndo, onRedo]);
   const [openCell, setOpenCell] = useState<CellPos & { seq: number }>();
   const [focusSeq, setFocusSeq] = useState<number>();
   const [askHeader, setAskHeader] = useState<number>();
@@ -170,10 +205,44 @@ export default function StepPreview({
 
   return (
     <>
-      <FixList view={fix} edits={draft.edits} onEdits={onEdits} />
+      {offer && (
+        <Alert
+          style={{ marginBottom: 18 }}
+          type="info"
+          showIcon
+          title={draftPrompt(changeTotal(changeCounts(offer.edits)), offer.savedAt)}
+          action={
+            <span style={{ display: "flex", gap: 8 }}>
+              <Button size="small" type="primary" onClick={() => { onContinue(); setFocusSeq(Date.now()); }}>Continue them</Button>
+              <Button size="small" onClick={() => { onStartOver(); setFocusSeq(Date.now()); }}>Start over</Button>
+            </span>
+          }
+        />
+      )}
+
+      <ReviewTabs
+        tab={tab}
+        onTab={setTab}
+        problemCount={openProblems}
+        changeCount={changesList.entries.length}
+        problems={
+          fix.fileProblems.length + fix.groups.length + fix.cards.length > 0
+            ? <FixList view={fix} edits={draft.edits} onEdits={onEdits}
+                onShow={(line, col) => setOpenCell({ line, col, seq: Date.now() })} />
+            : <p className="because">Nothing to fix.</p>
+        }
+        changes={<ChangesList view={changesList} onEdits={onEdits} />}
+      />
 
       <SheetGrid view={grid} onEdit={onEdit} onLine={onLine} onAddLine={onAddLine} open={openCell} focusSeq={focusSeq}
-        head={head} ghostHead={ghostHead} />
+        head={head} ghostHead={ghostHead}
+        status={
+          <>
+            <Button size="small" disabled={!onUndo} onClick={onUndo}>Undo last change</Button>
+            <Button size="small" disabled={!onRedo} onClick={onRedo}>Redo</Button>
+            {draftStatus && <span className="because">{draftStatus === "saved" ? DRAFT_SAVED : DRAFT_REFUSED}</span>}
+          </>
+        } />
 
       <Modal
         open={askHeader !== undefined}
@@ -271,7 +340,7 @@ export default function StepPreview({
           </Button>
         )}
         {blocking > 0 ? (
-          <Button type="primary" onClick={() => focusFirst(fix.firstOpen)}>{fix.fixFirst}</Button>
+          <Button type="primary" onClick={() => { setTab("problems"); setFirstAsk(Date.now()); }}>{fix.fixFirst}</Button>
         ) : wallet ? (
           <Button
             type="primary"

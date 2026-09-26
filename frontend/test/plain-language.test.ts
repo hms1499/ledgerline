@@ -14,6 +14,8 @@ import { runSummaryView } from "@/lib/run-summary-view";
 import { checkRows, ALL_LEFT_OUT } from "@/lib/review-view";
 import { fixList, RECIPIENT_HELP } from "@/lib/fix-list";
 import { NO_EDITS, changesText, correctionReminder, headerWarning } from "@/lib/sheet-edits";
+import { NOTHING_CHANGED } from "@/lib/changes-view";
+import { DRAFT_REFUSED, DRAFT_SAVED, draftPrompt } from "@/lib/draft-store";
 import { noWalletHelp } from "@/lib/wallet-help";
 import { topUpHint } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
@@ -160,6 +162,12 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     plain(changesText(counts));
     plain(correctionReminder(counts));
     plain(headerWarning(3));
+    plain(NOTHING_CHANGED);
+    plain(DRAFT_SAVED);
+    plain(DRAFT_REFUSED);
+    plain(draftPrompt(12, Date.UTC(2026, 8, 26)));
+    for (const label of ["Show in table", "Continue them", "Start over", "Undo last change", "Redo", "Problems", "Changes",
+      "Nothing to fix."]) plain(label);
     for (const label of ["+ Add a line", "Leave out of this run", "Put back in this run", "Delete from the file",
       "Delete this line", "Use as the header line", "Use it", "Keep the header", "The file as a table",
       "Line 1 is above the header", "Lines 1–4 are above the header",

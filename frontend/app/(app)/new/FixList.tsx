@@ -6,6 +6,7 @@ import { afterRowFix, rowId, type FixListView, type GroupAction, type GroupCard 
 import {
   applyBatch, deleteLine, editCells, leaveOut, putBack, undoBatch, undoLine, type CellEdit, type SheetEdits,
 } from "@/lib/sheet-edits";
+import type { ColumnId } from "@ledgerline/core";
 import LineCardView from "./LineCard";
 
 const SHOWN = 25;
@@ -75,8 +76,9 @@ function GroupCardView({ group, onApply, onApplyOne, onUndo }: {
 }
 
 /** The Review step's problems, as cards to work down (spec 2026-09-26 §4). */
-export default function FixList({ view, edits, onEdits }: {
+export default function FixList({ view, edits, onEdits, onShow }: {
   view: FixListView; edits: SheetEdits; onEdits: (e: SheetEdits) => void;
+  onShow: (line: number, col: ColumnId) => void;
 }) {
   const [all, setAll] = useState(false);
   const [said, setSaid] = useState("");
@@ -147,7 +149,8 @@ export default function FixList({ view, edits, onEdits }: {
           onUndo={() => onEdits(undoLine(edits, c.line))}
           onLeaveOut={() => onEdits(leaveOut(edits, c.line))}
           onPutBack={() => onEdits(putBack(edits, c.line))}
-          onDelete={() => { deleted.current = true; onEdits(deleteLine(edits, c.line)); }} />
+          onDelete={() => { deleted.current = true; onEdits(deleteLine(edits, c.line)); }}
+          onShow={onShow} />
       ))}
       {!all && view.cards.length > SHOWN && (
         <Button type="link" onClick={() => setAll(true)}>Show {view.cards.length - SHOWN} more</Button>

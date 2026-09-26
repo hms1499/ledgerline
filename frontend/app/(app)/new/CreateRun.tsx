@@ -1,12 +1,16 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import Link from "next/link";
 import { Alert, Steps } from "antd";
 import { readSheet, tokensForChain, type FileLine } from "@ledgerline/core";
 import type { ParsedCsv, RunOutcome, TokenSet } from "@ledgerline/core";
 import { checkRows, type CheckedFile } from "@/lib/review-view";
-import { NO_EDITS, changeCounts, structureOf, type SheetEdits } from "@/lib/sheet-edits";
+import { changeCounts, changeTotal, structureOf, type SheetEdits } from "@/lib/sheet-edits";
+import { history, START } from "@/lib/edit-history";
+import {
+  browserStorage, draftKey, dropDraft, loadDraft, saveDraft, type Draft,
+} from "@/lib/draft-store";
 import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
@@ -50,7 +54,36 @@ const STEP_TITLES = ["Upload", "Review", "Check", "Pay", "Receipts"];
 export default function CreateRun() {
   const [step, setStep] = useState(0);
   const [base, setBase] = useState<RunBase>();
-  const [edits, setEdits] = useState<SheetEdits>(NO_EDITS);
+  const [hist, dispatch] = useReducer(history, START);
+  const edits = hist.now;
+  const [drafted, setDrafted] = useState<{ key: string; offer?: Draft }>();
+  const [draftStatus, setDraftStatus] = useState<"saved" | "refused">();
+
+  // A file's draft is found by its hash, and offered, never applied, until the payer says so.
+  useEffect(() => {
+    setDrafted(undefined);
+    setDraftStatus(undefined);
+    if (!base) return;
+    let live = true;
+    void draftKey(base.text).then((key) => {
+      if (!live) return;
+      const found = loadDraft(browserStorage(), key, Date.now());
+      setDrafted({ key, offer: found && changeTotal(changeCounts(found.edits)) > 0 ? found : undefined });
+    });
+    return () => { live = false; };
+  }, [base]);
+
+  // Saved half a second after the last change; nothing is written over a draft not yet answered.
+  useEffect(() => {
+    if (!drafted || drafted.offer) return;
+    const t = setTimeout(() => {
+      const store = browserStorage();
+      if (changeTotal(changeCounts(edits)) === 0) { dropDraft(store, drafted.key); setDraftStatus(undefined); return; }
+      setDraftStatus(saveDraft(store, drafted.key, edits, Date.now()) ? "saved" : "refused");
+    }, 500);
+    return () => clearTimeout(t);
+  }, [edits, drafted]);
+  const forgetDraft = () => { if (drafted) dropDraft(browserStorage(), drafted.key); };
   const draft = useMemo<RunDraft | undefined>(() => {
     if (!base) return undefined;
     const sheet = readSheet(base.lines, structureOf(edits));
@@ -123,17 +156,21 @@ export default function CreateRun() {
 
       {/* First in the DOM, so a phone reads what is about to be signed before
           the Send button; on the right at lg through `start` and dense packing. */}
-      {source && draft && (
+      {source && draft && (step === 1 ? (
+        <Col span={12}>
+          <RunSummary line
+            view={runSummaryView(draft.runLabel, source, tokenOrder, draft.decimals, draft.symbols, changeCounts(edits))}
+            network={net.name} payer={source.payer ?? wallet?.address} />
+        </Col>
+      ) : (
         <Col start={9} span={4} md={12} sticky>
           <RunSummary
             view={runSummaryView(draft.runLabel, source, tokenOrder, draft.decimals, draft.symbols, changeCounts(edits))}
-            network={net.name}
-            payer={source.payer ?? wallet?.address}
-          />
+            network={net.name} payer={source.payer ?? wallet?.address} />
         </Col>
-      )}
+      ))}
 
-      <Col span={step === 4 ? 12 : 8} md={12}>
+      <Col span={step === 4 || step === 1 ? 12 : 8} md={12}>
         {/* Only the Review step names itself here: every other step opens
             with its own heading (StepUpload, StepPreflight, StepSend,
             Result), so an untitled Tape there would double it up. Review's
@@ -143,12 +180,22 @@ export default function CreateRun() {
         <Tape state={step === 4 ? "torn" : "feeding"} title={step === 1 ? "Payments in this run" : undefined}>
           {step === 0 && (
             <StepUpload net={net} runLabel={runLabel} onRunLabel={setRunLabel}
-              onReady={(b) => { setBase(b); setEdits(NO_EDITS); setStep(1); }} />
+              onReady={(b) => { setBase(b); dispatch({ type: "reset" }); setStep(1); }} />
           )}
           {step === 1 && draft && (
             <StepPreview
-              draft={draft} net={net} onEdits={setEdits}
-              onBack={() => setStep(0)}
+              draft={draft} net={net}
+              onEdits={(e) => dispatch({ type: "set", edits: e })}
+              onUndo={hist.past.length > 0 ? () => dispatch({ type: "undo" }) : undefined}
+              onRedo={hist.future.length > 0 ? () => dispatch({ type: "redo" }) : undefined}
+              offer={drafted?.offer}
+              onContinue={() => {
+                if (drafted?.offer) dispatch({ type: "reset", edits: drafted.offer.edits });
+                setDrafted((d) => d && { key: d.key });
+              }}
+              onStartOver={() => { forgetDraft(); setDrafted((d) => d && { key: d.key }); }}
+              draftStatus={draftStatus}
+              onBack={() => { forgetDraft(); setStep(0); }}
               onNext={() => setStep(2)}
               wallet={wallet} walletError={walletError} onConnect={connect}
               wrongChain={wrongChain}
@@ -168,6 +215,7 @@ export default function CreateRun() {
                 if (o.state !== "confirmed") return;
                 setOutcome(o);
                 setStep(4);
+                forgetDraft();
                 // Only a confirmed run is worth remembering: a list that
                 // included attempts without receipts would be a list of things
                 // that might not have happened.

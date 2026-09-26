@@ -58,9 +58,10 @@ export default function SheetGrid({ view, onEdit, onLine, onAddLine, open, focus
   const [active, setActive] = useState<CellPos>();
   const [editing, setEditing] = useState<{ pos: CellPos; initial: string }>();
   const focusNext = useRef<CellPos | undefined>(undefined);
-  // Whether the cell pressed was already the current one when the press
-  // began. Focusing it re-renders before the click lands, so the click alone
-  // cannot tell a first press (select) from a second (open).
+  // Whether the cell pressed already had focus when the press began.
+  // Focusing it re-renders before the click lands, so the click alone cannot
+  // tell a first press (select) from a second (open); and the grid's current
+  // cell is not enough, since focus may have left the grid since.
   const pressedCurrent = useRef(false);
 
   const pos: CellPos | undefined = active && lines.includes(active.line) && cols.includes(active.col)
@@ -180,7 +181,7 @@ export default function SheetGrid({ view, onEdit, onLine, onAddLine, open, focus
                       className={[c.problem ? "has-problem" : "", c.edited ? "is-edited" : ""].join(" ").trim() || undefined}
                       aria-invalid={c.problem ? true : undefined}
                       aria-describedby={c.problem ? `${c.id}-p` : undefined}
-                      onMouseDown={() => { pressedCurrent.current = isActive && !isEditing; }}
+                      onMouseDown={(e) => { pressedCurrent.current = !isEditing && document.activeElement === e.currentTarget; }}
                       onFocus={() => { if (!isActive) setActive(p); }}
                       onClick={() => { if (!isEditing && pressedCurrent.current) startEdit(p); }}
                       onDoubleClick={() => { if (!isEditing) startEdit(p); }}

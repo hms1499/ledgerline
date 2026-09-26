@@ -78,3 +78,5 @@ export function changesView({ lines, sheet, edits }: {
     : `Lines 1–${h - 1} are above the header and are not in the corrected file.`;
   return { entries, ...(note ? { note } : {}) };
 }
+
+export const NOTHING_CHANGED = "Nothing changed yet. Every change you make here is listed, with its Undo.";
