@@ -64,20 +64,24 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
   onPutBack: () => void;
 }) {
   const undoRef = useRef<GetRef<typeof Button>>(null);
+  // Set true by a commit that asked for focus. Consumed on the very next
+  // render this card takes part in: if the card is still open then (its own
+  // fix did not resolve it — another problem on the same line remains), the
+  // flag is dropped rather than left to steal focus after some later,
+  // unrelated change finally closes the card.
   const pending = useRef(false);
   useEffect(() => {
-    if (card.state !== "open" && pending.current) {
-      pending.current = false;
-      undoRef.current?.focus();
-    }
-  }, [card.state]);
+    if (!pending.current) return;
+    pending.current = false;
+    if (card.state !== "open") undoRef.current?.focus();
+  }, [card]);
   const apply: Apply = (changes, focusUndo) => { pending.current = focusUndo; onApply(changes); };
 
   if (card.state === "left-out") {
     return (
       <article id={card.id} className="fix-card left-out">
         <p className="fix-heading">{card.heading}</p>
-        <Button size="small" ref={undoRef} onClick={onPutBack}>Undo</Button>
+        <Button size="small" ref={undoRef} aria-label={`Put line ${card.line} back in this run`} onClick={onPutBack}>Undo</Button>
       </article>
     );
   }
@@ -93,7 +97,7 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
             </div>
           ))}
         </dl>
-        <Button size="small" ref={undoRef} onClick={onUndo}>Undo</Button>
+        <Button size="small" ref={undoRef} aria-label={`Undo the changes to line ${card.line}`} onClick={onUndo}>Undo</Button>
       </article>
     );
   }

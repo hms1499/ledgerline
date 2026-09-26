@@ -155,7 +155,9 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     plain(changesText({ edited: 3, leftOut: 1 }));
     plain(correctionReminder({ edited: 3, leftOut: 1 }));
     for (const label of ["Leave out of this run", "Undo", "Download the corrected file", "Choose another file",
-      "Show the 3 lines", "Hide the lines", "Keep editing", "Discard your 3 edits?"]) plain(label);
+      "Show the 3 lines", "Hide the lines", "Keep editing", "Discard your 3 edits?",
+      "Undo the changes to line 5", "Put line 5 back in this run",
+      "Undo: 3 lines use the token \"USD\"."]) plain(label);
 
     for (const n of ["mainnet", "testnet"] as const) {
       const h = noWalletHelp(n);

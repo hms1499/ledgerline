@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Popconfirm, Table, type TableColumnsType } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { fundingFor, tokensForChain, totalsByToken, type ResolvedRow } from "@ledgerline/core";
@@ -73,15 +73,25 @@ export default function StepPreview({
   // Bumped by "Check balances again", after the payer tops up.
   const [reads, setReads] = useState(0);
   const owner = wallet && !wrongChain ? wallet.address : undefined;
+  // The draft is derived, so `draft.rows` is a fresh array after every edit
+  // even when the run's tokens did not change. Keying the read on the token
+  // set itself — sorted, deduped, lowercased — means a recipient or amount
+  // fix never clears balances or re-hits the RPC; only a token edit that
+  // actually changes what is owed does.
+  const tokenKey = useMemo(
+    () => [...new Set([usdc, ...totalsByToken(draft.rows).map((t) => t.token)].map((t) => t.toLowerCase()))]
+      .sort()
+      .join(","),
+    [draft.rows, usdc],
+  );
   useEffect(() => {
     setBalances(undefined);
     if (!owner) return;
     let current = true;
-    const tokens = [...new Set([usdc, ...totalsByToken(draft.rows).map((t) => t.token)]
-      .map((t) => t.toLowerCase()))] as Address[];
+    const tokens = tokenKey.split(",") as Address[];
     void readBalances(net, owner, tokens).then((b) => { if (current) setBalances(b); });
     return () => { current = false; };
-  }, [owner, net, draft.rows, usdc, reads]);
+  }, [owner, net, tokenKey, reads]);
 
   const funding = balances && fundingView({
     lines: fundingFor(draft.rows, balances),

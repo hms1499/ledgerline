@@ -18,19 +18,21 @@ function GroupCardView({ group, onApply, onApplyOne, onUndo }: {
 }) {
   const [shown, setShown] = useState(false);
   const undoRef = useRef<GetRef<typeof Button>>(null);
+  // Set true by an action that asked for focus. Consumed on the very next
+  // render this group takes part in, so a later unrelated change can never
+  // steal focus on the strength of an old, already-superseded action.
   const pending = useRef(false);
   useEffect(() => {
-    if (group.state === "applied" && pending.current) {
-      pending.current = false;
-      undoRef.current?.focus();
-    }
-  }, [group.state]);
+    if (!pending.current) return;
+    pending.current = false;
+    if (group.state !== "open") undoRef.current?.focus();
+  }, [group]);
 
   if (group.state === "applied") {
     return (
       <article id={group.id} className="fix-card fixed">
         <p className="fix-heading"><span aria-hidden="true">✓ </span>{group.title}</p>
-        <Button size="small" ref={undoRef} onClick={onUndo}>Undo</Button>
+        <Button size="small" ref={undoRef} aria-label={`Undo: ${group.title}`} onClick={onUndo}>Undo</Button>
       </article>
     );
   }
