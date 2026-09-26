@@ -2,13 +2,12 @@
 
 import { useRef, useState } from "react";
 import { Alert, Button, Input, Upload, type InputRef } from "antd";
-import { tokensForChain } from "@ledgerline/core";
+import { parseCsv, tokensForChain } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import { describeError } from "@/lib/errors";
-import type { RunDraft } from "./CreateRun";
+import type { RunBase } from "./CreateRun";
 import { readTokenMeta } from "@/lib/token-meta";
-import { checkRunFile } from "@/lib/review-view";
-import { RUN_FILE_ACCEPT, spreadsheetRefusal } from "@/lib/run-file";
+import { PASTED_ROWS, RUN_FILE_ACCEPT, spreadsheetRefusal } from "@/lib/run-file";
 
 export default function StepUpload({
   net, runLabel, onRunLabel, onReady,
@@ -16,7 +15,7 @@ export default function StepUpload({
   net: NetworkView;
   runLabel: string;
   onRunLabel: (label: string) => void;
-  onReady: (draft: RunDraft) => void;
+  onReady: (base: RunBase) => void;
 }) {
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
@@ -27,16 +26,15 @@ export default function StepUpload({
   const nameRef = useRef<InputRef>(null);
   const named = runLabel.trim().length > 0;
 
-  const handle = async (text: string) => {
+  const handle = async (name: string, text: string) => {
     setBusy(true);
     setError(undefined);
     try {
       // Decimals come from the chain before any amount is interpreted.
       const { decimals, symbols } = await readTokenMeta(net.defaultRpc, net.chain, net.chain.id);
       onReady({
-        ...checkRunFile(text, tokensForChain(net.chain.id), decimals),
-        runLabel: runLabel.trim(),
-        decimals, symbols,
+        text, source: parseCsv(text), sourceName: name, runLabel: runLabel.trim(),
+        tokens: tokensForChain(net.chain.id), decimals, symbols,
       });
     } catch (err) {
       setError(describeError(err));
@@ -52,7 +50,7 @@ export default function StepUpload({
       nameRef.current?.focus();
       return;
     }
-    void handle(text);
+    void handle(name, text);
   };
 
   const readFile = async (file: File) => {
@@ -138,7 +136,7 @@ export default function StepUpload({
         disabled={!pasted.trim() || busy}
         onClick={() => {
           setError(undefined);
-          receive("the pasted rows", pasted);
+          receive(PASTED_ROWS, pasted);
         }}
       >
         Read the pasted rows
@@ -146,7 +144,7 @@ export default function StepUpload({
 
       {pending && (
         <div style={{ marginTop: 14 }}>
-          <Button type="primary" disabled={!named || busy} loading={busy} onClick={() => void handle(pending.text)}>
+          <Button type="primary" disabled={!named || busy} loading={busy} onClick={() => void handle(pending.name, pending.text)}>
             Continue with {pending.name}
           </Button>
         </div>

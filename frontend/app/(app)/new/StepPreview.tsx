@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Alert, Button, Table, type TableColumnsType } from "antd";
+import { Alert, Button, Popconfirm, Table, type TableColumnsType } from "antd";
 import { createPublicClient, http, type Address } from "viem";
 import { fundingFor, tokensForChain, totalsByToken, type ResolvedRow } from "@ledgerline/core";
 import { short, type NetworkView } from "@/lib/chain";
@@ -10,9 +10,12 @@ import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
 import { fundingView, topUpHint } from "@/lib/funding-view";
 import { amountFigure, metaFor } from "@/lib/token-meta";
-import { reviewView } from "@/lib/review-view";
+import { fixList } from "@/lib/fix-list";
+import { changeCounts, type RunEdits } from "@/lib/run-edits";
+import { correctedFile } from "@/lib/corrected-file";
+import { saveFile } from "@/lib/save-file";
 import TechnicalDetails from "@/components/ui/TechnicalDetails";
-import ReviewIssues from "./ReviewIssues";
+import FixList from "./FixList";
 
 const balanceOfAbi = [
   { type: "function", name: "balanceOf", stateMutability: "view",
@@ -39,19 +42,29 @@ async function readBalances(
   return out;
 }
 
+/** Bring the first problem to the payer: scrolled to, its first field focused. */
+function focusFirst(id: string) {
+  const el = document.getElementById(id) ?? document.getElementById("fix-list");
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "center" });
+  (el.querySelector<HTMLElement>("input, button") ?? el).focus({ preventScroll: true });
+}
+
 export default function StepPreview({
-  draft, net, onBack, onNext, wallet, walletError, onConnect, wrongChain,
+  draft, net, onEdits, onBack, onNext, wallet, walletError, onConnect, wrongChain,
 }: {
   draft: RunDraft; net: NetworkView;
+  onEdits: (edits: RunEdits) => void;
   onBack: () => void; onNext: () => void;
   wallet?: ConnectedWallet; walletError?: ConnectError; onConnect: () => void;
   /** Connected, but not on Arc. The banner above carries the fix. */
   wrongChain?: boolean;
 }) {
-  const review = reviewView({
-    issues: draft.issues, errors: draft.errors, warnings: draft.warnings, parsed: draft.parsed,
-  });
-  const blocking = review.blocking;
+  const fix = fixList({ checked: draft, source: draft.source, edits: draft.edits, tokens: draft.tokens });
+  const blocking = fix.blocking;
+  const changes = changeCounts(draft.edits);
+  const changed = changes.edited + changes.leftOut;
+  const editedLines = new Set(Object.keys(draft.edits.cells).map(Number));
 
   // Read for the wallet on screen and dropped the moment it changes, so a
   // switched account never inherits the last one's balances.
@@ -79,7 +92,12 @@ export default function StepPreview({
   const shortTokens = funding?.short ?? 0;
 
   const columns: TableColumnsType<ResolvedRow> = [
-    { title: "Line", dataIndex: "line", width: 70 },
+    {
+      title: "Line", dataIndex: "line", width: 70,
+      render: (line: number) => editedLines.has(line)
+        ? <>{line} <span className="edited-mark" title="Edited here" aria-label="edited here">✎</span></>
+        : line,
+    },
     { title: "Invoice", dataIndex: "invoiceId", width: 160 },
     {
       title: "Token", dataIndex: "token", width: 110,
@@ -103,7 +121,7 @@ export default function StepPreview({
 
   return (
     <>
-      <ReviewIssues view={review} />
+      <FixList view={fix} edits={draft.edits} onEdits={onEdits} />
 
       <div style={{ marginTop: 24 }}>
         <Table<ResolvedRow>
@@ -173,9 +191,22 @@ export default function StepPreview({
       )}
 
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
-        <Button onClick={onBack}>Choose another file</Button>
+        {changed > 0 ? (
+          <Popconfirm
+            title={`Discard your ${changed} ${changed === 1 ? "edit" : "edits"}?`}
+            okText="Discard" cancelText="Keep editing" onConfirm={onBack}>
+            <Button>Choose another file</Button>
+          </Popconfirm>
+        ) : (
+          <Button onClick={onBack}>Choose another file</Button>
+        )}
+        {changes.edited > 0 && (
+          <Button onClick={() => { const f = correctedFile(draft); saveFile(f.name, f.text, f.type); }}>
+            Download the corrected file
+          </Button>
+        )}
         {blocking > 0 ? (
-          <Button type="primary" disabled>{review.fixFirst}</Button>
+          <Button type="primary" onClick={() => focusFirst(fix.firstOpen)}>{fix.fixFirst}</Button>
         ) : wallet ? (
           <Button
             type="primary"

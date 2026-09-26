@@ -10,17 +10,7 @@ import { fileSlug, receiptLinksCsv, receiptLinksText, type ReceiptLinkRow } from
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
 import { RUN_FILE_COPY } from "@/lib/pay-copy";
-
-/** Hand the payer a file. The object URL is revoked a tick later, not
- *  straight after click(): some browsers start the download asynchronously
- *  and a URL revoked first saves nothing. */
-function saveFile(name: string, text: string, type: string) {
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(new Blob([text], { type }));
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(a.href), 0);
-}
+import { saveFile } from "@/lib/save-file";
 
 interface LinkRow {
   key: string;

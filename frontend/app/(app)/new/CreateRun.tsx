@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Alert, Steps } from "antd";
 import { tokensForChain } from "@ledgerline/core";
-import type { ResolvedRow, CsvIssue, RowIssue, RunOutcome, ParsedRow } from "@ledgerline/core";
+import type { ParsedCsv, RunOutcome, TokenSet } from "@ledgerline/core";
+import { checkRows, type CheckedFile } from "@/lib/review-view";
+import { NO_EDITS, type RunEdits } from "@/lib/run-edits";
 import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
@@ -22,23 +24,35 @@ import Result from "./Result";
 import RunSummary from "./RunSummary";
 import CsvHelp from "./CsvHelp";
 
-export interface RunDraft {
-  rows: ResolvedRow[];
-  /** Every row as read, by line, so a problem can name its invoice. */
-  parsed: ParsedRow[];
+/** What the Upload step hands over: the file as read, never written to. */
+export interface RunBase {
+  text: string;
+  source: ParsedCsv;
+  /** The file's name, or PASTED_ROWS. */
+  sourceName: string;
   runLabel: string;
-  issues: CsvIssue[];
-  errors: RowIssue[];
-  warnings: RowIssue[];
+  /** Fixed at upload, with the decimals read for them. */
+  tokens: TokenSet;
   decimals: Record<string, number>;
   symbols: Record<string, string>;
+}
+
+/** The run as Review shows it: the file, the payer's edits over it, and
+ *  everything checked from the two. */
+export interface RunDraft extends RunBase, CheckedFile {
+  edits: RunEdits;
 }
 
 const STEP_TITLES = ["Upload", "Review", "Check", "Pay", "Receipts"];
 
 export default function CreateRun() {
   const [step, setStep] = useState(0);
-  const [draft, setDraft] = useState<RunDraft>();
+  const [base, setBase] = useState<RunBase>();
+  const [edits, setEdits] = useState<RunEdits>(NO_EDITS);
+  const draft = useMemo<RunDraft | undefined>(
+    () => base && { ...base, edits, ...checkRows(base.source, edits, base.tokens, base.decimals) },
+    [base, edits],
+  );
   const [prepared, setPrepared] = useState<PreparedRun>();
   const [outcome, setOutcome] = useState<Extract<RunOutcome, { state: "confirmed" }>>();
   const { net, wallet, wrongChain, held, error: walletError, switchError, connect, setHold } = useWallet();
@@ -126,11 +140,11 @@ export default function CreateRun() {
         <Tape state={step === 4 ? "torn" : "feeding"} title={step === 1 ? "Payments in this run" : undefined}>
           {step === 0 && (
             <StepUpload net={net} runLabel={runLabel} onRunLabel={setRunLabel}
-              onReady={(d) => { setDraft(d); setStep(1); }} />
+              onReady={(b) => { setBase(b); setEdits(NO_EDITS); setStep(1); }} />
           )}
           {step === 1 && draft && (
             <StepPreview
-              draft={draft} net={net}
+              draft={draft} net={net} onEdits={setEdits}
               onBack={() => setStep(0)}
               onNext={() => setStep(2)}
               wallet={wallet} walletError={walletError} onConnect={connect}

@@ -169,3 +169,24 @@
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; font-size: 14px;
 }
 .reference.is-void { color: var(--ribbon); border-color: var(--ribbon); }
+
+/* Fix cards on the Review step (spec 2026-09-26 §4). */
+.fix-list:focus { outline: none; }
+.fix-counts { margin: 0 0 6px; font-family: var(--font-mono), ui-monospace, monospace; font-size: 0.87rem; }
+.fix-card { display: grid; gap: 8px; justify-items: start; margin-top: 10px; padding: 10px 12px; border: 1.5px solid var(--rule); }
+.fix-card.fail { border-color: var(--ribbon); }
+.fix-card.warn { border-style: dashed; }
+.fix-card:is(.fixed, .left-out) { border-style: dotted; color: var(--ink-soft); }
+.fix-heading { margin: 0; font-weight: 500; overflow-wrap: anywhere; }
+.fix-messages, .fix-examples, .fix-rows { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.fix-messages .error { color: var(--ribbon); }
+.fix-messages li, .fix-examples li { overflow-wrap: anywhere; }
+.fix-field { display: grid; gap: 4px; width: 100%; }
+.fix-label { font-size: 0.87rem; }
+.fix-choices { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fix-changes { display: grid; gap: 2px; margin: 0; }
+.fix-changes div { display: flex; flex-wrap: wrap; gap: 6px; }
+.fix-changes dd { margin: 0; overflow-wrap: anywhere; }
+.fix-raw { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.fix-rows li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.edited-mark { margin-left: 4px; }
