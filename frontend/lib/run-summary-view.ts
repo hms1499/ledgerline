@@ -1,5 +1,6 @@
 import { runIdFor, type Manifest } from "@ledgerline/core";
 import { amountText, metaFor } from "@/lib/token-meta";
+import { changesText } from "@/lib/run-edits";
 
 export interface SummaryItem { token: string; amount: bigint }
 export interface SummarySource { items: SummaryItem[]; payer?: string; runId?: string }
@@ -23,12 +24,13 @@ export function summarySource(
   return undefined;
 }
 
-export interface RunSummaryView { name: string; payments: string; toPay: string[]; runId?: string }
+export interface RunSummaryView { name: string; payments: string; toPay: string[]; runId?: string; changes?: string }
 
 /** Requested amounts ("To pay"), one line per token in the chain's order. */
 export function runSummaryView(
   runLabel: string, src: SummarySource, tokenOrder: string[],
   decimals: Record<string, number>, symbols: Record<string, string>,
+  changes?: { edited: number; leftOut: number },
 ): RunSummaryView {
   const totals = new Map<string, { token: string; total: bigint }>();
   for (const i of src.items) {
@@ -43,5 +45,5 @@ export function runSummaryView(
     .sort((a, b) => rank(a.token) - rank(b.token))
     .map(({ token, total }) => amountText(total, token, metaFor(token, decimals, symbols)));
   const n = src.items.length;
-  return { name: runLabel, payments: `${n} payment${n === 1 ? "" : "s"}`, toPay, runId: src.runId };
+  return { name: runLabel, payments: `${n} payment${n === 1 ? "" : "s"}`, toPay, runId: src.runId, changes: changes && changesText(changes) };
 }

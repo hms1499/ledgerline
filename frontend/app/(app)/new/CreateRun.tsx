@@ -6,7 +6,7 @@ import { Alert, Steps } from "antd";
 import { tokensForChain } from "@ledgerline/core";
 import type { ParsedCsv, RunOutcome, TokenSet } from "@ledgerline/core";
 import { checkRows, type CheckedFile } from "@/lib/review-view";
-import { NO_EDITS, type RunEdits } from "@/lib/run-edits";
+import { NO_EDITS, type RunEdits, changeCounts } from "@/lib/run-edits";
 import { recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
@@ -123,7 +123,7 @@ export default function CreateRun() {
       {source && draft && (
         <Col start={9} span={4} md={12} sticky>
           <RunSummary
-            view={runSummaryView(draft.runLabel, source, tokenOrder, draft.decimals, draft.symbols)}
+            view={runSummaryView(draft.runLabel, source, tokenOrder, draft.decimals, draft.symbols, changeCounts(edits))}
             network={net.name}
             payer={source.payer ?? wallet?.address}
           />

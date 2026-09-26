@@ -127,6 +127,8 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     const v = runSummaryView("Payroll", { items: [], runId: "0x1" }, [], {}, {});
     clean(v.name); clean(v.payments); v.toPay.forEach(clean);
     for (const label of ["This run", "Name", "Payments", "To pay", "Network", "Paying wallet", "Run ID", "Not connected"]) clean(label);
+    clean(runSummaryView("P", { items: [] }, [], {}, {}, { edited: 1, leftOut: 1 }).changes);
+    for (const label of ["Changed here"]) clean(label);
   });
   it("the create flow's new words, and the file and row messages", () => {
     // Engineering words the audit found on screen; never again.

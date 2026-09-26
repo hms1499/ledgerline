@@ -11,6 +11,8 @@ import { useWallet } from "@/components/wallet/WalletProvider";
 import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
 import { RUN_FILE_COPY } from "@/lib/pay-copy";
 import { saveFile } from "@/lib/save-file";
+import { changeCounts, correctionReminder } from "@/lib/run-edits";
+import { correctedFile } from "@/lib/corrected-file";
 
 interface LinkRow {
   key: string;
@@ -70,6 +72,7 @@ export default function Result({
   }));
 
   const slug = fileSlug(draft.runLabel);
+  const reminder = correctionReminder(changeCounts(draft.edits));
 
   const exportRows: ReceiptLinkRow[] = rows.map((r) => ({
     invoiceId: r.invoiceId,
@@ -141,6 +144,20 @@ export default function Result({
       {outcome.feeWarning && (
         <Alert style={{ marginTop: 20 }} type="warning" showIcon
           title="The fee was below the floor" description={outcome.feeWarning} />
+      )}
+
+      {reminder && (
+        <Alert
+          style={{ marginTop: 18 }}
+          type="info"
+          showIcon
+          title={reminder}
+          action={
+            <Button size="small" onClick={() => { const f = correctedFile(draft); saveFile(f.name, f.text, f.type); }}>
+              Download the corrected file
+            </Button>
+          }
+        />
       )}
 
       <Alert
