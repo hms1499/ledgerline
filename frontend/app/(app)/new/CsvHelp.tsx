@@ -11,7 +11,8 @@ export default function CsvHelp() {
         written the way you would write them on an invoice; this page converts them using each
         token&apos;s own decimals, read from the chain.{" "}
         <a href={sampleCsvHref()} download="ledgerline-sample.csv">Download this sample</a>{" "}
-        and replace the recipients with your own.
+        and replace the recipients with your own. Working in Numbers or Excel? Export the sheet
+        as CSV, or copy its cells and paste them instead of choosing a file.
       </p>
     </Tape>
   );

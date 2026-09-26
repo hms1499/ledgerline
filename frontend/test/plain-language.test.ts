@@ -16,6 +16,7 @@ import { noWalletHelp } from "@/lib/wallet-help";
 import { topUpHint } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
 import { TX_HASH_HINT } from "@/lib/tx-hash";
+import { spreadsheetRefusal } from "@/lib/run-file";
 import { controlComparison } from "@/lib/mainnet-proof";
 import fixture from "../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
 
@@ -155,5 +156,8 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     Object.values(BLOCKED_COPY).forEach(plain);
     plain(CANCELLED.message.title); plain(CANCELLED.payment.title); plain(CANCELLED.payment.body);
     plain(FEE_ADVICE); plain(CHECK_FAILED); plain(RUN_FILE_COPY); plain(TX_HASH_HINT);
+    for (const name of ["a.numbers", "a.xlsx", "a.csv"]) {
+      plain(spreadsheetRefusal(name, new Uint8Array([0x50, 0x4b, 0x03, 0x04])));
+    }
   });
 });

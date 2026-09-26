@@ -8,6 +8,7 @@ import { describeError } from "@/lib/errors";
 import type { RunDraft } from "./CreateRun";
 import { readTokenMeta } from "@/lib/token-meta";
 import { checkRunFile } from "@/lib/review-view";
+import { RUN_FILE_ACCEPT, spreadsheetRefusal } from "@/lib/run-file";
 
 export default function StepUpload({
   net, runLabel, onRunLabel, onReady,
@@ -22,6 +23,7 @@ export default function StepUpload({
   // A file chosen before the run had a name is kept, so it need not be chosen again.
   const [pending, setPending] = useState<{ name: string; text: string }>();
   const [askedForName, setAskedForName] = useState(false);
+  const [pasted, setPasted] = useState("");
   const nameRef = useRef<InputRef>(null);
   const named = runLabel.trim().length > 0;
 
@@ -51,6 +53,20 @@ export default function StepUpload({
       return;
     }
     void handle(text);
+  };
+
+  const readFile = async (file: File) => {
+    setError(undefined);
+    try {
+      const refusal = spreadsheetRefusal(file.name, new Uint8Array(await file.slice(0, 8).arrayBuffer()));
+      if (refusal) {
+        setError(refusal);
+        return;
+      }
+      receive(file.name, await file.text());
+    } catch (err) {
+      setError(describeError(err));
+    }
   };
 
   return (
@@ -84,13 +100,11 @@ export default function StepUpload({
 
       <div style={{ marginTop: 24 }}>
         <Upload.Dragger
-          accept=".csv,text/csv"
+          accept={RUN_FILE_ACCEPT}
           showUploadList={false}
           disabled={busy}
           beforeUpload={(file) => {
-            const reader = new FileReader();
-            reader.onload = () => receive(file.name, String(reader.result));
-            reader.readAsText(file);
+            void readFile(file);
             return false;
           }}
         >
@@ -102,6 +116,33 @@ export default function StepUpload({
           </p>
         </Upload.Dragger>
       </div>
+
+      <label style={{ display: "block", marginTop: 22 }}>
+        <span style={{ display: "block", fontSize: "0.87rem", marginBottom: 6 }}>
+          Or paste the rows from Numbers, Excel or Google Sheets
+        </span>
+        <Input.TextArea
+          value={pasted}
+          disabled={busy}
+          autoSize={{ minRows: 3, maxRows: 8 }}
+          spellCheck={false}
+          aria-describedby="paste-help"
+          onChange={(e) => setPasted(e.target.value)}
+        />
+        <span id="paste-help" className="because">
+          Select the cells, header row included, and copy them. Amounts are read as the sheet shows them.
+        </span>
+      </label>
+      <Button
+        style={{ marginTop: 10 }}
+        disabled={!pasted.trim() || busy}
+        onClick={() => {
+          setError(undefined);
+          receive("the pasted rows", pasted);
+        }}
+      >
+        Read the pasted rows
+      </Button>
 
       {pending && (
         <div style={{ marginTop: 14 }}>
