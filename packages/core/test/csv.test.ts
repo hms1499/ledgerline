@@ -247,7 +247,7 @@ INV-5;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.250,50`;
   });
 });
 
-import { toBaseUnits, resolveRows } from "../src/csv.js";
+import { toBaseUnits, resolveRows, readAmount, amountInFile } from "../src/csv.js";
 import { tokensForChain, ARC_TESTNET_CHAIN_ID } from "../src/constants.js";
 
 const TOKENS = tokensForChain(ARC_TESTNET_CHAIN_ID);
@@ -374,5 +374,71 @@ describe("resolveRows", () => {
   it("fails loudly when the decimals table is missing a token it was given", () => {
     const { issues } = resolveRows([row()], TOKENS, {});
     expect(issues[0]!.message).toMatch(/decimals/i);
+  });
+});
+
+describe("readAmount", () => {
+  it("reads a comma file's plain amount as written, and leaves the rest to toBaseUnits", () => {
+    expect(readAmount("12.50", ",")).toEqual({ ok: true, amount: "12.50" });
+    expect(readAmount(" 7 ", "\t")).toEqual({ ok: true, amount: "7" });
+    expect(readAmount("$20", ",")).toEqual({ ok: true, amount: "$20" });
+    expect(readAmount("", ",")).toEqual({ ok: true, amount: "" });
+  });
+
+  it("offers both readings of 1,000 in a comma file, since a comma-decimal sheet can write it", () => {
+    expect(readAmount("1,000", ",")).toEqual({
+      ok: false, kind: "comma-or-thousands", readings: ["1", "1000"],
+      message: '"1,000" could mean 1 or 1000. Write 1000 for the larger amount, or 1 for the smaller.',
+    });
+    expect(readAmount("1,500", "\t")).toMatchObject({ ok: false, readings: ["1.5", "1500"] });
+  });
+
+  it("offers the one reading of an amount with thousands marks", () => {
+    expect(readAmount("1,250.50", ",")).toEqual({
+      ok: false, kind: "thousands-marks", readings: ["1250.50"],
+      message: '"1,250.50" has marks between the thousands. Write it as 1250.50.',
+    });
+    expect(readAmount("1,000,000", "\t")).toMatchObject({ kind: "thousands-marks", readings: ["1000000"] });
+  });
+
+  it("reads a semicolon file's decimal comma, and warns when it could be a thousand", () => {
+    expect(readAmount("0,10", ";")).toEqual({ ok: true, amount: "0.10" });
+    expect(readAmount("1,000", ";")).toEqual({
+      ok: true, amount: "1", kind: "comma-or-thousands", readings: ["1", "1000"],
+      warning: 'In a file separated by ";", the comma marks decimals, so "1,000" is read as 1, not 1000. If you meant 1000, write it without the comma.',
+    });
+    expect(readAmount("12,500", ";")).toMatchObject({ ok: true, amount: "12.5", readings: ["12.5", "12500"] });
+  });
+
+  it("reads a semicolon file's dot when it cannot group thousands, and refuses one that could", () => {
+    expect(readAmount("0.10", ";")).toEqual({ ok: true, amount: "0.10" });
+    expect(readAmount("0.000001", ";")).toEqual({ ok: true, amount: "0.000001" });
+    expect(readAmount("12.500", ";")).toEqual({
+      ok: false, kind: "dot-or-thousands", readings: ["12.5", "12500"],
+      message: 'In a file separated by ";", "12.500" could mean 12,5 or 12500. Write 12500 for the larger amount, or 12,5 for the smaller.',
+    });
+  });
+
+  it("offers the one reading of a semicolon amount with thousands marks", () => {
+    expect(readAmount("1.250,50", ";")).toEqual({
+      ok: false, kind: "thousands-marks", readings: ["1250.50"],
+      message: '"1.250,50" has marks between the thousands. Write it as 1250,50.',
+    });
+    expect(readAmount("1.000.000", ";")).toMatchObject({ kind: "thousands-marks", readings: ["1000000"] });
+  });
+
+  it("refuses anything else in a semicolon file, saying how to write it", () => {
+    expect(readAmount("1,000,50", ";")).toEqual({
+      ok: false,
+      message: 'In a file separated by ";", write amounts with a comma for decimals and no other marks, like 1250,50. Found "1,000,50".',
+    });
+  });
+});
+
+describe("amountInFile", () => {
+  it("writes the decimal mark the file uses", () => {
+    expect(amountInFile("12.5", ";")).toBe("12,5");
+    expect(amountInFile("12.5", ",")).toBe("12.5");
+    expect(amountInFile("1000", ";")).toBe("1000");
   });
 });

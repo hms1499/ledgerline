@@ -70,6 +70,91 @@ function delimiterOf(header: string): Delimiter {
   return semi && !comma ? ";" : ",";
 }
 
+/** How an amount could be misread, so lines with the same doubt can be
+ *  settled together. */
+export type AmountKind = "thousands-marks" | "dot-or-thousands" | "comma-or-thousands";
+
+/** `amount` and every entry of `readings` are dot-decimal text. */
+export type AmountReading =
+  | { ok: true; amount: string; warning?: string; readings?: string[]; kind?: AmountKind }
+  | { ok: false; message: string; readings?: string[]; kind?: AmountKind };
+
+/** Dot-decimal text as a person writes it in this file: a `;` file's decimal
+ *  mark is the comma. */
+export function amountInFile(amount: string, delimiter: Delimiter): string {
+  return delimiter === ";" ? amount.replace(".", ",") : amount;
+}
+
+/**
+ * An amount's text as this file means it, before any token's decimals.
+ *
+ * Never guesses. Where the text has two readings (one group of three digits
+ * after a mark: `1,000`, `1.000`), both are returned for the payer to choose,
+ * and only a `;` file's `1,000` is read, as the decimal its convention says,
+ * with a warning. Where it has one (`1,250.50`), that one is offered, not
+ * applied. Anything this function has no rule for is passed on as written:
+ * `toBaseUnits` says what it cannot read.
+ */
+export function readAmount(text: string, delimiter: Delimiter): AmountReading {
+  const t = text.trim();
+  const inFile = (a: string) => amountInFile(a, delimiter);
+  const both = (whole: string, frac: string): [string, string] => {
+    const decimals = frac.replace(/0+$/, "");
+    return [decimals ? `${whole}.${decimals}` : whole, whole + frac];
+  };
+
+  if (delimiter === ";") {
+    if (/^\d*,?\d*$/.test(t)) {
+      const g = /^([1-9]\d{0,2}),(\d{3})$/.exec(t);
+      if (!g) return { ok: true, amount: t.replace(",", ".") };
+      const [small, large] = both(g[1]!, g[2]!);
+      return {
+        ok: true, amount: small, kind: "comma-or-thousands", readings: [small, large],
+        warning: `In a file separated by ";", the comma marks decimals, so "${t}" is read as ${inFile(small)}, not ${large}. If you meant ${large}, write it without the comma.`,
+      };
+    }
+    // A dot that cannot group thousands can only be the decimal: Numbers
+    // writes one so when the cell was text in a comma-decimal region.
+    if (/^\d*\.\d+$/.test(t)) {
+      const g = /^([1-9]\d{0,2})\.(\d{3})$/.exec(t);
+      if (!g) return { ok: true, amount: t };
+      const [small, large] = both(g[1]!, g[2]!);
+      return {
+        ok: false, kind: "dot-or-thousands", readings: [small, large],
+        message: `In a file separated by ";", "${t}" could mean ${inFile(small)} or ${large}. Write ${large} for the larger amount, or ${inFile(small)} for the smaller.`,
+      };
+    }
+    if (/^[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(t)) {
+      const plain = t.replace(/\./g, "").replace(",", ".");
+      return {
+        ok: false, kind: "thousands-marks", readings: [plain],
+        message: `"${t}" has marks between the thousands. Write it as ${inFile(plain)}.`,
+      };
+    }
+    return {
+      ok: false,
+      message: `In a file separated by ";", write amounts with a comma for decimals and no other marks, like 1250,50. Found "${t}".`,
+    };
+  }
+
+  const g = /^([1-9]\d{0,2}),(\d{3})$/.exec(t);
+  if (g) {
+    const [small, large] = both(g[1]!, g[2]!);
+    return {
+      ok: false, kind: "comma-or-thousands", readings: [small, large],
+      message: `"${t}" could mean ${small} or ${large}. Write ${large} for the larger amount, or ${small} for the smaller.`,
+    };
+  }
+  if (/^[1-9]\d{0,2}(,\d{3})+(\.\d+)?$/.test(t)) {
+    const plain = t.replace(/,/g, "");
+    return {
+      ok: false, kind: "thousands-marks", readings: [plain],
+      message: `"${t}" has marks between the thousands. Write it as ${plain}.`,
+    };
+  }
+  return { ok: true, amount: t };
+}
+
 /**
  * Minimal RFC 4180. A real CSV library would be a dependency for 40 lines of
  * behaviour we can state exactly, and this file is on the path where a wrong
