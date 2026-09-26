@@ -79,8 +79,12 @@ function delimiterOf(header: string): Delimiter {
  * in any order; a column that names nothing we pay is ignored.
  *
  * In a `;` file the comma is the decimal mark, so `0,10` is 0.10. A `.` there
- * is refused rather than read: in the locales that write `;` files, `1.000` is
- * one thousand, and this reader never guesses an amount. A comma followed by
+ * is read as the decimal only when it cannot be grouping thousands: `0.10`,
+ * `1.5` and `0.000001` can mean nothing else, and Numbers writes them so when
+ * the cell was text in a region whose decimal mark is the comma. `1.000` and
+ * `12.500` are refused rather than read: in the locales that write `;` files,
+ * they are a thousand and twelve thousand, and this reader never guesses an
+ * amount. A comma followed by
  * exactly three digits, as in `1,000`, is still read as a decimal — `0,125`
  * cirBTC is an ordinary amount — but is flagged: a spreadsheet can write `;`
  * with US grouping, and there it meant a thousand.
@@ -159,23 +163,32 @@ export function parseCsv(text: string): ParsedCsv {
     const cell = (f: Field) => cells[at[f]!]!.trim();
     let amount = cell("amount");
     if (delimiter === ";") {
-      if (!/^\d*,?\d*$/.test(amount)) {
+      // A dot that cannot group thousands can only be the decimal: read as is.
+      const dotted = /^\d*\.\d+$/.test(amount);
+      const group = /^([1-9]\d{0,2})([.,])(\d{3})$/.exec(amount);
+      if (group) {
+        const [, whole, mark, frac] = group as unknown as [string, string, string, string];
+        const decimals = frac.replace(/0+$/, "");
+        const small = decimals ? `${whole},${decimals}` : whole;
+        if (mark === ".") {
+          issues.push({
+            line,
+            message: `In a file separated by ";", "${amount}" could mean ${small} or ${whole}${frac}. Write ${whole}${frac} for the larger amount, or ${small} for the smaller.`,
+          });
+          continue;
+        }
+        warnings.push({
+          line,
+          message: `In a file separated by ";", the comma marks decimals, so "${amount}" is read as ${small}, not ${whole}${frac}. If you meant ${whole}${frac}, write it without the comma.`,
+        });
+      } else if (!dotted && !/^\d*,?\d*$/.test(amount)) {
         issues.push({
           line,
           message: `In a file separated by ";", write amounts with a comma for decimals and no other marks, like 1250,50. Found "${amount}".`,
         });
         continue;
       }
-      const group = /^([1-9]\d{0,2}),(\d{3})$/.exec(amount);
-      if (group) {
-        const [, whole, frac] = group as unknown as [string, string, string];
-        const decimals = frac.replace(/0+$/, "");
-        warnings.push({
-          line,
-          message: `In a file separated by ";", the comma marks decimals, so "${amount}" is read as ${decimals ? `${whole},${decimals}` : whole}, not ${whole}${frac}. If you meant ${whole}${frac}, write it without the comma.`,
-        });
-      }
-      amount = amount.replace(",", ".");
+      if (!dotted) amount = amount.replace(",", ".");
     }
 
     rows.push({

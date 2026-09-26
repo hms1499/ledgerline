@@ -171,17 +171,38 @@ INV-5;USDC;${a};1234,567`);
     expect(rows[0]!.amount).toBe("0.10");
   });
 
-  it("refuses a dot in a semicolon file's amount, since 1.000 may mean a thousand", () => {
+  it("refuses a dot in a semicolon file's amount when it could group thousands, since 1.000 may mean a thousand", () => {
     const text = `invoiceId;token;to;amount
 INV-1;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.000
 INV-2;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1,000,50
-INV-3;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;2`;
+INV-3;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;2
+INV-4;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;12.500
+INV-5;USDC;0xe48A096B9E74f064b13c17734af29F85E02d732a;1.250,50`;
     const { rows, issues } = parseCsv(text);
     expect(rows.map((r) => r.invoiceId)).toEqual(["INV-3"]);
-    expect(issues.map((i) => i.line)).toEqual([2, 3]);
+    expect(issues.map((i) => i.line)).toEqual([2, 3, 5, 6]);
     expect(issues[0]!.message).toBe(
-      'In a file separated by ";", write amounts with a comma for decimals and no other marks, like 1250,50. Found "1.000".',
+      'In a file separated by ";", "1.000" could mean 1 or 1000. Write 1000 for the larger amount, or 1 for the smaller.',
     );
+    expect(issues[1]!.message).toBe(
+      'In a file separated by ";", write amounts with a comma for decimals and no other marks, like 1250,50. Found "1,000,50".',
+    );
+    expect(issues[2]!.message).toBe(
+      'In a file separated by ";", "12.500" could mean 12,5 or 12500. Write 12500 for the larger amount, or 12,5 for the smaller.',
+    );
+  });
+
+  // Numbers set to a region where the comma is the decimal mark keeps "0.10"
+  // as text, then exports with ";" and writes the text as it was: the file a
+  // person gets by opening the sample in Numbers and exporting it again.
+  it("reads a dot in a semicolon file's amount as the decimal when it cannot group thousands", () => {
+    const a = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
+    const { rows, issues, warnings } = parseCsv(
+      `invoiceId;token;to;amount\nINV-US-001;USDC;${a};0.10\nINV-EU-002;EURC;${a};0.10\nINV-BTC-003;cirBTC;${a};0.000001\nINV-4;USDC;${a};1.5\nINV-5;USDC;${a};0.100`,
+    );
+    expect(issues).toEqual([]);
+    expect(warnings).toEqual([]);
+    expect(rows.map((r) => r.amount)).toEqual(["0.10", "0.10", "0.000001", "1.5", "0.100"]);
   });
 
   it("says which mark to quote when a semicolon row has the wrong number of values", () => {
