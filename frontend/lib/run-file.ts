@@ -3,6 +3,9 @@
  *  picker greys out anything not named here, which explains nothing. */
 export const RUN_FILE_ACCEPT = ".csv,.tsv,text/csv,text/tab-separated-values,.numbers,.xlsx,.xls,.ods";
 
+/** The name a paste goes by, where a file would give its own. */
+export const PASTED_ROWS = "the pasted rows";
+
 const PASTE = "Or select the cells, header row included, copy them and paste them below.";
 
 const extension = (name: string) => /\.([^.]+)$/.exec(name)?.[1]?.toLowerCase();
