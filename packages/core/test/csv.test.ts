@@ -400,6 +400,8 @@ describe("resolveRows", () => {
   it("fails loudly when the decimals table is missing a token it was given", () => {
     const { issues } = resolveRows([row()], TOKENS, {});
     expect(issues[0]!.message).toMatch(/decimals/i);
+    // Not the payer's to fix: no field, so the card offers only "Leave out".
+    expect(issues[0]!.field).toBeUndefined();
   });
 
   it("names every field a row gets wrong at once, not only the first", () => {

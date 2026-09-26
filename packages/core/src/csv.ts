@@ -13,7 +13,9 @@ export interface ParsedRow {
   to: string;
   /** As written: `0,10` in a `;` file stays `0,10`. */
   amount: string;
-  /** Every value on the line, extra columns included, so a corrected file keeps them. */
+  /** Every value on the line as read, extra columns included, so a corrected
+   *  file keeps them. Never updated by an edit: edits overlay the four fields
+   *  above, and a corrected file writes them over a copy of these. */
   cells: string[];
   /** Set when the line could not be split into the header's columns. Its four
    *  fields are then empty, and `text` is the line as written. */
