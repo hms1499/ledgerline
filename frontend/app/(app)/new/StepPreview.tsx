@@ -60,7 +60,15 @@ export default function StepPreview({
   /** Connected, but not on Arc. The banner above carries the fix. */
   wrongChain?: boolean;
 }) {
-  const fix = fixList({ checked: draft, source: draft.source, edits: draft.edits, tokens: draft.tokens });
+  // Memoized so its cards/groups keep their object identity across a render
+  // that leaves the draft unchanged (a balance read resolving, "Check
+  // balances again"): LineCard/FixList's own focus effects key on that
+  // identity, and a fresh object on every render would consume their pending
+  // focus intent before the card was actually done being open.
+  const fix = useMemo(
+    () => fixList({ checked: draft, source: draft.source, edits: draft.edits, tokens: draft.tokens }),
+    [draft],
+  );
   const blocking = fix.blocking;
   const changes = changeCounts(draft.edits);
   const changed = changes.edited + changes.leftOut;
