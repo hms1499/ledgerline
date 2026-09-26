@@ -12,12 +12,12 @@ export default function RunSummary({
       <dl className="detail run-summary">
         <dt>Name</dt><dd>{view.name}</dd>
         <dt>Payments</dt><dd>{view.payments}</dd>
+        {view.changes && (<><dt>Changed here</dt><dd>{view.changes}</dd></>)}
         <dt>To pay</dt>
         <dd className="is-wide"><Totals lines={view.toPay} /></dd>
         <dt>Network</dt><dd>Arc {network}</dd>
         <dt>Paying wallet</dt>
         <dd>{payer ? <span className="hex addr" title={payer}>{short(payer)}</span> : "Not connected"}</dd>
-        {view.changes && (<><dt>Changed here</dt><dd>{view.changes}</dd></>)}
         {view.runId && (<><dt>Run ID</dt><dd className="hex">{view.runId}</dd></>)}
       </dl>
     </Tape>
