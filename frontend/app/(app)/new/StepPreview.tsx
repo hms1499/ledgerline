@@ -141,7 +141,7 @@ export default function StepPreview({
     <>
       <FixList view={fix} edits={draft.edits} onEdits={onEdits} />
 
-      <div style={{ marginTop: 24 }} className="table-scroll" role="region" aria-label="Payments in this run" tabIndex={0}>
+      <div style={{ marginTop: 24 }} className="table-scroll" role="region" aria-label="Payments table" tabIndex={0}>
         <Table<ResolvedRow>
           columns={columns}
           dataSource={draft.rows.map((r) => ({ ...r, key: r.line }))}
