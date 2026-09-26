@@ -17,27 +17,33 @@ function GroupCardView({ group, onApply, onApplyOne, onUndo }: {
   onUndo: () => void;
 }) {
   const [shown, setShown] = useState(false);
+  const cardRef = useRef<HTMLElement>(null);
   const undoRef = useRef<GetRef<typeof Button>>(null);
   // Set true by an action that asked for focus. Consumed on the very next
   // render this group takes part in, so a later unrelated change can never
-  // steal focus on the strength of an old, already-superseded action.
+  // steal focus on the strength of an old, already-superseded action. An
+  // applied group focuses its Undo; one opened again by Undo focuses its
+  // first button, since the Undo that had focus is gone.
   const pending = useRef(false);
   useEffect(() => {
     if (!pending.current) return;
     pending.current = false;
+    const el = cardRef.current;
     if (group.state !== "open") undoRef.current?.focus();
+    else if (el && !el.contains(document.activeElement)) el.querySelector<HTMLElement>("input, button")?.focus();
   }, [group]);
 
   if (group.state === "applied") {
     return (
-      <article id={group.id} className="fix-card fixed">
+      <article ref={cardRef} id={group.id} className="fix-card fixed">
         <p className="fix-heading"><span aria-hidden="true">✓ </span>{group.title}</p>
-        <Button size="small" ref={undoRef} aria-label={`Undo: ${group.title}`} onClick={onUndo}>Undo</Button>
+        <Button size="small" ref={undoRef} aria-label={`Undo: ${group.title}`}
+          onClick={() => { pending.current = true; onUndo(); }}>Undo</Button>
       </article>
     );
   }
   return (
-    <article id={group.id} className={`fix-card ${group.blocking ? "fail" : "warn"}`} aria-labelledby={`${group.id}-h`}>
+    <article ref={cardRef} id={group.id} className={`fix-card ${group.blocking ? "fail" : "warn"}`} aria-labelledby={`${group.id}-h`}>
       <p id={`${group.id}-h`} className="fix-heading">{group.title}</p>
       <ul className="fix-examples">{group.examples.map((e) => <li key={e} className="hex">{e}</li>)}</ul>
       <div className="fix-choices">

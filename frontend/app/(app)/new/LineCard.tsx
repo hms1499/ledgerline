@@ -63,31 +63,35 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
   onLeaveOut: () => void;
   onPutBack: () => void;
 }) {
+  const cardRef = useRef<HTMLElement>(null);
   const undoRef = useRef<GetRef<typeof Button>>(null);
-  // Set true by a commit that asked for focus. Consumed on the very next
-  // render this card takes part in: if the card is still open then (its own
-  // fix did not resolve it — another problem on the same line remains), the
-  // flag is dropped rather than left to steal focus after some later,
-  // unrelated change finally closes the card.
+  // Set true by an action that asked for focus: a commit, a button, an Undo.
+  // Consumed on the very next render this card takes part in, so a later,
+  // unrelated change can never steal focus on the strength of an old action.
+  // A closed card focuses its Undo. An open one keeps focus where it is,
+  // unless the control that had it is gone (an Undo, or a field that no
+  // longer has a problem): then its first control, never the page.
   const pending = useRef(false);
   useEffect(() => {
     if (!pending.current) return;
     pending.current = false;
+    const el = cardRef.current;
     if (card.state !== "open") undoRef.current?.focus();
+    else if (el && !el.contains(document.activeElement)) el.querySelector<HTMLElement>("input, button")?.focus();
   }, [card]);
   const apply: Apply = (changes, focusUndo) => { pending.current = focusUndo; onApply(changes); };
 
   if (card.state === "left-out") {
     return (
-      <article id={card.id} className="fix-card left-out">
+      <article ref={cardRef} id={card.id} className="fix-card left-out">
         <p className="fix-heading">{card.heading}</p>
-        <Button size="small" ref={undoRef} aria-label={`Put line ${card.line} back in this run`} onClick={onPutBack}>Undo</Button>
+        <Button size="small" ref={undoRef} aria-label={`Put line ${card.line} back in this run`} onClick={() => { pending.current = true; onPutBack(); }}>Undo</Button>
       </article>
     );
   }
   if (card.state === "fixed") {
     return (
-      <article id={card.id} className="fix-card fixed">
+      <article ref={cardRef} id={card.id} className="fix-card fixed">
         <p className="fix-heading"><span aria-hidden="true">✓ </span>{card.heading}</p>
         <dl className="fix-changes">
           {card.changes.map((c) => (
@@ -97,12 +101,12 @@ export default function LineCardView({ card, onApply, onUndo, onLeaveOut, onPutB
             </div>
           ))}
         </dl>
-        <Button size="small" ref={undoRef} aria-label={`Undo the changes to line ${card.line}`} onClick={onUndo}>Undo</Button>
+        <Button size="small" ref={undoRef} aria-label={`Undo the changes to line ${card.line}`} onClick={() => { pending.current = true; onUndo(); }}>Undo</Button>
       </article>
     );
   }
   return (
-    <article id={card.id} className={`fix-card ${card.blocking ? "fail" : "warn"}`} aria-labelledby={`${card.id}-h`}>
+    <article ref={cardRef} id={card.id} className={`fix-card ${card.blocking ? "fail" : "warn"}`} aria-labelledby={`${card.id}-h`}>
       <p id={`${card.id}-h`} className="fix-heading">{card.heading}</p>
       <ul className="fix-messages">
         {card.messages.map((m) => (
