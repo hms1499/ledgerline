@@ -61,7 +61,7 @@ export default function StepUpload({
         setError(refusal);
         return;
       }
-      receive(file.name, await file.text());
+      receive(file.name, new TextDecoder("utf-8", { ignoreBOM: true }).decode(await file.arrayBuffer()));
     } catch (err) {
       setError(describeError(err));
     }
