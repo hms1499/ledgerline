@@ -83,7 +83,9 @@ the decimal when it cannot group thousands (`0.10`, `1.5`, `0.000001`).
 - File-level issues stay here: empty file, missing columns, a field named
   twice.
 
-**`resolveRows(rows, delimiter, tokens, decimals)` reads meaning.**
+**`resolveRows(rows, tokens, decimals, delimiter)` reads meaning.** The
+delimiter is the last parameter, with default `","`, so existing callers are
+unchanged.
 
 - An amount goes through the new `readAmount(text, delimiter)`, then
   `toBaseUnits`. The token, address and invoice rules are unchanged.
@@ -161,10 +163,23 @@ group card. Only these problems group:
 
 | Problem | Same when | Card |
 |---|---|---|
-| unknown token | same text, ignoring case | `40 lines use the token "USD".` `Change all to` [select] |
+| unknown token | same text, ignoring case | `40 lines use the token "USD".` `Change all to` `[USDC]` `[EURC]` `[cirBTC]` |
 | `thousands-marks` | same `kind` | `12 amounts are written like 1,250.50.` `[Read all without the marks]` |
 | `dot-or-thousands` | same `kind` | `9 amounts like 1.000 could be read two ways.` `[All are thousands]` `[All are decimals]` |
-| `comma-or-thousands` warning | same `kind` | `5 amounts like 1,000 are read as 1.` `[All are thousands]` |
+| `comma-or-thousands` warning (`;` file) | same `kind` | `5 amounts like 1,000 are read as 1.` `[All are thousands]` |
+| `comma-or-thousands` error (`,` or tab file) | same `kind` | `5 amounts like 1,000 could be read two ways.` `[All are thousands]` `[All are decimals]` |
+
+A token is chosen with one button per chain token, not a select: the chain
+pays only three tokens (`CLAUDE.md`), and a button needs one press where a
+select needs two (open it, then choose). The same is true of a line card's own
+token field (§4.3).
+
+In a `,` or tab file, `1,000` is not read as a warning the way it is in a `;`
+file: with `,` as the delimiter, `1,000` could mean the same two things a `;`
+file's `1.000` does, so it is refused rather than guessed, naming both
+readings. It still shares `kind: "comma-or-thousands"` with the `;` file's
+warning case, but groups with two buttons, not one, matching
+`dot-or-thousands`.
 
 - Each card shows two examples as `line 3: 1.000 → 1000 EURC`, and `Show the 9
   lines`. Expanded, each line has its own input and buttons, for the one that
@@ -186,7 +201,8 @@ group card. Only these problems group:
     `[1 EURC]` `[1000 EURC]`, `[1250.50 USDC]`, and `[12,5 EURC]` in a `;`
     file. The grouping mark is where the doubt came from, so the button never
     repeats it.
-  - **Token:** a select of the chain's tokens.
+  - **Token:** one button per chain token, not a select. There are only three
+    tokens, and a button costs one press where a select costs two.
   - **Recipient:** a text input, never a suggestion. Help text: `Paste the full
     address. Check it against the one you were given.`
   - **Invoice:** a text input. A duplicate names the other line.
@@ -230,8 +246,9 @@ button applies at once.
   otherwise.
 - **Left-out lines stay, unchanged.** They are still owed. Dropped back in,
   they show their problems again, which is true.
-- Name: `<original name>-corrected.csv`. Pasted rows give
-  `pasted-rows-corrected.tsv`.
+- Name: `<original name>-corrected.<ext>`, keeping the chosen file's own `.csv`
+  or `.tsv` extension (any other extension, or none, becomes `.csv`). Pasted
+  rows give `pasted-rows-corrected.tsv`. [Task 4 ruling.]
 - **Round trip:** for every line not left out,
   `resolveRows(parseCsv(correctedCsv(…)))` yields exactly the row on screen. A
   test asserts it.
