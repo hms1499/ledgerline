@@ -184,6 +184,10 @@ warning case, but groups with two buttons, not one, matching
 - Each card shows two examples as `line 3: 1.000 → 1000 EURC`, and `Show the 9
   lines`. Expanded, each line has its own input and buttons, for the one that
   is different.
+  Fixing one takes it out of the group, so focus moves on to the next line of
+  the group (the one before, if it was the last), or to that line's own card
+  when the group breaks up, and a polite live region says `Line 3 changed. 8
+  lines left in this group.`
 - Pressing the group button writes one edit per line, in one step. The group
   card then shows `✓ 9 lines changed · Undo`, and one Undo drops them all.
 - Addresses, invoices and too-precise amounts never group: each needs its own
