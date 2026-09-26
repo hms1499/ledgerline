@@ -145,6 +145,8 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       ``,
       `invoiceId;token;to;amount\nINV-1;EURC;${A};1.000\nINV-2;EURC;${A};2.000\nINV-3;EURC;${A};3.000`,
       `invoiceId,token,to,amount\nINV-1,USD,${A},1\nINV-2,USD,${A},2\nINV-3,USD,${A},3`,
+      `id,coin\n1,2`,
+      `ledgerline-sample\ninvoiceId,token,to,amount`,
     ]) {
       const source = parseCsv(text);
       const f = fixList({ checked: checkRows(source, NO_EDITS, TOKENS, DECIMALS), source, edits: NO_EDITS, tokens: TOKENS });
@@ -160,7 +162,11 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     plain(headerWarning(3));
     for (const label of ["+ Add a line", "Leave out of this run", "Put back in this run", "Delete from the file",
       "Delete this line", "Use as the header line", "Use it", "Keep the header", "The file as a table",
-      "Line 1 is above the header", "Lines 1–4 are above the header"]) plain(label);
+      "Line 1 is above the header", "Lines 1–4 are above the header",
+      "Find and replace in this column…", "Number them", "Add it empty and fill each line", "Same token on every line:",
+      "Type the text to find. Capitals count.",
+      "A column you already have under another name: choose it under that column's name.", "not used",
+      "Replace in 3 cells", "3 cells will change.", "October-1 to October-3, one per line."]) plain(label);
     for (const label of ["Leave out of this run", "Undo", "Download the corrected file", "Choose another file",
       "Show the 3 lines", "Hide the lines", "Keep editing", "Discard your 3 edits?",
       "Undo the changes to line 5", "Put line 5 back in this run",

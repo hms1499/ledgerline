@@ -58,7 +58,7 @@ describe("parseCsv", () => {
     const { rows, issues } = parseCsv("id,coin,address,value\na,b,c,d");
     expect(rows).toEqual([]);
     expect(issues[0]!.line).toBe(1);
-    expect(issues[0]!.message).toMatch(/Missing: invoiceId, token\./);
+    expect(issues[0]!.message).toMatch(/^No column is the invoice reference or token\./);
   });
 
   it("rejects a file with no header at all", () => {
@@ -136,14 +136,14 @@ INV-EU-002,EURC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.10`;
   it("refuses a file where two columns could be the same field", () => {
     const { rows, issues } = parseCsv(`invoiceId,token,to,Amount,Value\na,b,c,1,2`);
     expect(rows).toEqual([]);
-    expect(issues[0]!.message).toBe('Two columns could be the amount: "Amount" and "Value". Keep one.');
+    expect(issues[0]!.message).toBe('Two columns could be the amount: "Amount" and "Value". Mark one not used.');
   });
 
-  it("names what is missing and what it found", () => {
+  it("names what is missing and how to add it", () => {
     const { issues } = parseCsv(`Invoice ID,Token,Recipient,Salary\na,b,c,1`);
     expect(issues[0]).toEqual({
       line: 1,
-      message: "The first line must name the columns invoiceId, token, to and amount, in any order. Missing: amount. Found: Invoice ID, Token, Recipient, Salary.",
+      message: "No column is the amount. Choose it under a column's name, or add it.",
     });
   });
 
@@ -310,7 +310,7 @@ describe("readSheet", () => {
 
   it("reads a later line as the header, and its delimiter from that line", () => {
     const text = `ledgerline-sample\r\ninvoiceId;token;to;amount\r\nINV-1;USDC;${ADDR};0.10`;
-    expect(parseCsv(text).issues[0]!.message).toMatch(/Missing: invoiceId, token, to, amount/);
+    expect(parseCsv(text).issues[0]!.message).toBe('Line 1, "ledgerline-sample", does not name columns. If the names are on a later line, use that line as the header.');
     const s = readSheet(readLines(text), { headerLine: 2 });
     expect(s.issues).toEqual([]);
     expect(s.delimiter).toBe(";");
@@ -327,7 +327,7 @@ describe("readSheet", () => {
     expect(s.roles).toEqual({ f0: "unused", f1: "to", f2: "amount", f3: "invoiceId", f4: "token" });
     expect(s.rows[0]).toMatchObject({ invoiceId: "INV-1", tokenSymbol: "USDC", to: ADDR, amount: "5" });
     const off = readSheet(readLines(text), { roles: { f2: "amount", f3: "invoiceId", f4: "unused" } });
-    expect(off.issues[0]!.message).toMatch(/Missing: token\./);
+    expect(off.issues[0]!.message).toBe("No column is the token. Choose it under a column's name, or add it.");
     expect(off.roles.f4).toBe("unused");
   });
 
@@ -345,7 +345,7 @@ describe("readSheet", () => {
   it("names both columns when two hold one role, and reads the file once one is not used", () => {
     const text = `Amount,Value,invoiceId,token,to\n1,2,INV-1,USDC,${ADDR}`;
     expect(readSheet(readLines(text)).issues[0]!.message)
-      .toBe('Two columns could be the amount: "Amount" and "Value". Keep one.');
+      .toBe('Two columns could be the amount: "Amount" and "Value". Mark one not used.');
     expect(readSheet(readLines(text), { roles: { f1: "unused" } }).issues).toEqual([]);
   });
 

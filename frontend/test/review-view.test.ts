@@ -22,7 +22,7 @@ describe("checkRows", () => {
   });
 
   it("keeps the file's own problems apart from the rows'", () => {
-    expect(check(`id,coin\n1,2`).fileProblems[0]).toMatch(/^The first line must name the columns/);
+    expect(check(`id,coin\n1,2`).fileProblems[0]).toMatch(/^No column is the /);
     expect(check(`invoiceId,token,to,amount\n`).fileProblems).toEqual(["This file has no payments in it."]);
   });
 

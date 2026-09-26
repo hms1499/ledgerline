@@ -22,6 +22,11 @@ import {
 import { sheetGrid } from "@/lib/sheet-grid";
 import SheetGrid, { type CellPos } from "./SheetGrid";
 import type { LineAction } from "./LineMenu";
+import type { Role } from "@ledgerline/core";
+import { addColumn, applyBatch, nextBatchId, numberInvoices, setRole } from "@/lib/sheet-edits";
+import type { GhostColumn, GridColumn } from "@/lib/sheet-grid";
+import { ColumnHead, GhostHead } from "./ColumnHead";
+import FindReplace from "./FindReplace";
 
 const balanceOfAbi = [
   { type: "function", name: "balanceOf", stateMutability: "view",
@@ -103,6 +108,27 @@ export default function StepPreview({
     const first = grid.columns[0];
     if (first) setOpenCell({ line, col: first.id, seq: Date.now() });
   };
+  const [replacing, setReplacing] = useState<GridColumn>();
+  const symbols = Object.keys(draft.tokens);
+  const inFile = grid.rows.filter((r) => r.state !== "deleted");
+  const settle = (next: typeof draft.edits) => { onEdits(next); setFocusSeq(Date.now()); };
+  const head = (c: GridColumn) => (
+    <ColumnHead
+      column={c}
+      onRole={(role: Role) => onEdits(setRole(draft.edits, draft.sheet.roles, c.id, role))}
+      onReplace={() => setReplacing(c)}
+    />
+  );
+  const ghostHead = (g: GhostColumn) => (
+    <GhostHead
+      ghost={g}
+      symbols={symbols}
+      numberPreview={`${draft.runLabel}-1 to ${draft.runLabel}-${inFile.length}, one per line.`}
+      onFill={(value) => settle(addColumn(draft.edits, g.role, value).edits)}
+      onEmpty={() => settle(addColumn(draft.edits, g.role, "").edits)}
+      onNumber={() => settle(numberInvoices(draft.edits, inFile.map((r) => r.line), draft.runLabel))}
+    />
+  );
   const blocking = fix.blocking;
   const changes = changeCounts(draft.edits);
   const changed = changeTotal(changes);
@@ -146,7 +172,8 @@ export default function StepPreview({
     <>
       <FixList view={fix} edits={draft.edits} onEdits={onEdits} />
 
-      <SheetGrid view={grid} onEdit={onEdit} onLine={onLine} onAddLine={onAddLine} open={openCell} focusSeq={focusSeq} />
+      <SheetGrid view={grid} onEdit={onEdit} onLine={onLine} onAddLine={onAddLine} open={openCell} focusSeq={focusSeq}
+        head={head} ghostHead={ghostHead} />
 
       <Modal
         open={askHeader !== undefined}
@@ -159,6 +186,17 @@ export default function StepPreview({
       >
         <p>{headerWarning(droppedByHeader(draft.edits))}</p>
       </Modal>
+      {replacing && (
+        <FindReplace
+          column={replacing}
+          values={inFile.map((r) => ({ line: r.line, text: r.cells.find((c) => c.col === replacing.id)?.text ?? "" }))}
+          onApply={(changes, title) => {
+            setReplacing(undefined);
+            settle(applyBatch(draft.edits, { id: nextBatchId(draft.edits, "replace"), kind: "column", title }, changes));
+          }}
+          onClose={() => { setReplacing(undefined); setFocusSeq(Date.now()); }}
+        />
+      )}
 
       {owner && (
         <section className="funding" aria-live="polite">

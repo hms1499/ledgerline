@@ -194,7 +194,9 @@
 /* The payments table's own horizontal scroll, keyboard-reachable (axe
    scrollable-region-focusable): a wide table scrolls inside this region
    rather than the whole page. */
-.table-scroll { overflow-x: auto; }
+/* Positioned, so what a screen reader alone reads (.sr-only, absolutely
+   placed) scrolls with the table instead of widening the page. */
+.table-scroll { position: relative; overflow-x: auto; }
 .table-scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
 
 /* The sheet on the Review step (spec 2026-09-26-csv-sheet-editor §5.2). */
@@ -224,3 +226,7 @@
 .role-chip.is-set { border-color: var(--ink); background: var(--highlight); color: var(--on-highlight); }
 .role-chip.is-unused { border-style: dashed; color: var(--ink-soft); }
 .role-chip.is-missing { border-color: var(--ribbon); color: var(--ribbon); }
+.role-chip { cursor: pointer; }
+.role-chip:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ghost-menu { display: grid; gap: 8px; justify-items: start; max-width: 32ch; }
+.ghost-menu p { margin: 0; }

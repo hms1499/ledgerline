@@ -100,8 +100,7 @@ export function fixList({ checked, source, edits, tokens }: {
   const one = blocking === 1;
   const summary =
     blocking > 0
-      ? `${plural(blocking, "problem stops", "problems stop")} this run from being paid. ${
-        blockingLines > 0 ? `Fix ${one ? "it" : "them"} below, or in your file and choose it again.` : `Fix ${one ? "it" : "them"} in the file and choose it again.`}`
+      ? `${plural(blocking, "problem stops", "problems stop")} this run from being paid. Fix ${one ? "it" : "them"} below, or in your file and choose it again.`
     : problems.length > 0 ? "Worth a second look before paying. They do not stop the run."
     : undefined;
   const title = blocking > 0 ? "Fix these lines" : problems.length > 0 ? "Check these lines" : "Your changes";

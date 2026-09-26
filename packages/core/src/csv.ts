@@ -96,6 +96,10 @@ const FIELD_WORD: Record<CsvField, string> = {
   invoiceId: "invoice reference", token: "token", to: "recipient", amount: "amount",
 };
 
+/** "a", "a or b", "a, b or c". */
+const orList = (words: readonly string[]) =>
+  words.length <= 1 ? words.join("") : `${words.slice(0, -1).join(", ")} or ${words.at(-1)}`;
+
 const normalise = (name: string) => name.trim().toLowerCase().replace(/[\s_.-]/g, "");
 /** The field a column's name says it holds, if any. */
 export const fieldFor = (name: string): CsvField | undefined =>
@@ -273,7 +277,7 @@ export function readSheet(lines: readonly FileLine[], structure: SheetStructure 
         rows, delimiter, header, headerLine, roles,
         issues: [{
           line: headerLine,
-          message: `Two columns could be the ${FIELD_WORD[role]}: "${nameOf(seen)}" and "${nameOf(id)}". Keep one.`,
+          message: `Two columns could be the ${FIELD_WORD[role]}: "${nameOf(seen)}" and "${nameOf(id)}". Mark one not used.`,
         }],
       };
     }
@@ -282,14 +286,12 @@ export function readSheet(lines: readonly FileLine[], structure: SheetStructure 
 
   const missing = FIELDS.filter((f) => at[f] === undefined);
   if (missing.length > 0) {
-    const found = names.filter((n) => n !== "").join(", ") || "nothing";
-    return {
-      rows, delimiter, header, headerLine, roles,
-      issues: [{
-        line: headerLine,
-        message: `The first line must name the columns invoiceId, token, to and amount, in any order. Missing: ${missing.join(", ")}. Found: ${found}.`,
-      }],
-    };
+    const named = names.filter((n) => n !== "");
+    const it = missing.length === 1 ? "it" : "them";
+    const message = named.length === 1 && Object.keys(at).length === 0
+      ? `Line ${headerLine}, "${named[0]}", does not name columns. If the names are on a later line, use that line as the header.`
+      : `No column is the ${orList(missing.map((f) => FIELD_WORD[f]))}. Choose ${it} under a column's name, or add ${it}.`;
+    return { rows, delimiter, header, headerLine, roles, issues: [{ line: headerLine, message }] };
   }
   const columns = at as Record<CsvField, ColumnId>;
 

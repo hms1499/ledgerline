@@ -255,11 +255,11 @@ describe("fixList: the list as a whole", () => {
     expect(v.firstOpen).toBe(v.groups[0]!.id);
   });
 
-  it("names a file-level problem with no card, and asks for another file", () => {
+  it("names a file-level problem with no card, to fix below", () => {
     const v = view(`id,coin\n1,2`);
     expect(v.cards).toEqual([]);
     expect(v.fileProblems).toHaveLength(1);
-    expect(v.summary).toBe("1 problem stops this run from being paid. Fix it in the file and choose it again.");
+    expect(v.summary).toBe("1 problem stops this run from being paid. Fix it below, or in your file and choose it again.");
     expect(v.firstOpen).toBe("fix-list");
   });
 
