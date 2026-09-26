@@ -248,3 +248,28 @@ export function fixList({ checked, source, edits, tokens }: {
     ...(blocking > 0 ? { fixFirst: `Fix ${plural(blocking, "problem", "problems")} first` } : {}),
   };
 }
+
+/** The id of one line's row inside an open group's list. */
+export const rowId = (line: number, field: CsvField) => `fix-row-${line}-${field}`;
+
+/**
+ * Where focus goes after a line in an open group is fixed on its own, since
+ * the pressed button leaves with its line: the next line of that group, or the
+ * one before when it was the last, so the payer keeps their place. If the
+ * group broke up, that line's own card. The list itself, never the page.
+ */
+export function afterRowFix(view: FixListView, key: string, lines: number[], line: number): {
+  focus: string; said: string;
+} {
+  const group = view.groups.find((g) => g.key === key && g.state === "open");
+  const at = lines.indexOf(line);
+  const order = [...lines.slice(at + 1), ...lines.slice(0, Math.max(at, 0)).reverse()];
+  let focus = "fix-list";
+  for (const l of order) {
+    if (group?.lines.includes(l)) { focus = rowId(l, group.field); break; }
+    const card = view.cards.find((c) => c.line === l);
+    if (card) { focus = card.id; break; }
+  }
+  const said = group ? `Line ${line} changed. ${plural(group.lines.length, "line", "lines")} left in this group.` : `Line ${line} changed.`;
+  return { focus, said };
+}

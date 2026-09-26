@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, type GetRef } from "antd";
-import type { FixListView, GroupAction, GroupCard } from "@/lib/fix-list";
+import { afterRowFix, rowId, type FixListView, type GroupAction, type GroupCard } from "@/lib/fix-list";
 import {
   applyGroup, leaveOut, putBack, undoGroup, undoLine, withEdits, type CellEdit, type RunEdits,
 } from "@/lib/run-edits";
@@ -13,7 +13,7 @@ const SHOWN = 25;
 function GroupCardView({ group, onApply, onApplyOne, onUndo }: {
   group: GroupCard;
   onApply: (a: GroupAction) => void;
-  onApplyOne: (changes: CellEdit[]) => void;
+  onApplyOne: (line: number, changes: CellEdit[]) => void;
   onUndo: () => void;
 }) {
   const [shown, setShown] = useState(false);
@@ -58,11 +58,11 @@ function GroupCardView({ group, onApply, onApplyOne, onUndo }: {
       {shown && (
         <ul className="fix-rows">
           {group.rows.map((r) => (
-            <li key={r.line}>
+            <li key={r.line} id={rowId(r.line, group.field)}>
               <span className="hex">line {r.line}: {r.raw || "(empty)"}</span>
               {r.choices.map((c) => (
                 <Button key={c.label} size="small"
-                  onClick={() => onApplyOne([{ line: r.line, field: group.field, text: c.text }])}>
+                  onClick={() => onApplyOne(r.line, [{ line: r.line, field: group.field, text: c.text }])}>
                   {c.label}
                 </Button>
               ))}
@@ -92,6 +92,20 @@ export default function FixList({ view, edits, onEdits }: {
     before.current = new Map([...view.cards, ...view.groups].map((x) => [x.id, x.state]));
   }, [view]);
 
+  // A line fixed on its own inside a group leaves the group, and the button
+  // that had focus leaves with it. Set by that press, consumed on the next
+  // render: focus moves on down the group (afterRowFix), and is announced.
+  const rowFix = useRef<{ key: string; lines: number[]; line: number }>(undefined);
+  useEffect(() => {
+    const fixed = rowFix.current;
+    if (!fixed) return;
+    rowFix.current = undefined;
+    const next = afterRowFix(view, fixed.key, fixed.lines, fixed.line);
+    const el = document.getElementById(next.focus) ?? document.getElementById("fix-list");
+    (el?.querySelector<HTMLElement>("input, button") ?? el)?.focus();
+    setSaid(next.said);
+  }, [view]);
+
   if (view.fileProblems.length + view.groups.length + view.cards.length === 0) return null;
   const cards = all ? view.cards : view.cards.slice(0, SHOWN);
   return (
@@ -113,7 +127,10 @@ export default function FixList({ view, edits, onEdits }: {
       {view.groups.map((g) => (
         <GroupCardView key={g.id} group={g}
           onApply={(a) => onEdits(applyGroup(edits, a))}
-          onApplyOne={(changes) => onEdits(withEdits(edits, changes))}
+          onApplyOne={(line, changes) => {
+            rowFix.current = { key: g.key, lines: g.lines, line };
+            onEdits(withEdits(edits, changes));
+          }}
           onUndo={() => onEdits(undoGroup(edits, g.key))} />
       ))}
       {cards.map((c) => (

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseCsv, tokensForChain } from "@ledgerline/core";
-import { fixList, RECIPIENT_HELP } from "@/lib/fix-list";
+import { afterRowFix, fixList, rowId, RECIPIENT_HELP } from "@/lib/fix-list";
 import { checkRows } from "@/lib/review-view";
 import { NO_EDITS, applyGroup, leaveOut, withEdits, type RunEdits } from "@/lib/run-edits";
 
@@ -96,6 +96,34 @@ describe("fixList: groups", () => {
     const v = view(text, withEdits(NO_EDITS, [{ line: 3, field: "token", text: "EURC" }]));
     expect(v.groups).toEqual([]);
     expect(v.cards.map((c) => [c.line, c.state])).toEqual([[2, "open"], [3, "fixed"], [4, "open"]]);
+  });
+});
+
+describe("afterRowFix: one line fixed on its own inside a group", () => {
+  // The pressed button leaves with its line, so focus needs somewhere to go.
+  const five = semi(`INV-1;EURC;${A};1.000`, `INV-2;EURC;${B};2.000`, `INV-3;EURC;${C};3.000`, `INV-4;EURC;${A};4.000`, `INV-5;EURC;${B};5.000`);
+  const three = semi(`INV-1;EURC;${A};1.000`, `INV-2;EURC;${B};2.000`, `INV-3;EURC;${C};3.000`);
+  const fixOne = (text: string, line: number, lines?: number[]) => {
+    const g = view(text).groups[0]!;
+    const v = view(text, withEdits(NO_EDITS, [{ line, field: "amount", text: "1000" }]));
+    return afterRowFix(v, g.key, lines ?? g.lines, line);
+  };
+
+  it("moves on to the next line in the group, and says how many are left", () => {
+    expect(fixOne(five, 3)).toEqual({ focus: rowId(4, "amount"), said: "Line 3 changed. 4 lines left in this group." });
+  });
+
+  it("goes back to the line before when the last one is fixed", () => {
+    expect(fixOne(five, 6).focus).toBe(rowId(5, "amount"));
+  });
+
+  it("goes to the next line's own card when the group breaks up", () => {
+    expect(fixOne(three, 3)).toEqual({ focus: "fix-line-4", said: "Line 3 changed." });
+    expect(fixOne(three, 4).focus).toBe("fix-line-3");
+  });
+
+  it("falls back to the list, never the page", () => {
+    expect(fixOne(five, 3, [3]).focus).toBe("fix-list");
   });
 });
 
