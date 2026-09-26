@@ -27,6 +27,12 @@ Claims are tagged `[measured]`, `[docs]`, `[unverified]`, as in the parents.
 - A refused line vanishes from the Review table: `parseCsv` drops a row whose
   amount it refuses (`continue`), and the table shows only resolved rows
   `[measured]` (`StepPreview.tsx`). There is nothing on screen to fix.
+- Real mistakes are systematic more often than scattered. The Numbers case hit
+  every line in the same way. So does an Excel column formatted with thousands
+  marks (every amount from 1000 up becomes `1,250.50`), or a token column that
+  says `USD` throughout. How often each happens is `[unverified]`, but each
+  comes from one setting and so hits a whole column. Fixing line by line has
+  to scale to 300 lines.
 
 **Supersedes** decision 1 of `2026-09-25-non-tech-ux-design.md` ("any `.` in
 an amount there is refused"). Since `bf00a73`, a `.` in a `;` file is read as
@@ -36,12 +42,14 @@ the decimal when it cannot group thousands (`0.10`, `1.5`, `0.000001`).
 ## 2. Decisions (with the product owner, 2026-09-26)
 
 1. **Scope: lines with a problem.** A line with an error or a warning gets an
-   input for each field with a problem, and it can be removed. Fields without
-   a problem, and valid lines, are read-only. File-level problems (missing or duplicate columns, an empty file,
-   over 400 rows) still need another file.
+   input for each field with a problem, and it can be left out of the run.
+   Fields without a problem, and valid lines, are read-only. File-level
+   problems (missing or duplicate columns, an empty file, over 400 rows) still
+   need another file.
 2. **Records: mark, and offer the corrected file.** Edited cells are marked
    `edited here`. Once anything is edited, Review offers `Download the
-   corrected file` (optional) in the payer's own columns and line order.
+   corrected file` (optional), in the payer's own columns and line order, and
+   the Result screen reminds the payer to download it.
 3. **Suggestions are buttons the payer presses.** They are never applied on
    their own. A token is chosen from the chain's tokens. A recipient address is
    never suggested.
@@ -51,6 +59,14 @@ the decimal when it cannot group thousands (`0.10`, `1.5`, `0.000001`).
 5. **Approach: edits are an overlay on the file as read.** The file as read is
    never overwritten. Everything shown is derived through core's rules. There
    is no second validator in the UI.
+6. **The same problem on many lines is fixed once.** Three or more lines with
+   the same problem and the same fix share one group card, one button and one
+   Undo.
+7. **A card stays where it is.** A fixed or left-out line keeps its card, in
+   place, showing what changed, so nothing on the page moves under the
+   pointer.
+8. **Leaving a line out is not deleting it.** A left-out line is still owed. It
+   stays in the corrected file, unchanged.
 
 ## 3. Data flow and core changes
 
@@ -72,11 +88,16 @@ the decimal when it cannot group thousands (`0.10`, `1.5`, `0.000001`).
 - An amount goes through the new `readAmount(text, delimiter)`, then
   `toBaseUnits`. The token, address and invoice rules are unchanged.
 - `readAmount` returns one of:
-  - `{ ok: true, amount, warning? }`, where `amount` is dot-decimal text. The
-    warning is the `;` case of `1,000`, read as 1.
-  - `{ ok: false, message, readings? }`. `readings` lists each amount the text
-    could mean, as dot-decimal text: `1.000` in a `;` file gives
-    `["1", "1000"]`, and `1,250.50` in a `,` or tab file gives `["1250.50"]`.
+  - `{ ok: true, amount, warning?, readings?, kind? }`, where `amount` is
+    dot-decimal text. The warning is the `;` case of `1,000`, read as 1; its
+    `readings` are `["1", "1000"]`, with `kind: "comma-or-thousands"`.
+  - `{ ok: false, message, readings?, kind? }`. `readings` lists each amount
+    the text could mean, as dot-decimal text:
+    - `1.000` in a `;` file: `["1", "1000"]`, `kind: "dot-or-thousands"`;
+    - `1,250.50` in a `,` or tab file: `["1250.50"]`,
+      `kind: "thousands-marks"`.
+- `kind` names the pattern, so lines with the same problem can be grouped
+  (§4.2). An amount with no `readings` has no `kind`.
 - Row-level issues and warnings, including the `;` amount rules that live in
   `parseCsv` today, come from `resolveRows`. `validateRun` is unchanged.
 - An `unreadable` row resolves to one issue ("This line has 3 values but the
@@ -92,8 +113,8 @@ how a card knows which input to show:
 | unknown token | `token` |
 | not an address; the zero address | `to` |
 | amount unreadable, ambiguous, too precise or zero; `;` `1,000` warning | `amount` |
-| same recipient and token paid twice (warning) | none: the card offers only `Remove line` |
-| no on-chain decimals for a token | none: not the payer's to fix; the card offers only `Remove line` |
+| same recipient and token paid twice (warning) | none: the card offers only `Leave out of this run` |
+| no on-chain decimals for a token | none: not the payer's to fix; the card offers only `Leave out of this run` |
 | unreadable line | none: all four inputs, empty |
 
 ### 3.2 State on the Review step
@@ -109,48 +130,92 @@ derived = validateRun(resolveRows(applyEdits(source, edits), …))
   and `edits`. `rows`, `issues`, `errors` and `warnings` become values derived
   with `useMemo`. `applyEdits` is a pure function in `frontend/lib`.
 - A typed amount goes through the same `readAmount` with the file's delimiter.
-  In a `;` file, `12,5` and `0.10` are both read, and `1.000` offers `[1]
-  [1000]`, exactly as the same cell in the file would.
+  In a `;` file, `12,5` and `0.10` are both read, and `1.000` offers
+  `[1 EURC]` `[1000 EURC]`, exactly as the same cell in the file would.
+- **Cards are derived, not remembered.** A line with a problem has an open
+  card. A line with edits and no problem has a fixed card. A left-out line has
+  a left-out card. Going to Check and back shows the same list.
 
 ## 4. The Review step
 
-**The problem list** (replaces `ReviewIssues`) is titled `Fix these lines`, or
-`Check these lines` when only warnings remain.
+### 4.1 The problem list
 
-- File-level problems come first, as text, with no card.
-- Then one **card per line**, by line number, with error lines before
-  warning-only lines.
+It replaces `ReviewIssues`. It is titled `Fix these lines`, or `Check these
+lines` when only warnings remain, with a count such as `2 lines stop this run
+· 3 fixed · 1 left out`.
 
-**A card:**
+In order:
+
+1. File-level problems, as text, with no card.
+2. Group cards (§4.2).
+3. One card per line not in a group, **by line number only**. Errors and
+   warnings are told apart by their mark, not their position, so a card never
+   moves when its state changes.
+
+Over 25 line cards, the list shows 25, then `Show N more`.
+
+### 4.2 Group cards
+
+Three or more open lines with the same problem and the same fix share one
+group card. Only these problems group:
+
+| Problem | Same when | Card |
+|---|---|---|
+| unknown token | same text, ignoring case | `40 lines use the token "USD".` `Change all to` [select] |
+| `thousands-marks` | same `kind` | `12 amounts are written like 1,250.50.` `[Read all without the marks]` |
+| `dot-or-thousands` | same `kind` | `9 amounts like 1.000 could be read two ways.` `[All are thousands]` `[All are decimals]` |
+| `comma-or-thousands` warning | same `kind` | `5 amounts like 1,000 are read as 1.` `[All are thousands]` |
+
+- Each card shows two examples as `line 3: 1.000 → 1000 EURC`, and `Show the 9
+  lines`. Expanded, each line has its own input and buttons, for the one that
+  is different.
+- Pressing the group button writes one edit per line, in one step. The group
+  card then shows `✓ 9 lines changed · Undo`, and one Undo drops them all.
+- Addresses, invoices and too-precise amounts never group: each needs its own
+  value.
+- A line whose problems are all in groups has no line card of its own. A line
+  with another problem as well keeps a line card, with inputs only for the
+  fields no group covers.
+
+### 4.3 A line card
 
 - Heading `Line 5 · INV-4`, then its messages as today.
 - Only the fields that have a problem get an input:
   - **Amount:** a text input, plus one button per reading when `readings` is
-    present (`[1]` `[1000]`, `[Use 1250.50]`). A button shows the reading in
-    the file's convention and applies it at once.
+    present. **A button carries the token and no grouping mark:**
+    `[1 EURC]` `[1000 EURC]`, `[1250.50 USDC]`, and `[12,5 EURC]` in a `;`
+    file. The grouping mark is where the doubt came from, so the button never
+    repeats it.
   - **Token:** a select of the chain's tokens.
   - **Recipient:** a text input, never a suggestion. Help text: `Paste the full
     address. Check it against the one you were given.`
   - **Invoice:** a text input. A duplicate names the other line.
   - **Unreadable line:** the raw text, read-only, above four empty inputs.
-- `Remove line` on every card.
+- `Leave out of this run` on every card.
 
-**Re-checking** happens on blur or Enter, not on every keystroke, so a card
-never vanishes while the payer is typing. A suggestion button applies at once.
+**Re-checking** happens on blur or Enter, not on every keystroke. A suggestion
+button applies at once.
 
-**A line that becomes valid** leaves the list and appears in the payments
-table at its line number, with `✎ edited here`. A polite live region announces
-`Line 5 is ready to pay`. An edit that causes a new problem (a duplicate
-invoice) keeps the card, with the new message.
+### 4.4 A card stays in place
 
-**Undo.** An edited cell in the table has `Undo`, which drops that field's
-edit. The line may return to the list. A removed line shows as `Line 7
-removed · Undo` below the list.
+- **Fixed:** the card keeps its place and becomes `✓ Line 5 ·
+  ready to pay`. Each edited field shows before and after, with the address in
+  full checksum form: `vitalik.eth → 0xe48A096B9E74f064b13c17734af29F85E02d732a`.
+  It has one `Undo`, which drops that line's edits.
+- **Left out:** `Line 7 · left out of this run · Undo`.
+- **New problem:** an edit that causes one (a duplicate invoice) keeps the card
+  open, with the new message.
+- **Focus** never falls to the page. After a button press, focus moves to the
+  same card's `Undo`. A polite live region announces `Line 5 is ready to pay`.
+- The payments table shows the line at its line number with `✎ edited here`.
+  Undo lives on the card, not in the table.
 
-**Primary action.** Unchanged: `Fix N lines first`, disabled, while anything
-blocks.
+### 4.5 Actions
 
-**`Choose another file`** with edits asks first: `Discard your 3 edits?`
+- **Primary action:** while anything blocks, it reads `Fix N lines first` and
+  **stays enabled**. Pressing it scrolls to the first open card and focuses its
+  first input. It never proceeds.
+- **`Choose another file`** with edits asks first: `Discard your 3 edits?`
 
 ## 5. The corrected file
 
@@ -163,21 +228,33 @@ blocks.
 - Amounts are written in the file's convention: `0,10` in a `;` file (so
   Numbers in a comma-decimal region stores a number, not text), `0.10`
   otherwise.
-- Removed lines are left out.
+- **Left-out lines stay, unchanged.** They are still owed. Dropped back in,
+  they show their problems again, which is true.
 - Name: `<original name>-corrected.csv`. Pasted rows give
   `pasted-rows-corrected.tsv`.
-- **Round trip:** `resolveRows(parseCsv(correctedCsv(…)))` yields exactly the
-  rows on screen. A test asserts it.
+- **Round trip:** for every line not left out,
+  `resolveRows(parseCsv(correctedCsv(…)))` yields exactly the row on screen. A
+  test asserts it.
+
+**Where it is offered:**
+
+- **Review**, once anything is edited: `Download the corrected file`,
+  optional.
+- **Result**, after paying, when the run had edits or left-out lines: `You
+  edited 3 lines and left 1 out of this run. Download the corrected file to
+  update your spreadsheet.` This is when the file matters: the run is paid,
+  and the spreadsheet is what the payer opens next month.
 
 ## 6. Safeguards
 
 - **Nothing is changed for the payer.** Every change is typed or pressed. A
-  suggestion is only a reading `readAmount` computed.
-- **No address is ever suggested.** An edited address passes `isAddress`, and
-  the table shows it in full checksum form with `✎`.
+  suggestion is only a reading `readAmount` computed. A group button states
+  how many lines it changes and shows examples first.
+- **No address is ever suggested or grouped.** An edited address passes
+  `isAddress`, and its fixed card shows it in full checksum form.
 - **Edits stay visible after Review:** `RunSummary` states `3 lines edited
-  here` through Check and Pay, so the list being signed is visibly not the
-  file as chosen.
+  here · 1 left out` through Check and Pay, so the list being signed is
+  visibly not the file as chosen.
 - Edits live in page memory only, as the file does today. They are never
   written to `localStorage`.
 - All new copy passes `plain-language.test.ts`.
@@ -187,31 +264,41 @@ blocks.
 **Core, unit:**
 
 - `readAmount`: a table over `,`, `;` and tab covering read, warned,
-  ambiguous and refused amounts.
+  ambiguous and refused amounts, with their `readings` and `kind`.
 - `parseCsv` keeps refused and unreadable lines, with their raw cells.
-- `resolveRows` takes the delimiter.
+- `resolveRows` takes the delimiter, and every issue carries its `field`.
 - The existing `;` tests move to the layer that now owns the rule. None are
   deleted.
 
 **Frontend, unit:**
 
-- `applyEdits`: edit, remove, undo.
-- `correctedCsv`: byte preservation, quoting, the file's decimal mark, and the
-  round trip.
-- The card view: which fields get inputs, which buttons.
+- `applyEdits`: edit, leave out, undo a line, undo a group.
+- `correctedCsv`: byte preservation, quoting, the file's decimal mark,
+  left-out lines kept, and the round trip.
+- The list view: which lines group and which never do, the order by line
+  number, card state (open, fixed, left out), which fields get inputs, and the
+  button labels with token and no grouping mark.
+- The Result reminder: shown only with edits or left-out lines.
 
 **Playwright, real browser, at 1280 and 390:**
 
-1. A Numbers-style `;` file with `1.000` → press `[1000]` → the line joins the
-   table with `✎`.
-2. A bad address → paste a good one → the card clears.
-3. Remove a line → undo.
-4. Download the corrected file → drop it back → Review shows no problems.
-5. `Choose another file` with edits asks first.
-6. No horizontal scroll. axe is clean.
+1. A Numbers-style `;` file with `1.000` on 9 lines → one group card →
+   `[All are thousands]` → 9 lines join the table with `✎` → one Undo returns
+   them.
+2. A bad address → paste a good one → the card turns `✓` in place, and a
+   pointer on the next card's input still lands there.
+3. Leave a line out → Undo.
+4. `Fix N lines first` → focus on the first open card's input.
+5. Download the corrected file → the left-out line is in it, unchanged → drop
+   it back → only that line has a problem.
+6. `Choose another file` with edits asks first.
+7. No horizontal scroll. axe is clean.
+
+The Result reminder is covered by the unit test of its view. Reaching Result in
+a browser needs a paid run.
 
 ## 8. Out of scope
 
 - Mapping columns when the header is wrong.
-- Adding lines, bulk edit, sorting.
+- Adding lines, free-form bulk edit, sorting.
 - Keeping edits across a reload.
