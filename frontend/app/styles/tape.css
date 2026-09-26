@@ -190,3 +190,9 @@
 .fix-raw { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
 .fix-rows li { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .edited-mark { margin-left: 4px; }
+
+/* The payments table's own horizontal scroll, keyboard-reachable (axe
+   scrollable-region-focusable): a wide table scrolls inside this region
+   rather than the whole page. */
+.table-scroll { overflow-x: auto; }
+.table-scroll:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }

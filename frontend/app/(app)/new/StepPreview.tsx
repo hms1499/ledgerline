@@ -141,13 +141,12 @@ export default function StepPreview({
     <>
       <FixList view={fix} edits={draft.edits} onEdits={onEdits} />
 
-      <div style={{ marginTop: 24 }}>
+      <div style={{ marginTop: 24 }} className="table-scroll" role="region" aria-label="Payments in this run" tabIndex={0}>
         <Table<ResolvedRow>
           columns={columns}
           dataSource={draft.rows.map((r) => ({ ...r, key: r.line }))}
           pagination={draft.rows.length > 25 ? { pageSize: 25 } : false}
           size="middle"
-          scroll={{ x: "max-content" }}
         />
       </div>
 
