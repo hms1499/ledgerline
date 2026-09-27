@@ -44,7 +44,8 @@ describe("changesView", () => {
       "Line 9 · deleted",
       "Line 7 · left out of this run",
     ]);
-    expect(v.note).toBe("Lines 1–4 are above the header and are not in the corrected file.");
+    // The same lines the grid names above the header: those with anything in them.
+    expect(v.note).toBe("Lines 1–3 are above the header and are not in the corrected file.");
     expect(v.entries.find((x) => x.id === "deleted:9")!.undo.deleted).toEqual([]);
     expect(v.entries.find((x) => x.id === "role:f5")!.undo.roles).toEqual({});
   });

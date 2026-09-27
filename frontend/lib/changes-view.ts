@@ -70,12 +70,15 @@ export function changesView({ lines, sheet, edits }: {
     entries.push({ id: `left-out:${line}`, text: `Line ${line} · left out of this run`, undo: putBack(edits, line) });
   }
 
-  const h = sheet.headerLine;
-  const above = lines.slice(0, Math.max(h - 1, 0))
-    .filter((l, i) => !isBlankLine(i === 0 ? l.body.replace(/^﻿/, "") : l.body, sheet.delimiter)).length;
-  const note = above === 0 ? undefined
-    : h === 2 ? "Line 1 is above the header and is not in the corrected file."
-    : `Lines 1–${h - 1} are above the header and are not in the corrected file.`;
+  // The lines above the header with anything in them: the same the grid names.
+  const above = lines.slice(0, Math.max(sheet.headerLine - 1, 0))
+    .map((l, i) => ({ line: i + 1, blank: isBlankLine(i === 0 ? l.body.replace(/^\uFEFF/, "") : l.body, sheet.delimiter) }))
+    .filter((l) => !l.blank).map((l) => l.line);
+  const first = above[0];
+  const last = above.at(-1);
+  const note = first === undefined ? undefined
+    : first === last ? `Line ${first} is above the header and is not in the corrected file.`
+    : `Lines ${first}–${last} are above the header and are not in the corrected file.`;
   return { entries, ...(note ? { note } : {}) };
 }
 
