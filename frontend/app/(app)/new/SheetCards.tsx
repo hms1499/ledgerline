@@ -8,6 +8,24 @@ import CellEditor from "./CellEditor";
 import LineMenu, { type LineAction } from "./LineMenu";
 import { AboveHeader, type CellPos } from "./SheetGrid";
 
+/**
+ * A fold that opens when asked (`force`) and otherwise stays as the payer
+ * left it. Bound to a prop alone, it would close by itself the moment the
+ * prop went false, hiding what the payer was working on.
+ */
+function Fold({ className, summary, force, children }: {
+  className: string; summary: ReactNode; force: boolean; children: ReactNode;
+}) {
+  const [open, setOpen] = useState(force);
+  useEffect(() => { if (force) setOpen(true); }, [force]);
+  return (
+    <details className={className} open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>{summary}</summary>
+      {children}
+    </details>
+  );
+}
+
 const LABEL: Record<CsvField, string> = { invoiceId: "Invoice", token: "Token", to: "Recipient", amount: "Amount" };
 const ORDER: readonly CsvField[] = ["invoiceId", "token", "to", "amount"];
 
@@ -89,13 +107,12 @@ export default function SheetCards({ view, onEdit, onLine, onAddLine, open, focu
 
   return (
     <div className="sheet sheet-narrow" ref={rootRef}>
-      <details className="sheet-columns" open={view.ghosts.length > 0 || undefined}>
-        <summary>Columns</summary>
+      <Fold className="sheet-columns" summary="Columns" force={view.ghosts.length > 0}>
         <ul>
           {view.columns.map((c) => <li key={c.id}>{head ? head(c) : c.name}</li>)}
           {view.ghosts.map((g) => <li key={g.role}>{ghostHead ? ghostHead(g) : `${g.role} missing`}</li>)}
         </ul>
-      </details>
+      </Fold>
       {view.above.length > 0 && <AboveHeader above={view.above} onUse={(line) => onLine(line, "header")} />}
       <ol className="sheet-cards">
         {view.rows.map((r) => {
@@ -112,10 +129,9 @@ export default function SheetCards({ view, onEdit, onLine, onAddLine, open, focu
               {r.raw !== undefined && <pre className="hex fix-raw">{r.raw}</pre>}
               {shown.map((c) => field(r, c, c.role === "unused" ? c.name : LABEL[c.role]))}
               {more.length > 0 && (
-                <details className="card-more" open={inMore || undefined}>
-                  <summary>More: {more.map((c) => c.name).join(", ")}</summary>
+                <Fold className="card-more" summary={`More: ${more.map((c) => c.name).join(", ")}`} force={inMore}>
                   {more.map((c) => field(r, c, c.name))}
-                </details>
+                </Fold>
               )}
             </li>
           );
