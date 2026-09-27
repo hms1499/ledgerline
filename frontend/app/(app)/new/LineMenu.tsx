@@ -3,6 +3,7 @@
 import { useRef } from "react";
 import { Button, Dropdown } from "antd";
 import type { GridRow } from "@/lib/sheet-grid";
+import { inMain } from "@/lib/popup-container";
 
 export type LineAction = "leave-out" | "put-back" | "delete" | "restore" | "header";
 
@@ -34,7 +35,7 @@ export default function LineMenu({ line, state, isNew, onAction }: {
       { key: "header", label: "Use as the header line" },
     ];
   return (
-    <Dropdown trigger={["click"]} menu={{ items, onClick: ({ key }) => {
+    <Dropdown trigger={["click"]} getPopupContainer={inMain} menu={{ items, onClick: ({ key }) => {
       onAction(key as LineAction);
       if (key === "leave-out" || key === "put-back") requestAnimationFrame(() => trigger.current?.focus());
     } }}>

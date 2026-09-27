@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { Button, Dropdown, Popover } from "antd";
 import type { Role } from "@ledgerline/core";
 import type { GhostColumn, GridColumn } from "@/lib/sheet-grid";
+import { inMain } from "@/lib/popup-container";
 
 const ROLES: readonly Role[] = ["invoiceId", "token", "to", "amount", "unused"];
 const word = (r: Role) => (r === "unused" ? "not used" : r);
@@ -27,6 +28,7 @@ export function ColumnHead({ column, onRole, onReplace }: {
       <span className="col-name">{column.name}</span>
       <Dropdown
         trigger={["click"]}
+        getPopupContainer={inMain}
         menu={{ items, onClick: ({ key }) => {
           if (key === "replace") { onReplace(); return; }
           onRole(key as Role);
@@ -79,7 +81,7 @@ export function GhostHead({ ghost, symbols, numberPreview, onFill, onEmpty, onNu
     </div>
   );
   return (
-    <Popover trigger="click" title={`Add the ${ghost.role} column`} content={content}>
+    <Popover trigger="click" getPopupContainer={inMain} title={`Add the ${ghost.role} column`} content={content}>
       <button type="button" className="role-chip is-missing" aria-label={`${ghost.role} is missing. Add it`}>
         {ghost.role} ✗ missing · + Add
       </button>

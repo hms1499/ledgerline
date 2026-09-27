@@ -31,6 +31,7 @@ import type { LineAction } from "./LineMenu";
 import type { Role } from "@ledgerline/core";
 import { addColumn, applyBatch, nextBatchId, numberInvoices, setRole } from "@/lib/sheet-edits";
 import type { GhostColumn, GridColumn } from "@/lib/sheet-grid";
+import { inMain } from "@/lib/popup-container";
 import { ColumnHead, GhostHead } from "./ColumnHead";
 import FindReplace from "./FindReplace";
 
@@ -335,6 +336,7 @@ export default function StepPreview({
       <div style={{ marginTop: 24, display: "flex", gap: 12, flexWrap: "wrap" }}>
         {changed > 0 ? (
           <Popconfirm
+            getPopupContainer={inMain}
             title={`Discard your ${changed} ${changed === 1 ? "edit" : "edits"}?`}
             okText="Discard" cancelText="Keep editing" onConfirm={onBack}>
             <Button>Choose another file</Button>
