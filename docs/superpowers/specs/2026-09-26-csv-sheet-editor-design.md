@@ -110,9 +110,10 @@ interface SheetEdits {
   deleted: readonly number[];
   /** Left out of this run: still owed, kept in the corrected file unchanged. */
   leftOut: readonly number[];
-  /** A change made to many cells at once, undone at once: a group fix, a
-   *  column fill, a find and replace, "Number them". */
-  batches: readonly { id: string; title: string; cells: readonly (readonly [number, ColumnId])[] }[];
+  /** A change made to many cells at once, undone at once. A `group` is a
+   *  group fix; a `column` batch is "Number them" or a find and replace, which
+   *  a line's own Undo leaves to the batch's Undo. */
+  batches: readonly { id: string; kind: "group" | "column"; title: string; cells: readonly (readonly [number, ColumnId])[] }[];
 }
 ```
 
@@ -128,8 +129,11 @@ In `packages/core/src/csv.ts`:
 - `readLines(text): { body: string; end: string }[]` moves here from
   `frontend/lib/corrected-file.ts`. Reading and writing number lines through
   the same function, so they cannot disagree.
-- `readSheet(lines, options?): ParsedCsv`, with
-  `options = { headerLine?, roles?, newColumns?, cells?, newLines?, skip? }`:
+- `readSheet(lines, structure?): ParsedCsv`, with
+  `structure = { headerLine?, roles?, newColumns? }`: the structure only.
+  Typed cells, new lines, deleted and left-out lines are laid over the result
+  by `applySheetEdits` in the frontend, as `applyEdits` did. Core decides
+  which problems a header has; the frontend lays values over them.
   - The header is `headerLine`, or the first line with a non-empty cell.
     Lines above it are not part of the table.
   - **The delimiter is read from the header line chosen**, not from line 1.
@@ -141,9 +145,8 @@ In `packages/core/src/csv.ts`:
     the same "Missing" problem. Both now name the grid, not the file (§5.5).
   - A line whose every cell is empty (P1's `,,,,,`) is read as a blank line.
     It holds no data, so nothing is guessed.
-  - Cells come from the line as split, with `cells` over them and each new
-    column's `fill` where a line has no cell of its own. `newLines` are read
-    from `cells` alone. `skip` (deleted and left-out lines) are not read.
+  - Cells come from the line as split, with each new column's `fill` where a
+    line has no cell of its own.
   - The result is today's `ParsedCsv`, so `resolveRows`, `validateRun`,
     `checkRows` and `fixList` read it unchanged.
 - `parseCsv(text)` becomes `readSheet(readLines(text))`. Its behaviour does
@@ -183,10 +186,11 @@ Rules:
   line needs its own reference. The prefix is the run name, so a monthly run
   numbers differently each month. A left-out line is numbered too: it is
   still owed. The references go through the same checks as any other.
-- Changing the header line clears `roles` and `newColumns` set for the old
-  one (their `ColumnId`s named other columns), and says so before it does.
-  Lines between the old header and the new one join the lines above the
-  header: not read, not written.
+- Changing the header line drops `roles`, `newColumns`, typed `cells`,
+  `batches` and `newLines` set under the old one (each was keyed to the old
+  header's columns), and says so before it does. Deleted and left-out lines
+  below the new header stay. Lines between the old header and the new one
+  join the lines above the header: not read, not written.
 
 ## 5. The Review step
 
@@ -208,8 +212,9 @@ sideways inside itself, is keyboard-reachable, and the page never does.
 ### 5.2 The grid
 
 - One row per line from the header down, in file order, then new lines.
-  Lines above the header show as one dimmed row: `Lines 1–4 are above the
-  header`, with `Use line N as the header` on each when expanded.
+  Lines above the header with anything in them show as one dimmed row:
+  `Lines 1–3 are above the header` (P5, whose line 4 is blank), with
+  `Use line N as the header` on each when expanded.
 - One column per file column, in file order, then new columns, then one ghost
   column per required role nobody holds.
 - **Header cell:** the column's name as in the file, and under it a role chip:
@@ -235,7 +240,11 @@ sideways inside itself, is keyboard-reachable, and the page never does.
 - `+ Add a line` appends an empty line and opens its first cell.
 - Over 25 lines the grid still renders every line (at most 400 plus the
   header): cells are text, so this is 400 rows of text and one input, not
-  thousands of inputs. `[unverified]` until measured (§9).
+  thousands of inputs. `[measured]` 2026-09-27, `next start`, headless
+  Chromium at 1280: on a 400-line file, from keeping line 200's amount to
+  `Changes 1` on screen, 61–62 ms (two runs); scrolling 300px a frame, median
+  frame 35 ms and max 56 ms against 17 ms idle; the page does not scroll
+  sideways.
 
 ### 5.3 On a phone (639px and below)
 
@@ -257,11 +266,14 @@ Two tabs over the same `SheetEdits`, replacing today's fix list:
   `Leave out of this run`, and `Show in table`, which scrolls to the cell and
   opens it. Free text is typed in the grid (or the card on a phone), not in a
   second input. The title, counts and `Fix N problems first` are today's.
-- **Changes** lists every entry of `SheetEdits`, newest first: `Line 3 ·
-  Amount · $980.00 → 1100 · Undo`; `3 cells in Amount · "$" removed · Undo`;
+- **Changes** lists every entry of `SheetEdits` by kind — the header, roles,
+  new columns, batches, cells by line, lines added, deleted, left out — not
+  newest first: the edits keep no order to sort by. `Line 3 · Amount ·
+  $980.00 → 1100 · Undo`; `3 cells in Amount · "$" removed · Undo`;
   `Line 6 · deleted · Undo`; `Header · line 5 · Undo`; and, when there are
-  any, `Lines 1–4 above the header are not in the corrected file`. An address
-  shows in full checksum form on both sides.
+  any, `Lines 1–3 are above the header and are not in the corrected file.`,
+  naming the same lines as the grid. An address shows in full checksum form
+  on both sides.
 - Focus rules from the inline fixes spec hold: focus never falls to the page;
   after a button, focus moves to the undo it created or the next thing to do.
 
@@ -273,8 +285,9 @@ Two tabs over the same `SheetEdits`, replacing today's fix list:
   `The first line, "ledgerline-sample", does not name columns. If the names
   are on a later line, use that line as the header.` All pass
   `plain-language.test.ts`.
-- `Changed here` counts cells, lines added, deleted and left out:
-  `6 cells · 1 line added · 1 deleted · 1 left out`.
+- `Changed here` counts cells, columns changed, a moved header, lines added,
+  deleted and left out: `6 cells · 2 columns changed · header on line 5 ·
+  1 line added · 1 deleted · 1 left out`.
 - The Result reminder names the same counts.
 
 ## 6. Drafts
@@ -297,8 +310,12 @@ Two tabs over the same `SheetEdits`, replacing today's fix list:
 ## 7. The corrected file
 
 The property that matters: **read back unchanged, the corrected file is the
-run on screen** — the same payable lines with the same values, and no
-file-level problem. It is tested for every persona file (§9).
+run on screen** — the same payable lines with the same invoice, token,
+recipient and amount, and no file-level problem. It is tested for every
+persona file (§9). Line numbers are not compared: they move once lines above
+the header are dropped. A left-out line comes back as a line of the file:
+it is still owed, and it is in the run again until it is left out again (P5's
+bank and USDT lines come back as their two problems).
 
 - Lines above the header are not written. They are not part of the table,
   and kept they would stop the file again. The Changes tab says so.
