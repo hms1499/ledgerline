@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Button, Dropdown, Popover } from "antd";
 import type { Role } from "@ledgerline/core";
 import type { GhostColumn, GridColumn } from "@/lib/sheet-grid";
@@ -13,6 +14,9 @@ export function ColumnHead({ column, onRole, onReplace }: {
   onRole: (role: Role) => void;
   onReplace: () => void;
 }) {
+  // A pick closes the menu, and the item that had focus goes with it: the
+  // chip takes focus back, where the payer was.
+  const chip = useRef<HTMLButtonElement>(null);
   const items = [
     ...ROLES.map((r) => ({ key: r, label: `${column.role === r ? "✓ " : ""}${word(r)}` })),
     { type: "divider" as const },
@@ -23,9 +27,14 @@ export function ColumnHead({ column, onRole, onReplace }: {
       <span className="col-name">{column.name}</span>
       <Dropdown
         trigger={["click"]}
-        menu={{ items, onClick: ({ key }) => (key === "replace" ? onReplace() : onRole(key as Role)) }}
+        menu={{ items, onClick: ({ key }) => {
+          if (key === "replace") { onReplace(); return; }
+          onRole(key as Role);
+          requestAnimationFrame(() => chip.current?.focus());
+        } }}
       >
         <button
+          ref={chip}
           type="button"
           className={`role-chip ${column.role === "unused" ? "is-unused" : "is-set"}`}
           aria-label={`${column.name}: ${word(column.role)}. Change what this column holds`}

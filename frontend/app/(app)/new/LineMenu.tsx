@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef } from "react";
 import { Button, Dropdown } from "antd";
 import type { GridRow } from "@/lib/sheet-grid";
 
@@ -12,6 +13,9 @@ export default function LineMenu({ line, state, isNew, onAction }: {
   isNew: boolean;
   onAction: (a: LineAction) => void;
 }) {
+  // Leaving out or putting back keeps this ⋯, but the menu item that had focus
+  // closes with the menu: the ⋯ takes focus back, where the payer was.
+  const trigger = useRef<HTMLButtonElement>(null);
   if (state === "deleted") {
     return (
       <>
@@ -30,8 +34,11 @@ export default function LineMenu({ line, state, isNew, onAction }: {
       { key: "header", label: "Use as the header line" },
     ];
   return (
-    <Dropdown trigger={["click"]} menu={{ items, onClick: ({ key }) => onAction(key as LineAction) }}>
-      <Button size="small" type="text" aria-label={`Line ${line} actions`}>⋯</Button>
+    <Dropdown trigger={["click"]} menu={{ items, onClick: ({ key }) => {
+      onAction(key as LineAction);
+      if (key === "leave-out" || key === "put-back") requestAnimationFrame(() => trigger.current?.focus());
+    } }}>
+      <Button ref={trigger} size="small" type="text" aria-label={`Line ${line} actions`}>⋯</Button>
     </Dropdown>
   );
 }

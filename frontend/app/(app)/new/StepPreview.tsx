@@ -131,8 +131,9 @@ export default function StepPreview({
     const e = draft.edits;
     if (action === "leave-out") onEdits(leaveOut(e, line));
     else if (action === "put-back") onEdits(putBack(e, line));
-    else if (action === "delete") onEdits(deleteLine(e, line));
-    else if (action === "restore") onEdits(restoreLine(e, line));
+    // Both swap the line's ⋯ for its Undo or back, taking the focused button with them.
+    else if (action === "delete") { onEdits(deleteLine(e, line)); setFocusSeq(Date.now()); }
+    else if (action === "restore") { onEdits(restoreLine(e, line)); setFocusSeq(Date.now()); }
     else if (droppedByHeader(e) > 0) setAskHeader(line);
     else toHeader(line);
   };
