@@ -195,7 +195,9 @@ export default function CreateRun() {
               }}
               onStartOver={() => { forgetDraft(); setDrafted((d) => d && { key: d.key }); }}
               draftStatus={draftStatus}
-              onBack={() => { forgetDraft(); setStep(0); }}
+              // A draft not yet answered is not this session's to drop: leaving
+              // asked nothing about it, and the file brings the offer back.
+              onBack={() => { if (!drafted?.offer) forgetDraft(); setStep(0); }}
               onNext={() => setStep(2)}
               wallet={wallet} walletError={walletError} onConnect={connect}
               wrongChain={wrongChain}
