@@ -38,3 +38,15 @@ describe("the top bar's wallet button", () => {
     expect(src).toContain("aria-label={`Switch to Arc ${w.net.name}`}");
   });
 });
+
+describe("the wallet button's notices", () => {
+  const src = readFileSync(fileURLToPath(new URL("../components/shell/WalletButton.tsx", import.meta.url)), "utf8");
+  const shell = readFileSync(fileURLToPath(new URL("../app/styles/shell.css", import.meta.url)), "utf8");
+
+  it("appear below the top bar, so they never cover the button they point to", () => {
+    const top = Number(src.match(/message\.useMessage\(\{ top: (\d+) \}\)/)?.[1]);
+    const bar = Number(shell.match(/\.top-bar-inner \{ height: (\d+)px/)?.[1]);
+    expect(bar).toBe(64);
+    expect(top).toBeGreaterThan(bar);
+  });
+});

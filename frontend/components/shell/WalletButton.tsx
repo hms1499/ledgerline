@@ -8,7 +8,9 @@ import { walletMenu, type WalletMenuKey } from "@/lib/wallet-menu";
 
 export default function WalletButton() {
   const w = useWallet();
-  const [toast, holder] = message.useMessage();
+  // Below the top bar (64px and its rule), never over it: a notice about
+  // connecting must not cover the Connect button it tells the payer to press.
+  const [toast, holder] = message.useMessage({ top: 72 });
 
   // A connect failure is announced where the click happened, briefly. A page
   // that needs it to persist (the create flow's review step) shows it too.

@@ -47,3 +47,17 @@ describe("a disconnect the payer did not ask for is explained", () => {
     expect(provider).toMatch(/const disconnect = useCallback\(async \(\) => \{[\s\S]*?lost\.current = undefined;/);
   });
 });
+
+describe("a connect the wallet never answers is not a dead end", () => {
+  it("stops spinning after CONNECT_PATIENCE_MS and says where to look", () => {
+    expect(provider).toMatch(/const patience = setTimeout\(\(\) => \{\s*if \(attempt\.current !== id\) return;\s*setConnecting\(false\);\s*setError\(connectWaitingNotice\(\)\);\s*\}, CONNECT_PATIENCE_MS\);/);
+  });
+
+  it("still connects on a late answer, unless a wallet connected meanwhile", () => {
+    expect(provider).toMatch(/const connected = await connectWallet\(net, choice\);\s*if \(hasWallet\.current\) return;/);
+  });
+
+  it("reports a late failure only while no newer press superseded it", () => {
+    expect(provider).toMatch(/catch \(err\) \{\s*if \(attempt\.current !== id\) return;/);
+  });
+});

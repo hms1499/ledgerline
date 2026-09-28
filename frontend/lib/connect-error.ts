@@ -42,6 +42,19 @@ export function describeConnectError(err: unknown): ConnectError {
       description: "Click connect again when you're ready.",
     };
   }
+  // The request from an earlier press is still open in the wallet, usually
+  // because its window was closed with ✕ rather than answered, or is hidden.
+  // Wallets refuse a second one (EIP-1193 -32002) until it is answered; a
+  // generic "couldn't connect" sent payers hunting for a fault that is not
+  // there. The page that asked may have been reloaded since, so the answer
+  // may land nowhere: say to press Connect again if nothing happens.
+  if (errorCode(err) === -32002) {
+    return {
+      type: "info",
+      title: "Your wallet is already asking",
+      description: "A connection request is waiting in your wallet. Open the wallet from your browser's toolbar and answer it there, then press Connect again if this page has not connected.",
+    };
+  }
   if (err instanceof ArcUnreachableError) {
     return {
       type: "error",
@@ -84,4 +97,22 @@ export function accountLostNotice(next?: string): ConnectError {
       title: "Your wallet stopped sharing an account",
       description: `It locked, or no longer lets this page see an account, so this page disconnected. Connect again to continue. ${again}`,
     };
+}
+
+/** How long Connect spins before it stops and says where to look. It gives
+ *  up on nothing: the request stays open, and a late answer still connects. */
+export const CONNECT_PATIENCE_MS = 15_000;
+
+/**
+ * A wallet may leave a connection request unanswered indefinitely: its window
+ * closed with ✕, hidden behind this one, or waiting for a password. The button
+ * used to spin until the page was reloaded, and a disabled spinner is a dead
+ * end. This is said instead, and the button can be pressed again.
+ */
+export function connectWaitingNotice(): ConnectError {
+  return {
+    type: "info",
+    title: "Still waiting for your wallet",
+    description: "Its window may be behind this one, or was closed without an answer. Open the wallet from your browser's toolbar to answer it; this page connects as soon as you do.",
+  };
 }

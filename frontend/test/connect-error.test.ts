@@ -3,7 +3,9 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { networkFor } from "@/lib/chain";
 import { assertEoa, ArcUnreachableError, EoaRequiredError } from "@/lib/wallet";
-import { accountLostNotice, describeConnectError } from "@/lib/connect-error";
+import {
+  accountLostNotice, connectWaitingNotice, describeConnectError, CONNECT_PATIENCE_MS,
+} from "@/lib/connect-error";
 
 const A = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
 
@@ -87,5 +89,25 @@ describe("accountLostNotice — why the page disconnected on its own", () => {
     for (const n of [accountLostNotice(), accountLostNotice("0x2222222222222222222222222222222222222222")]) {
       expect(n.description).toContain("the run goes back to Review and is checked again");
     }
+  });
+});
+
+describe("a wallet that does not answer", () => {
+  it("names a request already waiting in the wallet (-32002), not a failure", () => {
+    const e = describeConnectError({ code: -32002, message: "Request of type 'wallet_requestPermissions' already pending" });
+    expect(e.type).toBe("info");
+    expect(e.title).toBe("Your wallet is already asking");
+    expect(e.description).toMatch(/answer it there/);
+  });
+
+  it("reads -32002 through a wrapper, as it does 4001", () => {
+    expect(describeConnectError({ cause: { code: -32002 } }).title).toBe("Your wallet is already asking");
+  });
+
+  it("stops the spinner after a while and says where to look, without giving up", () => {
+    expect(CONNECT_PATIENCE_MS).toBe(15_000);
+    const n = connectWaitingNotice();
+    expect(n.type).toBe("info");
+    expect(n.description).toMatch(/connects as soon as you do/);
   });
 });

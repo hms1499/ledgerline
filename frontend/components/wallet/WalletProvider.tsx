@@ -8,7 +8,9 @@ import {
 } from "@/lib/wallet";
 import { findRemembered, forgetWallet, rememberWallet, rememberedWallet } from "@/lib/wallet-memory";
 import { describeError, errorCode } from "@/lib/errors";
-import { accountLostNotice, describeConnectError, type ConnectError } from "@/lib/connect-error";
+import {
+  accountLostNotice, connectWaitingNotice, describeConnectError, CONNECT_PATIENCE_MS, type ConnectError,
+} from "@/lib/connect-error";
 import { initialSession, leaveWarning, sessionReducer } from "@/lib/wallet-session";
 import { useNetwork } from "@/lib/use-network";
 import { chainName, type NetworkView } from "@/lib/chain";
@@ -121,21 +123,42 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     });
   }, [wallet]);
 
+  // A wallet can leave a connection request unanswered for as long as it
+  // likes. After CONNECT_PATIENCE_MS the button stops spinning and says where
+  // to look, but the request is not abandoned: a late answer still connects,
+  // unless a wallet connected in the meantime. A late failure is reported
+  // only while no newer press has superseded it.
+  const attempt = useRef(0);
+  const hasWallet = useRef(false);
+  useEffect(() => { hasWallet.current = !!wallet; }, [wallet]);
+
   const connectTo = useCallback(async (choice?: WalletChoice) => {
+    const id = ++attempt.current;
     setPicking(false);
     setError(undefined);
     setConnecting(true);
+    const patience = setTimeout(() => {
+      if (attempt.current !== id) return;
+      setConnecting(false);
+      setError(connectWaitingNotice());
+    }, CONNECT_PATIENCE_MS);
     try {
       const connected = await connectWallet(net, choice);
+      if (hasWallet.current) return;
       rememberWallet(connected.info);
+      setError(undefined);
       dispatch({ type: "connected", wallet: connected });
     }
     catch (err) {
+      if (attempt.current !== id) return;
       // No wallet is a next step, not a failure: the dialog says what to get.
       if (err instanceof NoWalletError) setNoWallet(true);
       else setError(describeConnectError(err));
     }
-    finally { setConnecting(false); }
+    finally {
+      clearTimeout(patience);
+      if (attempt.current === id) setConnecting(false);
+    }
   }, [net]);
 
   const connect = useCallback(() => {

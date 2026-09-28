@@ -10,7 +10,7 @@ import { statusView } from "@/lib/reconcile-view";
 import { runStatsView } from "@/lib/run-view";
 import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
-import { accountLostNotice } from "@/lib/connect-error";
+import { accountLostNotice, connectWaitingNotice, describeConnectError } from "@/lib/connect-error";
 import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
 import { runSummaryView } from "@/lib/run-summary-view";
 import { checkRows, ALL_LEFT_OUT } from "@/lib/review-view";
@@ -51,6 +51,12 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
 
   it("the home page's comparison with an ordinary batch", () => {
     for (const r of controlComparison()) { clean(r.claim); clean(r.ours); clean(r.ordinary); }
+  });
+
+  it("the notices when a wallet is slow to answer, or already asking", () => {
+    for (const n of [connectWaitingNotice(), describeConnectError({ code: -32002 })]) {
+      clean(n.title); clean(n.description);
+    }
   });
 
   it("the notice when the wallet changes account on its own", () => {
