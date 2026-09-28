@@ -8,7 +8,8 @@ import type { Mode } from "@/lib/theme-tokens";
  */
 export interface DemoClip {
   src: string;
-  /** The last frame: the verified receipt, for anyone who never presses play. */
+  /** A frame from the Check chapter: "Every payment would go through". The
+   *  hero's example already shows what a recipient sees. */
   poster: string;
   width: number;
   height: number;
@@ -16,11 +17,25 @@ export interface DemoClip {
   block: number;
   /** The receipt the video ends on, on this site. */
   receipt: string;
+  /** Where each of DEMO_STEPS starts, in seconds — measured from the caption
+   *  strip of the file, recorded in the demo note. */
+  chapters: readonly number[];
+  /** The file's length, in seconds. */
+  duration: number;
+  /** Where the poster was taken from, in seconds. */
+  posterAt: number;
 }
 
 /** wide: the desktop layout, 16:9. phone: the phone layout, 4:5, for screens
  *  where the desktop one scaled down would be unreadable. */
 export type DemoLayout = "wide" | "phone";
+
+/** The chapters, named exactly as the captions burned into every recording. */
+export const DEMO_STEPS = ["Upload", "Review", "Check", "Pay", "Receipt"] as const;
+
+/** Why a testnet video sits above a mainnet proof. */
+export const DEMO_BRIDGE =
+  "Recorded on Arc testnet. The same flow, measured on mainnet, is under Proof below.";
 
 /** Where the app itself switches to its desktop layout. */
 export const WIDE_QUERY = "(min-width: 1024px)";
@@ -41,6 +56,7 @@ export const DEMO_RUN = {
         ...WIDE,
         src: "/demo/run-wide-light.mp4",
         poster: "/demo/run-wide-light.jpg",
+        chapters: [0, 4.2, 9.833, 16.367, 23.867], duration: 30.467, posterAt: 15.8,
         txHash: "0x56e067011c4208b0d80bb9b2fd1ad0cd0af5a8aea39bf342a15e24bf7c50a7f7",
         block: 64_366_288,
         receipt:
@@ -52,6 +68,7 @@ export const DEMO_RUN = {
         ...WIDE,
         src: "/demo/run-wide-dark.mp4",
         poster: "/demo/run-wide-dark.jpg",
+        chapters: [0, 4.233, 9.967, 16.433, 24.233], duration: 30.767, posterAt: 15.9,
         txHash: "0x91450f90912ee65b37ce31254cb97a7a5ee6315414b32f44de4aa9b0aa9e48a9",
         block: 64_366_423,
         receipt:
@@ -65,6 +82,7 @@ export const DEMO_RUN = {
         ...PHONE,
         src: "/demo/run-phone-light.mp4",
         poster: "/demo/run-phone-light.jpg",
+        chapters: [0, 4.267, 12.167, 18.833, 26.667], duration: 33.067, posterAt: 18.2,
         txHash: "0x64c231dcdbd173f8e1abc3ad808b4ab45759d008c9fa617ce24e0096b6a0d484",
         block: 64_364_350,
         receipt:
@@ -76,6 +94,7 @@ export const DEMO_RUN = {
         ...PHONE,
         src: "/demo/run-phone-dark.mp4",
         poster: "/demo/run-phone-dark.jpg",
+        chapters: [0, 4.267, 12.033, 18.667, 26.567], duration: 33.0, posterAt: 18.0,
         txHash: "0x6d18b0386919df00811633c5a5614bddbf85ba345e19e0919bed5417190ab990",
         block: 64_364_452,
         receipt:
@@ -91,4 +110,11 @@ export const DEMO_RUN = {
  *  page around it and stays legible at the size it is shown. */
 export function demoClip(layout: DemoLayout, mode: Mode): DemoClip {
   return DEMO_RUN.clips[layout][mode];
+}
+
+/** The chapter showing at `t` seconds: the last one that has started. */
+export function chapterAt(starts: readonly number[], t: number): number {
+  let at = 0;
+  for (let i = 0; i < starts.length; i++) if (starts[i]! <= t) at = i;
+  return at;
 }

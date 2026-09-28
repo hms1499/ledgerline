@@ -47,8 +47,8 @@ the prompts a payer would click through are not in the video.
 
 ## Files
 
-All in `frontend/public/demo/`. H.264, no audio. The poster is each video's
-last frame, the verified receipt.
+All in `frontend/public/demo/`. H.264, no audio. The poster is a frame from
+the Check chapter, at the time in the table below.
 
 | File | Frame | Length | Size |
 |---|---|---|---|
@@ -60,6 +60,22 @@ last frame, the verified receipt.
 The wide one plays at about 1160px on a desktop, so its text is at roughly
 90% of its real size. Waits on the network play at 4× so the video shows the
 chain answering without a spinner to watch.
+
+## Chapters
+
+Where each step starts, in seconds, found by scene detection on each file's
+caption strip (bottom 108px wide, 132px phone; ffmpeg
+`select='gt(scene,0.02)'`) and confirmed by the frame just after each start
+[measured]. The poster is taken at the time shown, inside the Check chapter.
+The caption's change from "4 · Pay" to "4 · Paid" is inside the Pay chapter
+and is not a chapter.
+
+| Recording | Upload | Review | Check | Pay | Receipt | Poster | Length |
+|---|---|---|---|---|---|---|---|
+| wide, light | 0.000 | 4.200 | 9.833 | 16.367 | 23.867 | 15.8 | 30.467 |
+| wide, dark | 0.000 | 4.233 | 9.967 | 16.433 | 24.233 | 15.9 | 30.767 |
+| phone, light | 0.000 | 4.267 | 12.167 | 18.833 | 26.667 | 18.2 | 33.067 |
+| phone, dark | 0.000 | 4.267 | 12.033 | 18.667 | 26.567 | 18.0 | 33.000 |
 
 ## Re-recording
 

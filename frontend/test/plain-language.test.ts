@@ -22,6 +22,7 @@ import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from
 import { TX_HASH_HINT } from "@/lib/tx-hash";
 import { spreadsheetRefusal } from "@/lib/run-file";
 import { controlComparison } from "@/lib/mainnet-proof";
+import { DEMO_BRIDGE } from "@/lib/demo-run";
 import fixture from "../../packages/core/test/fixtures/mainnet-2pay.json" with { type: "json" };
 
 /**
@@ -42,6 +43,10 @@ const memoIdFor = () =>
 const SALT = ("0x" + "00".repeat(32)) as `0x${string}`;
 
 describe("copy a payer or recipient reads is free of protocol jargon", () => {
+  it("the home page's demo description", () => {
+    clean(DEMO_BRIDGE);
+  });
+
   it("the home page's comparison with an ordinary batch", () => {
     for (const r of controlComparison()) { clean(r.claim); clean(r.ours); clean(r.ordinary); }
   });

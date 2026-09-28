@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { DEMO_RUN as D, WIDE_QUERY, demoClip } from "@/lib/demo-run";
+import { DEMO_RUN as D, DEMO_STEPS, WIDE_QUERY, chapterAt, demoClip } from "@/lib/demo-run";
 
 const path = (rel: string) => fileURLToPath(new URL(rel, import.meta.url));
 const NOTE = readFileSync(path("../../docs/notes/2026-09-28-demo-video.md"), "utf8");
@@ -74,5 +74,54 @@ describe("the home page's demo is the runs the note measured", () => {
 describe("demoClip", () => {
   it("gives each layout and theme its own recording", () => {
     for (const l of LAYOUTS) for (const m of MODES) expect(demoClip(l, m)).toBe(D.clips[l][m]);
+  });
+});
+
+describe("chapters", () => {
+  for (const layout of LAYOUTS) for (const mode of MODES) {
+    const clip = D.clips[layout][mode];
+    const name = `${layout}, ${mode}`;
+
+    it(`${name}: one start per step, from 0, increasing, inside the video`, () => {
+      expect(clip.chapters).toHaveLength(DEMO_STEPS.length);
+      expect(clip.chapters[0]).toBe(0);
+      for (let i = 1; i < clip.chapters.length; i++) {
+        expect(clip.chapters[i]!).toBeGreaterThan(clip.chapters[i - 1]!);
+      }
+      expect(clip.chapters.at(-1)!).toBeLessThan(clip.duration);
+    });
+
+    it(`${name}: the poster is a frame from the Check chapter`, () => {
+      expect(clip.posterAt).toBeGreaterThanOrEqual(clip.chapters[2]!);
+      expect(clip.posterAt).toBeLessThan(clip.chapters[3]!);
+    });
+
+    it(`${name}: the note carries the same starts, poster and length`, () => {
+      const row = [name, ...clip.chapters.map((c) => c.toFixed(3)), clip.posterAt.toFixed(1), clip.duration.toFixed(3)];
+      expect(NOTE).toContain(`| ${row.join(" | ")} |`);
+    });
+  }
+
+  it("are labelled as the captions burned into the video", () => {
+    expect(DEMO_STEPS).toEqual(["Upload", "Review", "Check", "Pay", "Receipt"]);
+  });
+});
+
+describe("chapterAt", () => {
+  const starts = [0, 4.2, 9.833, 16.367, 23.867];
+
+  it("is the last chapter that has started", () => {
+    expect(chapterAt(starts, 0)).toBe(0);
+    expect(chapterAt(starts, 4.199)).toBe(0);
+    expect(chapterAt(starts, 4.2)).toBe(1);
+    expect(chapterAt(starts, 9.9)).toBe(2);
+    expect(chapterAt(starts, 16.366)).toBe(2);
+    expect(chapterAt(starts, 16.367)).toBe(3);
+    expect(chapterAt(starts, 23.867)).toBe(4);
+  });
+
+  it("stays on the first before it and on the last after the end", () => {
+    expect(chapterAt(starts, -1)).toBe(0);
+    expect(chapterAt(starts, 999)).toBe(4);
   });
 });
