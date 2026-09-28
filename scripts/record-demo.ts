@@ -4,10 +4,11 @@
  *
  *   pnpm build
  *   (cd frontend && pnpm exec next start -p 3100)
- *   pnpm exec tsx scripts/record-demo.ts                 # light and dark
- *   pnpm exec tsx scripts/record-demo.ts --theme dark    # --keep-frames to debug
+ *   pnpm exec tsx scripts/record-demo.ts                       # every layout and theme
+ *   pnpm exec tsx scripts/record-demo.ts --layout wide --theme dark
+ *   (--keep-frames keeps the raw frames, to debug a take)
  *
- * Writes frontend/public/demo/run-<theme>.mp4 and run-<theme>.jpg, and prints
+ * Writes frontend/public/demo/run-<layout>-<theme>.mp4 and .jpg, and prints
  * each run's transaction for docs/notes/2026-09-28-demo-video.md and
  * frontend/lib/demo-run.ts. Every take is a real run: 0.10 USDC, 0.10 EURC and
  * 0.00001 cirBTC of testnet funds, plus the fee.
@@ -46,10 +47,24 @@ if (picked !== undefined && picked !== "light" && picked !== "dark") {
 const THEMES: ("light" | "dark")[] = picked ? [picked] : ["light", "dark"];
 const OUT = "frontend/public/demo";
 
-/** 4:5, the home page's right-hand column. Under 640px the app is in its
- *  phone layout, one card per line, which is what stays legible at this size. */
-const VIEW = { width: 420, height: 525 };
-const SCALE = 2;
+interface Shape { view: { width: number; height: number }; scale: number }
+/**
+ * wide: 16:9 in the app's desktop layout — sidebar, the Review grid, the run
+ * summary beside each step — for the full-width tape on a desktop, where it
+ * plays at about 90% of its real size.
+ * phone: 4:5 in the phone layout, one card per line, for screens under
+ * 1024px, where a desktop layout scaled down would be unreadable.
+ */
+const SHAPES = {
+  wide: { view: { width: 1280, height: 720 }, scale: 1.5 },
+  phone: { view: { width: 420, height: 525 }, scale: 2 },
+} satisfies Record<string, Shape>;
+type Layout = keyof typeof SHAPES;
+const layoutArg = arg("--layout");
+if (layoutArg !== undefined && !(layoutArg in SHAPES)) {
+  throw new Error(`--layout must be "wide" or "phone", got "${layoutArg}"`);
+}
+const LAYOUTS = (layoutArg ? [layoutArg] : Object.keys(SHAPES)) as Layout[];
 /** Execute.ts floors at 25 Gwei; under 20 the mempool drops a transaction
  *  without a word. Anything under the floor means something upstream broke. */
 const FEE_FLOOR = parseGwei("25");
@@ -150,6 +165,9 @@ const PAGE_SETUP = String.raw`(() => {
         "#demo-caption .demo-step { flex: none; padding: 1px 6px; background: var(--highlight); color: #161616;",
         "  font-family: var(--font-mono), ui-monospace, monospace; font-size: 12px; font-weight: 700;",
         "  letter-spacing: 0.08em; text-transform: uppercase; }",
+        "@media (min-width: 1024px) {",
+        "  #demo-caption { justify-content: center; gap: 14px; min-height: 72px; font-size: 19px; }",
+        "  #demo-caption .demo-step { font-size: 14px; padding: 2px 8px; } }",
       ].join("\n");
       document.head.append(style);
       document.body.append(bar);
@@ -164,7 +182,7 @@ interface Frame { file: string; at: number }
 /** CDP screencast, not Playwright's recordVideo: that one encodes realtime
  *  VP8 at 1 Mbit/s, which smears 13px table figures. These are the page's own
  *  device pixels, timed by the browser, encoded once at the end. */
-async function startCapture(page: Page, dir: string) {
+async function startCapture(page: Page, dir: string, { view, scale }: Shape) {
   const frames: Frame[] = [];
   const cdp = await page.context().newCDPSession(page);
   cdp.on("Page.screencastFrame", async ({ data, metadata, sessionId }) => {
@@ -175,7 +193,7 @@ async function startCapture(page: Page, dir: string) {
   });
   await cdp.send("Page.startScreencast", {
     format: "jpeg", quality: 95,
-    maxWidth: VIEW.width * SCALE, maxHeight: VIEW.height * SCALE, everyNthFrame: 1,
+    maxWidth: view.width * scale, maxHeight: view.height * scale, everyNthFrame: 1,
   });
   return {
     frames,
@@ -200,11 +218,13 @@ async function scrollTo(target: Locator) {
   await pause(900);
 }
 
-async function record(theme: "light" | "dark") {
+async function record(layout: Layout, theme: "light" | "dark") {
+  const shape = SHAPES[layout];
+  const wide = layout === "wide";
   const work = mkdtempSync(join(tmpdir(), `ledgerline-demo-${theme}-`));
   const browser = await chromium.launch();
   const context = await browser.newContext({
-    viewport: VIEW, deviceScaleFactor: SCALE, colorScheme: theme, reducedMotion: "no-preference",
+    viewport: shape.view, deviceScaleFactor: shape.scale, colorScheme: theme, reducedMotion: "no-preference",
     permissions: ["clipboard-read", "clipboard-write"],
   });
   const host = new URL(BASE).hostname;
@@ -226,7 +246,7 @@ async function record(theme: "light" | "dark") {
   await page.getByRole("button", { name: /Connect|Demo wallet/ }).first().waitFor();
   await caption("1 · Upload", "A list of invoices, one line per payment");
   await pause(300);
-  const capture = await startCapture(page, work);
+  const capture = await startCapture(page, work, shape);
   const begin = Date.now() / 1000;
 
   // ── Upload ──────────────────────────────────────────────────────────────
@@ -246,11 +266,16 @@ async function record(theme: "light" | "dark") {
   // ── Review ──────────────────────────────────────────────────────────────
   await caption("2 · Review", "Read and checked in this browser. Nothing is uploaded.");
   await page.getByText("INV-BTC-003").first().waitFor();
-  await pause(1600);
-  await scrollTo(page.getByText("Line 3 · INV-EU-002"));
-  await pause(700);
-  await scrollTo(page.getByText("Line 4 · INV-BTC-003"));
-  await pause(700);
+  if (wide) {
+    // The grid shows every line at once.
+    await pause(2600);
+  } else {
+    await pause(1600);
+    await scrollTo(page.getByText("Line 3 · INV-EU-002"));
+    await pause(700);
+    await scrollTo(page.getByText("Line 4 · INV-BTC-003"));
+    await pause(700);
+  }
   await shot("2-review");
   const connectBtn = page.getByRole("button", { name: "Connect a wallet to continue" });
   await connectBtn.scrollIntoViewIfNeeded();
@@ -260,6 +285,7 @@ async function record(theme: "light" | "dark") {
   if (await demo.isVisible({ timeout: 1500 }).catch(() => false)) await demo.click();
   const checkBtn = page.getByRole("button", { name: "Check it against the chain" });
   await waiting(checkBtn.waitFor({ timeout: 30_000 }));
+  if (wide) await scrollTo(page.getByRole("heading", { name: "Can this wallet pay it?" }));
   await checkBtn.scrollIntoViewIfNeeded();
   await pause(900);
   await shot("2b-connected");
@@ -322,11 +348,11 @@ async function record(theme: "light" | "dark") {
   const end = Date.now() / 1000;
   await browser.close();
 
-  if (errors.length) console.warn(`[${theme}] console errors:\n  ${errors.join("\n  ")}`);
+  if (errors.length) console.warn(`[${layout}-${theme}] console errors:\n  ${errors.join("\n  ")}`);
   const txHash = sent.at(-1)!;
-  encode(theme, capture.frames, begin, end, work);
-  console.log(`[${theme}] tx ${txHash}\n[${theme}] receipt ${receipt.pathname}${receipt.search}`);
-  if (process.argv.includes("--keep-frames")) console.log(`[${theme}] frames in ${work}`);
+  encode(`${layout}-${theme}`, shape, capture.frames, begin, end, work);
+  console.log(`[${layout}-${theme}] tx ${txHash}\n[${layout}-${theme}] receipt ${receipt.pathname}${receipt.search}`);
+  if (process.argv.includes("--keep-frames")) console.log(`[${layout}-${theme}] frames in ${work}`);
   else rmSync(work, { recursive: true, force: true });
   return txHash;
 }
@@ -335,7 +361,7 @@ async function record(theme: "light" | "dark") {
  *  network play at WAIT_SPEED, so the video shows that the chain answered
  *  without making anyone watch a spinner. */
 const WAIT_SPEED = 4;
-function encode(theme: string, frames: Frame[], begin: number, end: number, dir: string) {
+function encode(name: string, { view, scale }: Shape, frames: Frame[], begin: number, end: number, dir: string) {
   const kept = frames.filter((f) => f.at >= begin - 0.05);
   const inWait = (t: number) => fastForward.some((w) => t >= w.from && t < w.to);
   const lines: string[] = [];
@@ -351,10 +377,10 @@ function encode(theme: string, frames: Frame[], begin: number, end: number, dir:
   writeFileSync(list, lines.join("\n"));
 
   mkdirSync(OUT, { recursive: true });
-  const mp4 = join(OUT, `run-${theme}.mp4`);
+  const mp4 = join(OUT, `run-${name}.mp4`);
   execFileSync("ffmpeg", [
     "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", list,
-    "-vf", `fps=30,scale=${VIEW.width * SCALE}:${VIEW.height * SCALE}:flags=lanczos,format=yuv420p`,
+    "-vf", `fps=30,scale=${view.width * scale}:${view.height * scale}:flags=lanczos,format=yuv420p`,
     "-c:v", "libx264", "-preset", "slow", "-crf", "24", "-tune", "stillimage",
     "-movflags", "+faststart", "-an", mp4,
   ]);
@@ -362,17 +388,19 @@ function encode(theme: string, frames: Frame[], begin: number, end: number, dir:
   // point for anyone who never presses play.
   execFileSync("ffmpeg", [
     "-y", "-loglevel", "error", "-sseof", "-0.1", "-i", mp4,
-    "-frames:v", "1", "-q:v", "3", join(OUT, `run-${theme}.jpg`),
+    "-frames:v", "1", "-q:v", "3", join(OUT, `run-${name}.jpg`),
   ]);
 }
 
 const chainId = await chainClient.getChainId();
 if (chainId !== arcTestnet.id) throw new Error(`RPC reports chain ${chainId}, expected Arc testnet ${arcTestnet.id}`);
 
-for (const theme of THEMES) {
-  fastForward.length = 0;
-  const tx = await record(theme);
-  const r = await chainClient.getTransactionReceipt({ hash: tx });
-  if (r.status !== "success") throw new Error(`[${theme}] ${tx} has status ${r.status}`);
-  console.log(`[${theme}] block ${r.blockNumber} status ${r.status}`);
+for (const layout of LAYOUTS) {
+  for (const theme of THEMES) {
+    fastForward.length = 0;
+    const tx = await record(layout, theme);
+    const r = await chainClient.getTransactionReceipt({ hash: tx });
+    if (r.status !== "success") throw new Error(`[${layout}-${theme}] ${tx} has status ${r.status}`);
+    console.log(`[${layout}-${theme}] block ${r.blockNumber} status ${r.status}`);
+  }
 }
