@@ -14,7 +14,8 @@ export default function TopBar() {
         <div className="top-actions">
           <NetworkBadge />
           <WalletButton />
-          <span className="only-sm"><MoreMenu /></span>
+          {/* Below 1024px the sidebar has no room for the theme toggle. */}
+          <span className="below-lg"><MoreMenu /></span>
         </div>
       </div>
     </header>
