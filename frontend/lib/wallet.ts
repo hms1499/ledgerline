@@ -4,6 +4,7 @@
 import { createWalletClient, createPublicClient, custom, http, type Address, type WalletClient } from "viem";
 import type { NetworkView } from "@/lib/chain";
 import { errorCode } from "@/lib/errors";
+import { isKnownEoa, rememberEoa } from "@/lib/wallet-memory";
 
 /** The subset of EIP-1193 this app uses. */
 export interface Eip1193Provider {
@@ -187,20 +188,52 @@ export async function silentAccount(
   }
 }
 
+/** Which accounts this browser saw pass the EOA check, for one chain. */
+export interface EoaMemory { known(address: Address): boolean; remember(address: Address): void }
+
+const browserEoaMemory = (chainId: number): EoaMemory => ({
+  known: (address) => isKnownEoa(chainId, address),
+  remember: (address) => rememberEoa(chainId, address),
+});
+
+export type Reconnect =
+  | { kind: "connected"; wallet: ConnectedWallet }
+  /** Stay disconnected, quietly: no account, a locked wallet, a contract. */
+  | { kind: "none" }
+  /** The wallet answered, but Arc's node did not, for an account never checked here. */
+  | { kind: "arc-unreachable"; address: Address; error: ArcUnreachableError };
+
 /**
  * Reattach the wallet this browser connected last, if it still lets the site
  * see an account. The same checks as a connect, the EOA check included, and
- * never a prompt: undefined means "stay disconnected", whatever the reason,
- * and the Connect button then says why if the payer presses it.
+ * never a prompt.
+ *
+ * When only Arc's node fails, the wallet has still answered. An account this
+ * browser already saw pass the EOA check is reattached anyway, so a reload
+ * during an outage keeps the payer connected and the page can say that Arc,
+ * not the wallet, is unreachable. An unknown account stays disconnected, and
+ * the caller says why instead of leaving "Connect wallet" unexplained.
  */
-export async function reconnect(net: NetworkView, choice: WalletChoice): Promise<ConnectedWallet | undefined> {
+export async function reconnect(
+  net: NetworkView, choice: WalletChoice, memory: EoaMemory = browserEoaMemory(net.chain.id),
+): Promise<Reconnect> {
   const address = await silentAccount(choice.provider);
-  if (!address) return undefined;
-  try { return await attach(net, choice, address); }
-  catch { return undefined; }
+  if (!address) return { kind: "none" };
+  try {
+    return { kind: "connected", wallet: await attach(net, choice, address, memory) };
+  } catch (err) {
+    if (!(err instanceof ArcUnreachableError)) return { kind: "none" };
+    if (memory.known(address)) {
+      return { kind: "connected", wallet: await attach(net, choice, address, memory, false) };
+    }
+    return { kind: "arc-unreachable", address, error: err };
+  }
 }
 
-async function attach(net: NetworkView, picked: WalletChoice, address: Address): Promise<ConnectedWallet> {
+async function attach(
+  net: NetworkView, picked: WalletChoice, address: Address,
+  memory: EoaMemory = browserEoaMemory(net.chain.id), checkEoa = true,
+): Promise<ConnectedWallet> {
   const provider = picked.provider;
 
   // Deliberately NOT switching the chain here. Wallets disagree about what
@@ -218,7 +251,10 @@ async function attach(net: NetworkView, picked: WalletChoice, address: Address):
     transport: custom(provider),
   });
 
-  await assertEoa(net, address);
+  if (checkEoa) {
+    await assertEoa(net, address);
+    memory.remember(address);
+  }
   return { address, walletClient, provider, info: picked.info, chainId };
 }
 
@@ -345,9 +381,17 @@ function httpReason(err: unknown): string {
  *
  * Catching it here costs a read. Letting it through costs the payer a signed
  * transaction and its gas, for a run that was always going to revert.
+ *
+ * One retry and a short limit: viem's default of three retries at ten seconds
+ * held a reload's reconnect for ~40 s behind a node that never answered.
  */
-export async function assertEoa(net: NetworkView, address: Address): Promise<void> {
-  const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
+export const EOA_CHECK_TIMEOUT_MS = 8_000;
+
+export async function assertEoa(net: NetworkView, address: Address, timeout = EOA_CHECK_TIMEOUT_MS): Promise<void> {
+  const client = createPublicClient({
+    chain: net.chain,
+    transport: http(net.defaultRpc, { timeout, retryCount: 1 }),
+  });
   let code: string | undefined;
   try {
     code = await client.getCode({ address });

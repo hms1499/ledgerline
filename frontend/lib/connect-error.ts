@@ -99,6 +99,21 @@ export function accountLostNotice(next?: string): ConnectError {
     };
 }
 
+/**
+ * A reload found the wallet still sharing an account this browser never saw
+ * pass the EOA check, and Arc's node did not answer the check. Staying
+ * disconnected is right, since the account is unchecked; staying silent left
+ * "Connect wallet" unexplained. "info": nothing is wrong with the wallet.
+ */
+export function reconnectUnreachableNotice(err: ArcUnreachableError, address: string): ConnectError {
+  return {
+    type: "info",
+    title: "Couldn't reach Arc to reconnect your wallet",
+    description: `Your wallet still shares ${short(address)}, but Arc ${err.network} did not answer, so this page could not check the account. Press Connect wallet to try again.`,
+    detail: err.reason,
+  };
+}
+
 /** How long Connect spins before it stops and says where to look. It gives
  *  up on nothing: the request stays open, and a late answer still connects. */
 export const CONNECT_PATIENCE_MS = 15_000;

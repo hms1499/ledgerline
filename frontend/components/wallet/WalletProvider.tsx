@@ -9,7 +9,8 @@ import {
 import { findRemembered, forgetWallet, rememberWallet, rememberedWallet } from "@/lib/wallet-memory";
 import { describeError, errorCode } from "@/lib/errors";
 import {
-  accountLostNotice, connectWaitingNotice, describeConnectError, CONNECT_PATIENCE_MS, type ConnectError,
+  accountLostNotice, connectWaitingNotice, describeConnectError, reconnectUnreachableNotice,
+  CONNECT_PATIENCE_MS, type ConnectError,
 } from "@/lib/connect-error";
 import { initialSession, leaveWarning, sessionReducer } from "@/lib/wallet-session";
 import { useNetwork } from "@/lib/use-network";
@@ -100,7 +101,13 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     restoreTried.current = true;
     setConnecting(true);
     void reconnect(net, choice)
-      .then((w) => { if (w) dispatch({ type: "connected", wallet: w }); })
+      .then((r) => {
+        // A press of Connect while this was in flight wins: it has its own outcome.
+        if (hasWallet.current) return;
+        if (r.kind === "connected") dispatch({ type: "connected", wallet: r.wallet });
+        // Arc's node, not the wallet, kept the page disconnected: say so.
+        if (r.kind === "arc-unreachable") setError(reconnectUnreachableNotice(r.error, r.address));
+      })
       .finally(() => setConnecting(false));
   }, [choices, wallet, net]);
 

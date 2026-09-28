@@ -4,7 +4,7 @@ import type { AddressInfo } from "node:net";
 import { networkFor } from "@/lib/chain";
 import { assertEoa, ArcUnreachableError, EoaRequiredError } from "@/lib/wallet";
 import {
-  accountLostNotice, connectWaitingNotice, describeConnectError, CONNECT_PATIENCE_MS,
+  accountLostNotice, connectWaitingNotice, describeConnectError, reconnectUnreachableNotice, CONNECT_PATIENCE_MS,
 } from "@/lib/connect-error";
 
 const A = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
@@ -54,6 +54,19 @@ describe("assertEoa", () => {
     expect(err).toBeInstanceOf(ArcUnreachableError);
     expect((err as ArcUnreachableError).reason).toMatch(/fetch failed/);
   });
+
+  it("gives up on a node that never answers, asking at most twice, instead of holding a reload for ~40 s", async () => {
+    let hits = 0;
+    server = createServer((req) => { req.on("data", () => {}); req.on("end", () => { hits++; }); });
+    await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    const started = Date.now();
+    const err = await assertEoa(on(url), A, 200).catch((e: unknown) => e);
+    server.closeAllConnections();
+    expect(err).toBeInstanceOf(ArcUnreachableError);
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(hits).toBeLessThanOrEqual(2);
+  });
 });
 
 describe("describeConnectError", () => {
@@ -89,6 +102,21 @@ describe("accountLostNotice — why the page disconnected on its own", () => {
     for (const n of [accountLostNotice(), accountLostNotice("0x2222222222222222222222222222222222222222")]) {
       expect(n.description).toContain("the run goes back to Review and is checked again");
     }
+  });
+});
+
+describe("reconnectUnreachableNotice — a reload while Arc's node is down", () => {
+  it("says the wallet still answers, blames Arc, and keeps what the node said", () => {
+    const n = reconnectUnreachableNotice(
+      new ArcUnreachableError("testnet", "https://arc-testnet.drpc.org: HTTP 408"),
+      "0x595558b91dfaa97840f2f00bf6728a74b8e6de17",
+    );
+    expect(n.type).toBe("info");
+    expect(n.title).toBe("Couldn't reach Arc to reconnect your wallet");
+    expect(n.description).toContain("0x5955…de17");
+    expect(n.description).toContain("Arc testnet");
+    expect(n.description).toMatch(/Connect wallet/);
+    expect(n.detail).toMatch(/HTTP 408/);
   });
 });
 

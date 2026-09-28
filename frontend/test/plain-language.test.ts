@@ -10,7 +10,8 @@ import { statusView } from "@/lib/reconcile-view";
 import { runStatsView } from "@/lib/run-view";
 import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
-import { accountLostNotice, connectWaitingNotice, describeConnectError } from "@/lib/connect-error";
+import { accountLostNotice, connectWaitingNotice, describeConnectError, reconnectUnreachableNotice } from "@/lib/connect-error";
+import { ArcUnreachableError } from "@/lib/wallet";
 import { recoverGate, wrongWalletText } from "@/lib/recover-view";
 import { needsYou, runStatus, feeHelp, setupSteps, coverageLine } from "@/lib/dashboard-view";
 import type { RunRead } from "@/lib/run-reads";
@@ -73,6 +74,11 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     for (const n of [accountLostNotice(), accountLostNotice("0x2222222222222222222222222222222222222222")]) {
       clean(n.title); clean(n.description);
     }
+  });
+
+  it("the notice when a reload cannot reach Arc to reconnect the wallet", () => {
+    const n = reconnectUnreachableNotice(new ArcUnreachableError("mainnet", "HTTP 503"), "0x2222222222222222222222222222222222222222");
+    clean(n.title); clean(n.description);
   });
 
   it("the receipt page's verdicts", () => {
