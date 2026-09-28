@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
+import { pad } from "viem";
 import {
   verifyReceipt, assessCompleteness, checkManifestAgainstRoot, explainRevert,
   RUN_EXISTS_SELECTOR, EMPTY_RUN_SELECTOR, reconcile,
-  parseCsv, tokensForChain,
+  parseCsv, tokensForChain, MEMO_TOPIC,
   type Manifest, type RawLog, type ReconcileStatus, type ReceiptState,
 } from "@ledgerline/core";
 import { statusView } from "@/lib/reconcile-view";
@@ -59,9 +60,22 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
   });
 
   it("the receipt page's checks, in every outcome", () => {
-    const base = { invoiceId: "INV-001", runSalt: SALT, receiptStatus: "success" as const, logs, memoIdFor };
+    const base = { chainId: 5042, invoiceId: "INV-001", runSalt: SALT, receiptStatus: "success" as const, logs, memoIdFor };
+    // The same run paid in a lookalike of USDC: the token's logs and the
+    // Memo's target both moved to another address.
+    const usdc = tokensForChain(5042).USDC.toLowerCase() as `0x${string}`;
+    const lookalike = "0x00000000000000000000000000000000000fa4e0" as const;
+    const lookalikeLogs = logs.map((l) => {
+      if (l.address.toLowerCase() === usdc) return { ...l, address: lookalike };
+      if (l.topics[0] === MEMO_TOPIC && l.topics[2]?.toLowerCase() === pad(usdc, { size: 32 })) {
+        return { ...l, topics: [l.topics[0], l.topics[1]!, pad(lookalike, { size: 32 }), ...l.topics.slice(3)] };
+      }
+      return l;
+    });
+    expect(verifyReceipt({ ...base, logs: lookalikeLogs }).state).toBe("unknown_token");
     for (const input of [
       base,
+      { ...base, logs: lookalikeLogs },
       { ...base, runSalt: undefined },
       { ...base, runCommitted: false },
       { ...base, runCommitted: true },

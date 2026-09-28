@@ -21,7 +21,7 @@ export function absentHeadline(result: ReceiptResult): string {
 export const RECEIPT_COPY: Record<ReceiptState, { headline: string; body: string; tone: string }> = {
   verified: {
     tone: "ok", headline: "Verified",
-    body: "Five checks against the chain, all passed. Nothing here depends on Ledgerline.",
+    body: "Six checks against the chain, all passed. Nothing here depends on Ledgerline.",
   },
   verified_unanchored: {
     tone: "degraded", headline: "Payment verified",
@@ -46,6 +46,10 @@ export const RECEIPT_COPY: Record<ReceiptState, { headline: string; body: string
   unlinked: {
     tone: "critical", headline: "Anomaly: reference with no payment",
     body: "This invoice reference is on chain, but no payment satisfies it. Keep this link and contact the payer.",
+  },
+  unknown_token: {
+    tone: "critical", headline: "Paid in a lookalike token",
+    body: "A payment carries this invoice reference, but not in USDC, EURC or cirBTC. Anyone can make a token with one of those names. Do not treat this as settled.",
   },
   identity_broken: {
     tone: "critical", headline: "Sender does not match the payer",

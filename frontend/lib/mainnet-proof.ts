@@ -9,7 +9,7 @@ export const MAINNET_PROOF = {
   block: 22_453_870,
   date: "2026-09-24",
   payments: ["0.10 USDC", "0.10 EURC", "0.00001 cirBTC"],
-  checksPerReceipt: 5,
+  checksPerReceipt: 6,
   /** 0.00559 USDC, rounded for display. */
   feeUsdc: "0.0056",
   gasUsed: 266_370,

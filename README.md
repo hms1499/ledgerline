@@ -93,13 +93,17 @@ upgraded. If it failed, money would still move.
 
 ### What a recipient can verify
 
-A receipt link opens a page that runs five checks against the chain:
+A receipt link opens a page that runs six checks against the chain:
 
 1. The transaction exists and succeeded.
 2. A payment to the recipient is present.
 3. The payment belongs to this invoice, by the calldata-hash join.
-4. The payer signed the transaction directly.
-5. The payment is on the list the payer committed, by Merkle proof against the anchor.
+4. The payment is in real USDC, EURC or cirBTC. `Memo` wraps a call to any
+   contract, so a lookalike token whose `symbol()` says "USDC" would pass every
+   other check. The token's name comes from Ledgerline's list, never from the
+   contract.
+5. The payer signed the transaction directly.
+6. The payment is on the list the payer committed, by Merkle proof against the anchor.
 
 The page can be pointed at any RPC endpoint. It reads the chain directly and
 uses no Ledgerline backend.

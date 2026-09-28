@@ -27,7 +27,7 @@ describe("the home page's proof is what was measured (spec §7.1)", () => {
   });
 
   it("counts the receipt's checks from the verifier itself", () => {
-    const r = verifyReceipt({ invoiceId: "", runSalt: undefined, receiptStatus: "success", logs: [] });
+    const r = verifyReceipt({ chainId: 5042, invoiceId: "", runSalt: undefined, receiptStatus: "success", logs: [] });
     expect(r.rungs).toHaveLength(P.checksPerReceipt);
   });
 });

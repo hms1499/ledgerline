@@ -5,7 +5,7 @@ import { createPublicClient, http, type Address } from "viem";
 import { Alert, Collapse, Skeleton } from "antd";
 import { describeError } from "@/lib/errors";
 import {
-  verifyReceipt, RUN_COMMITTED_TOPIC,
+  verifyReceipt, knownTokenSymbol, RUN_COMMITTED_TOPIC,
   type ReceiptResult, type RawLog, type Hex,
 } from "@ledgerline/core";
 import {
@@ -257,7 +257,9 @@ function Ready({
                       <dd className="hex">{p.to}</dd>
                       <dt>Token</dt>
                       <dd className="hex">
-                        {symbol} — {p.token} ({decimals ?? "unknown"} decimals, read from chain)
+                        {symbol
+                          ? <>{symbol} — {p.token} ({decimals ?? "unknown"} decimals, read from chain)</>
+                          : <>Not USDC, EURC or cirBTC — {p.token}</>}
                       </dd>
                       <dt>Amount</dt>
                       <dd>
@@ -314,27 +316,25 @@ async function verifyAgainst(
 
   // First pass: everything computable from the chain alone.
   const first = verifyReceipt({
+    chainId: net.chain.id,
     invoiceId: props.invoiceId ?? "",
     runSalt: (props.runSalt ?? undefined) as Hex | undefined,
     receiptStatus: receipt.status,
     logs,
   });
 
+  // The name comes from Ledgerline's list, never from the paid contract's
+  // symbol(): a lookalike answers "USDC" as readily as the real one. A token
+  // off the list gets no name and no scale, so the headline prints the raw
+  // integer beside its address instead of an amount in dollars.
   let decimals: number | undefined;
   let symbol = "";
-  if (first.payment) {
-    const [d, s] = await Promise.all([
-      client.readContract({ address: first.payment.token, abi: decimalsAbi, functionName: "decimals" }),
-      client
-        .readContract({
-          address: first.payment.token,
-          abi: [{ type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] }] as const,
-          functionName: "symbol",
-        })
-        .catch(() => ""),
-    ]);
-    decimals = Number(d);
-    symbol = s as string;
+  const known = first.payment && knownTokenSymbol(net.chain.id, first.payment.token);
+  if (first.payment && known) {
+    decimals = Number(await client.readContract({
+      address: first.payment.token, abi: decimalsAbi, functionName: "decimals",
+    }));
+    symbol = known;
   }
 
   // Second pass: the two answers only the anchor can give.
@@ -366,6 +366,7 @@ async function verifyAgainst(
   }
 
   const result = verifyReceipt({
+    chainId: net.chain.id,
     invoiceId: props.invoiceId ?? "",
     runSalt: (props.runSalt ?? undefined) as Hex | undefined,
     receiptStatus: receipt.status,

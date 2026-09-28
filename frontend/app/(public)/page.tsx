@@ -74,7 +74,7 @@ export default function Home() {
           <p className="amount slip-amount">0.10<span className="unit">USDC</span></p>
           <div className="rule-dashed" aria-hidden="true" />
           <p className="leader">
-            <span className="leader-key">Five checks against the chain</span>
+            <span className="leader-key">Six checks against the chain</span>
             <span className="leader-dots" aria-hidden="true" />
             <span className="leader-val">✓</span>
           </p>

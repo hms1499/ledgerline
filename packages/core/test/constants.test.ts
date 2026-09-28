@@ -7,6 +7,7 @@ import {
   EURC_ADDRESS,
   CIRBTC_ADDRESS,
   tokensForChain,
+  knownTokenSymbol,
   MEMO_TOPIC,
   RUN_COMMITTED_TOPIC,
   BEFORE_MEMO_TOPIC,
@@ -62,5 +63,22 @@ describe("tokensForChain", () => {
     // Silently falling back to mainnet addresses is how a testnet rehearsal
     // ends up pointing at real money.
     expect(() => tokensForChain(1)).toThrow(/unsupported chain/i);
+  });
+});
+
+describe("knownTokenSymbol", () => {
+  it("names each token Ledgerline pays in, whatever the address's case", () => {
+    expect(knownTokenSymbol(ARC_CHAIN_ID, USDC_ADDRESS)).toBe("USDC");
+    expect(knownTokenSymbol(ARC_CHAIN_ID, EURC_ADDRESS.toLowerCase())).toBe("EURC");
+    expect(knownTokenSymbol(ARC_CHAIN_ID, CIRBTC_ADDRESS.toUpperCase().replace("0X", "0x"))).toBe("cirBTC");
+  });
+
+  it("names nothing else, whatever the contract calls itself", () => {
+    expect(knownTokenSymbol(ARC_CHAIN_ID, "0x00000000000000000000000000000000000fa4e0")).toBeUndefined();
+  });
+
+  it("answers per network: mainnet EURC is not a token on testnet", () => {
+    expect(knownTokenSymbol(ARC_TESTNET_CHAIN_ID, EURC_ADDRESS)).toBeUndefined();
+    expect(knownTokenSymbol(ARC_TESTNET_CHAIN_ID, tokensForChain(ARC_TESTNET_CHAIN_ID).EURC)).toBe("EURC");
   });
 });

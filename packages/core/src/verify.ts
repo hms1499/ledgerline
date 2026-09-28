@@ -1,3 +1,4 @@
+import { knownTokenSymbol } from "./constants.js";
 import { joinPayments } from "./join.js";
 import { memoIdFor as defaultMemoIdFor } from "./memo.js";
 import type { Hex, PaymentRecord, RawLog } from "./types.js";
@@ -6,6 +7,7 @@ export type RungId =
   | "tx_found"
   | "payment_found"
   | "invoice_match"
+  | "token_known"
   | "identity_intact"
   | "anchored";
 
@@ -25,6 +27,7 @@ export type ReceiptState =
   | "run_reverted"
   | "memo_absent"
   | "unlinked"
+  | "unknown_token"
   | "identity_broken"
   | "not_anchored"
   | "proof_invalid"
@@ -34,6 +37,9 @@ export type ReceiptState =
 export type Severity = "ok" | "degraded" | "error" | "critical";
 
 export interface ReceiptInput {
+  /** Which network's USDC, EURC and cirBTC count as real. Required, so a
+   *  caller cannot skip the token check by leaving it out. */
+  chainId: number;
   invoiceId: string;
   runSalt?: Hex;
   /** From eth_getTransactionReceipt. */
@@ -63,6 +69,7 @@ const LABELS: Record<RungId, string> = {
   tx_found: "Transaction found and succeeded",
   payment_found: "A payment to you is present",
   invoice_match: "The payment belongs to this invoice",
+  token_known: "The payment is in real USDC, EURC or cirBTC",
   identity_intact: "The payer signed this transaction directly",
   anchored: "The payment is on the payer's recorded list",
 };
@@ -72,6 +79,7 @@ const SEVERITY: Record<ReceiptState, Severity> = {
   run_reverted: "error",
   memo_absent: "error",
   unlinked: "critical",
+  unknown_token: "critical",
   identity_broken: "critical",
   not_anchored: "degraded",
   proof_invalid: "error",
@@ -165,7 +173,22 @@ export function verifyReceipt(input: ReceiptInput): ReceiptResult {
   at("invoice_match").detail =
     "Proven by rebuilding this payment and matching it to the invoice's reference — not by its position or amount.";
 
-  // ── rung 4: the payer on record is the sender of funds ─────────────────
+  // ── rung 4: the token is one Ledgerline pays in ────────────────────────
+  // `Memo` wraps a call to any contract, and any contract can emit Transfer
+  // and call itself "USDC". Without this rung a payer could pay in a
+  // worthless lookalike through the real `Memo`, record it on their list,
+  // and every other rung would pass under a headline in "USDC".
+  const symbol = knownTokenSymbol(input.chainId, payment.token);
+  if (!symbol) {
+    at("token_known").status = "fail";
+    at("token_known").detail =
+      `The payment is in the token at ${payment.token}, which is not USDC, EURC or cirBTC on Arc, whatever name it gives itself.`;
+    return done("unknown_token", payment, derivedMemoId);
+  }
+  at("token_known").status = "pass";
+  at("token_known").detail = `The token is ${symbol} itself, not a lookalike that borrows its name.`;
+
+  // ── rung 5: the payer on record is the sender of funds ─────────────────
   if (payment.identityBroken) {
     at("identity_intact").status = "fail";
     at("identity_intact").detail =
@@ -174,7 +197,7 @@ export function verifyReceipt(input: ReceiptInput): ReceiptResult {
   }
   at("identity_intact").status = "pass";
 
-  // ── rung 5: membership of the committed manifest ───────────────────────
+  // ── rung 6: membership of the committed manifest ───────────────────────
   if (input.runCommitted === false) {
     at("anchored").detail =
       "Payment verified against the chain, but the payer never recorded a list for this run, so there is no list to check it against.";

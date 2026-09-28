@@ -3,7 +3,7 @@ import { createPublicClient, http, TransactionReceiptNotFoundError, type Address
 import { arc, arcTestnet } from "viem/chains";
 import { readFileSync } from "node:fs";
 import {
-  reconcile, assessCompleteness, checkManifestAgainstRoot,
+  reconcile, assessCompleteness, checkManifestAgainstRoot, knownTokenSymbol,
   type Manifest, type RawLog,
 } from "@ledgerline/core";
 import { formatRows, type TokenMeta } from "./format.js";
@@ -19,10 +19,8 @@ try {
 }
 const { txHash, network, rpcUrl, anchor, manifestPath } = args;
 
-const client = createPublicClient({
-  chain: network === "mainnet" ? arc : arcTestnet,
-  transport: http(rpcUrl),
-});
+const chain = network === "mainnet" ? arc : arcTestnet;
+const client = createPublicClient({ chain, transport: http(rpcUrl) });
 
 const receipt = await client.getTransactionReceipt({ hash: txHash }).catch((err: unknown) => {
   if (err instanceof TransactionReceiptNotFoundError) {
@@ -56,23 +54,27 @@ if (manifestPath) {
 
 const result = reconcile(logs, manifest);
 
-// Decimals and symbols come from the chain, never hardcoded. A failed read
-// leaves the field out, and the amount prints unscaled rather than guessed.
-const erc20Abi = [
+// Decimals come from the chain, never hardcoded, and a failed read prints the
+// amount unscaled rather than guessed. Names come from Ledgerline's token
+// list, never from the contract's symbol(): a lookalike answers "USDC" as
+// readily as the real one. A token off the list gets neither, so its amount
+// prints as a raw integer beside its address.
+const decimalsAbi = [
   { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
-  { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
 ] as const;
 const meta = new Map<Address, TokenMeta>();
 for (const token of new Set(result.rows.map((r) => r.token))) {
-  const [decimals, symbol] = await Promise.allSettled([
-    client.readContract({ address: token, abi: erc20Abi, functionName: "decimals" }),
-    client.readContract({ address: token, abi: erc20Abi, functionName: "symbol" }),
-  ]);
-  meta.set(token, {
-    decimals: decimals.status === "fulfilled" ? Number(decimals.value) : undefined,
-    symbol: symbol.status === "fulfilled" ? symbol.value : undefined,
-  });
+  const symbol = knownTokenSymbol(chain.id, token);
+  if (!symbol) {
+    meta.set(token, {});
+    continue;
+  }
+  const decimals = await client
+    .readContract({ address: token, abi: decimalsAbi, functionName: "decimals" })
+    .then(Number, () => undefined);
+  meta.set(token, { decimals, symbol });
 }
+const lookalikes = result.payments.filter((p) => !knownTokenSymbol(chain.id, p.token)).length;
 
 // Was the whole run paid? Answerable from the anchor alone, without the run file.
 const anchorAbi = [
@@ -107,6 +109,10 @@ for (const row of formatRows(result.rows, meta, manifest !== undefined)) {
   console.log(`  ${row.line}`);
 }
 console.log(`\n  ${result.payments.length} referenced payment(s) found.`);
+if (lookalikes > 0) {
+  console.log(`  WARNING: ${lookalikes} of them in a token that is not USDC, EURC or cirBTC on Arc ${network},`);
+  console.log(`  whatever name it gives itself. Printed unscaled, beside the token's address.`);
+}
 console.log(`  Completeness: ${completeness.verdict} — ${completeness.note}`);
 if (!anchor) {
   console.log(`  No PayoutAnchor is known for ${network}; pass --anchor <address> to check completeness.`);

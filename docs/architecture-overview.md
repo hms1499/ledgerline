@@ -58,5 +58,5 @@ sequenceDiagram
     App->>App: Read the receipt, reconcile
     App-->>Recipient: Receipt link
     Recipient->>App: Open the link
-    App->>App: Five checks against the chain
+    App->>App: Six checks against the chain
 ```

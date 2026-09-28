@@ -9,7 +9,8 @@ const SEVERITY: Record<ReconcileStatus, number> = {
   matched: 5,
 };
 
-/** Both fields are read from the token contract. A failed read leaves it out. */
+/** Decimals are read from the token contract; the symbol comes from
+ *  Ledgerline's token list. Either is left out when it cannot be trusted. */
 export interface TokenMeta {
   decimals?: number;
   symbol?: string;

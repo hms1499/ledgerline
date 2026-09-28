@@ -108,7 +108,7 @@ Pure TypeScript shared by the CLI, the scripts and the browser. Apart from
 | `join.ts` | Join each memo to its transfer by `callDataHash`. A memo with no matching transfer is `unlinked` |
 | `reconcile.ts` | `reconcile(logs, manifest?)`: the pure reconciler. Six statuses: `matched`, `amount_mismatch`, `recipient_mismatch`, `unpaid`, `unexpected`, `unlinked`. Without a manifest every payment is `unexpected`, and the UI and CLI present that as "paid" |
 | `completeness.ts` | `assessCompleteness` compares payments found with the anchored `itemCount`. `checkManifestAgainstRoot` rebuilds a run file's root and compares it with the anchored one |
-| `verify.ts` | `verifyReceipt`: the recipient's five checks (`tx_found`, `payment_found`, `invoice_match`, `identity_intact`, `anchored`) and the resulting receipt state |
+| `verify.ts` | `verifyReceipt`: the recipient's six checks (`tx_found`, `payment_found`, `invoice_match`, `token_known`, `identity_intact`, `anchored`) and the resulting receipt state. `token_known` fails a payment in any token but the network's USDC, EURC or cirBTC (`knownTokenSymbol` in `constants.ts`) |
 | `links.ts` | Rebuild receipt proofs from what is on chain |
 | `summary.ts` | Per-token totals of a run, for the dashboard |
 | `compare.ts` | What one transaction's logs let a recipient establish: referenced payments and who `Transfer.from` is. `/why` runs it on both transactions |

@@ -82,3 +82,19 @@ export function tokensForChain(chainId: number): TokenSet {
   }
   throw new Error(`unsupported chain ${chainId}; Ledgerline targets Arc 5042 and 5042002`);
 }
+
+/**
+ * The name of a token Ledgerline pays in, or undefined for any other address.
+ *
+ * A token's name must come from this table, never from its contract's own
+ * symbol(). Anyone can deploy a contract whose symbol() says "USDC", and
+ * `Memo` wraps a call to it like any other, so a payer could pay in a
+ * worthless lookalike and still produce every other piece of evidence.
+ */
+export function knownTokenSymbol(chainId: number, token: string): keyof TokenSet | undefined {
+  const tokens = tokensForChain(chainId);
+  const wanted = token.toLowerCase();
+  return (Object.keys(tokens) as (keyof TokenSet)[]).find(
+    (symbol) => tokens[symbol].toLowerCase() === wanted,
+  );
+}

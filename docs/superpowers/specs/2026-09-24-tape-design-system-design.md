@@ -355,7 +355,7 @@ EIP-6963.
 One torn tape, top to bottom: head "Payment advice" / `Arc testnet · # <block>`;
 `INVOICE … # INV-EU-002` and `TO … 0xe48A…732a` as leader lines; the `amount`
 right-aligned with its symbol; dashed rule; the verdict stamp and its
-sentence; dashed rule; the five checks as printed lines (labels from core,
+sentence; dashed rule; the six checks as printed lines (labels from core,
 uppercase by CSS only); Payment detail and Raw evidence as `Collapse`. Below
 the tape, on the desk: the endpoints line and "change", and the paragraph on
 pointing the page at your own node. The ladder prints in (§8). No site footer.
@@ -402,7 +402,7 @@ Public copy follows the plain-language rule in
 > Amended by `2026-09-28-home-polish-design.md` §4: chapters that follow the demo video, the example receipt printing in, and no count-ups.
 > Amended 2026-09-28: **coins roll in** — on every load of the home page, each "Pays in" coin rolls 72px in from beside its label (295°, rolling without slipping), settles, and its name prints in; about 1s in all. The one decorative motion, chosen by the product owner; static under reduced motion.
 
-- **Print-in**: on `/r`, the five checks appear one after another, 70ms
+- **Print-in**: on `/r`, the six checks appear one after another, 70ms
   apart, each fading in with a 4px upward feed (the existing `settle`
   animation, reshaped). It is honest because the checks really are
   sequential.
