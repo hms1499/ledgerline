@@ -157,7 +157,7 @@ Two route groups, each with its own shell:
 | `/new` | Five steps (Upload, Review, Check, Pay, Receipts). The payer signs the salt message at Check. Pay calls `executeRun`, and Receipts offers the run file and receipt links |
 | `/run/[txHash]` | The reconciliation view: tiles, the payments table, completeness, loading a run file, and rebuilding receipt links by signing again |
 | `/r/[txHash]` | The recipient's receipt. The invoice id, salt and proof travel in the URL (`?i=&s=&p=&n=`), and the RPC endpoint can be changed on the page |
-| `/dashboard`, `/runs` | The connected wallet's runs from `localStorage`, each re-read from the chain. Up to four receipt reads at a time, with a 10-second timeout per read |
+| `/dashboard`, `/runs` | The connected wallet's runs from `localStorage`, each re-read from the chain. Up to four receipt reads at a time, with a 10-second timeout per read. The dashboard also reads each run's block time (4-second timeout) and the wallet's `balanceOf` per token |
 | `/why` | The referenced run beside a standard `Multicall3` batch. Every figure is read from the configured transactions' logs, plus a live `allowance` read. `?ours=&naive=&approve=` swaps in any other pair |
 
 `app/**` holds components. Decisions that can be unit-tested live in

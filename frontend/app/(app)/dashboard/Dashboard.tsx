@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button } from "antd";
 import { tokensForChain, type Address } from "@ledgerline/core";
@@ -15,7 +14,9 @@ import { readBalances } from "@/lib/balances";
 import { readTokenMeta } from "@/lib/token-meta";
 import { needsYou, toSettle, type TokenMeta } from "@/lib/dashboard-view";
 import { withNet } from "@/lib/nav";
+import { realFundsNotice } from "@/lib/network-notice";
 import NeedsYou from "./NeedsYou";
+import GetStarted from "./GetStarted";
 import WalletPanel from "./WalletPanel";
 import PaidTotals from "./PaidTotals";
 import RecentRuns from "./RecentRuns";
@@ -30,7 +31,7 @@ interface BalancesRead { owner: string; chainId: number; attempt: number; balanc
 interface MetaRead { chainId: number; attempt: number; meta: Record<string, TokenMeta> }
 
 export default function Dashboard() {
-  const { net, wallet, connect } = useWallet();
+  const { net, wallet, connect, wrongChain, switching, switchToArc } = useWallet();
   const search = useSearchParams();
   const [attempt, setAttempt] = useState(0);
   // Bumped by Remove, so the history is read again without a reload.
@@ -101,6 +102,9 @@ export default function Dashboard() {
                 this browser and re-read from the chain.
               </p>
             </section>
+            <p style={{ marginTop: 12, marginBottom: 0 }}>
+              You need a browser wallet (MetaMask or Rabby) and a little USDC on Arc for network fees.
+            </p>
             <Button type="primary" style={{ marginTop: 20 }} onClick={connect}>Connect a wallet</Button>
             <OpenRunByHash network={net.name} />
           </Tape>
@@ -123,19 +127,10 @@ export default function Dashboard() {
     return (
       <Grid>
         <Col span={12}>
-          <Tape>
-            <section className="verdict">
-              <h2>Nothing sent from this browser yet</h2>
-              <p>
-                A run sent from another browser is still on chain. Open it from the explorer or by
-                its transaction hash.
-              </p>
-            </section>
-            <p style={{ marginTop: 20, marginBottom: 0 }}>
-              <Link href={withNet("/new", search)} className="button-primary">Create a payout run</Link>
-            </p>
-            <OpenRunByHash network={net.name} />
-          </Tape>
+          <GetStarted address={wallet.address} network={net.name} wrongChain={wrongChain} switching={switching}
+            balances={balances} usdc={usdc} newRunHref={withNet("/new", search)}
+            tryTestnetHref={realFundsNotice(net)?.tryHref}
+            onSwitch={() => void switchToArc()} onRetry={retry} />
         </Col>
       </Grid>
     );
