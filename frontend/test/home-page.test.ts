@@ -34,4 +34,8 @@ describe("the home page", () => {
     // The example is an illustration, not a section.
     expect(src).toContain("<strong>Payment advice</strong>");
   });
+  it("sets the comparison as a list for a phone, from the same rows as the table", () => {
+    expect(src).toContain('<dl className="versus-list">');
+    expect(src.match(/controlComparison\(\)\.map/g)).toHaveLength(2);
+  });
 });

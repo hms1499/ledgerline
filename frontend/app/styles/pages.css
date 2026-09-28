@@ -82,6 +82,23 @@
 .versus-table td { width: 30%; font-family: var(--font-mono), ui-monospace, monospace; font-weight: 600; }
 .versus-table td + td { color: var(--ink-soft); }
 .versus-links { margin-top: 10px; }
+/* One form per width, by media query: the only-sm utility sets inline-flex,
+   which is wrong for a list. */
+.versus-list { display: none; margin: 12px 0 0; }
+.versus-list > div { padding: 10px 0; border-top: 1.5px dotted var(--rule); }
+.versus-list > div:last-child { border-bottom: 1.5px dotted var(--rule); }
+.versus-list dt { margin-bottom: 4px; font-size: 14px; }
+/* The label never breaks; a value too long to sit beside it moves, whole,
+   to its own line on the right rather than breaking mid-phrase. */
+.versus-list dd { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 12px; margin: 0; }
+.versus-list dd .label { flex: none; white-space: nowrap; }
+.versus-list dd.because { display: block; }
+.versus-val { margin-left: auto; font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; font-size: 13px; font-weight: 600; text-align: right; }
+.versus-list dd + dd .versus-val { color: var(--ink-soft); }
+@media (max-width: 639px) {
+  .versus-table { display: none; }
+  .versus-list { display: block; }
+}
 
 .how { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .how > li { min-width: 0; padding: 0 var(--tape-pad); }

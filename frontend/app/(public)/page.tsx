@@ -176,6 +176,18 @@ export default function Home() {
                 ))}
               </tbody>
             </table>
+            {/* Below 640px the table's three columns wrap every cell; the same
+                rows as a list instead (home polish spec §3.2). */}
+            <dl className="versus-list">
+              {controlComparison().map((r) => (
+                <div key={r.key}>
+                  <dt>{r.claim}</dt>
+                  <dd><span className="label">Ledgerline</span><span className="versus-val">{r.ours}</span></dd>
+                  <dd><span className="label">Standard batch</span><span className="versus-val">{r.ordinary}</span></dd>
+                  {r.same && <dd className="because">No difference here.</dd>}
+                </div>
+              ))}
+            </dl>
             <p className="because versus-links">
               The control on the explorer:{" "}
               <a href={`https://explorer.arc.io/tx/${P.control.approveTx}`} target="_blank" rel="noreferrer">approval ↗</a>
