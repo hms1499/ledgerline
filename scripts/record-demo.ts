@@ -9,8 +9,8 @@
  *   (--keep-frames keeps the raw frames, to debug a take)
  *
  * Writes frontend/public/demo/run-<layout>-<theme>.mp4 and .jpg, and prints
- * each run's transaction for docs/notes/2026-09-28-demo-video.md and
- * frontend/lib/demo-run.ts. Every take is a real run: 0.10 USDC, 0.10 EURC and
+ * each run's transaction, chapter starts and poster time for
+ * docs/notes/2026-09-28-demo-video.md and frontend/lib/demo-run.ts. Every take is a real run: 0.10 USDC, 0.10 EURC and
  * 0.00001 cirBTC of testnet funds, plus the fee.
  *
  * Testnet only: the video is labelled "Arc testnet" on the home page, so
@@ -32,6 +32,7 @@ import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SAMPLE_CSV } from "../frontend/lib/sample-csv.js";
+import { buildTimeline } from "./lib/timeline.js";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 
@@ -236,8 +237,12 @@ async function record(layout: Layout, theme: "light" | "dark") {
   page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
   page.on("pageerror", (e) => errors.push(e.message));
 
-  const caption = (step: string, text: string) =>
-    page.evaluate(([s, t]) => (window as unknown as { __caption(a: string, b: string): void }).__caption(s, t), [step, text]);
+  /** Every caption, on the wall clock: the video's chapters come from these. */
+  const marks: { label: string; at: number }[] = [];
+  const caption = (step: string, text: string) => {
+    marks.push({ label: step, at: Date.now() / 1000 });
+    return page.evaluate(([s, t]) => (window as unknown as { __caption(a: string, b: string): void }).__caption(s, t), [step, text]);
+  };
 
   const shot = (name: string) => page.screenshot({ path: join(work, `${name}.png`) });
 
@@ -303,7 +308,10 @@ async function record(layout: Layout, theme: "light" | "dark") {
   const toSend = page.getByRole("button", { name: "Sign and send the payment" });
   await waiting(toSend.waitFor({ timeout: 60_000 }));
   await scrollTo(page.getByRole("heading", { name: "Every payment would go through" }));
-  await pause(2200);
+  await pause(1100);
+  // The poster: the payer's side, every payment checked (home polish §3.1).
+  marks.push({ label: "poster", at: Date.now() / 1000 });
+  await pause(1100);
   await shot("3-check");
   await toSend.scrollIntoViewIfNeeded();
   await pause(500);
@@ -350,7 +358,7 @@ async function record(layout: Layout, theme: "light" | "dark") {
 
   if (errors.length) console.warn(`[${layout}-${theme}] console errors:\n  ${errors.join("\n  ")}`);
   const txHash = sent.at(-1)!;
-  encode(`${layout}-${theme}`, shape, capture.frames, begin, end, work);
+  encode(`${layout}-${theme}`, shape, capture.frames, begin, end, work, marks);
   console.log(`[${layout}-${theme}] tx ${txHash}\n[${layout}-${theme}] receipt ${receipt.pathname}${receipt.search}`);
   if (process.argv.includes("--keep-frames")) console.log(`[${layout}-${theme}] frames in ${work}`);
   else rmSync(work, { recursive: true, force: true });
@@ -361,16 +369,15 @@ async function record(layout: Layout, theme: "light" | "dark") {
  *  network play at WAIT_SPEED, so the video shows that the chain answered
  *  without making anyone watch a spinner. */
 const WAIT_SPEED = 4;
-function encode(name: string, { view, scale }: Shape, frames: Frame[], begin: number, end: number, dir: string) {
+function encode(
+  name: string, { view, scale }: Shape, frames: Frame[], begin: number, end: number, dir: string,
+  marks: { label: string; at: number }[],
+) {
   const kept = frames.filter((f) => f.at >= begin - 0.05);
   const inWait = (t: number) => fastForward.some((w) => t >= w.from && t < w.to);
+  const timeline = buildTimeline(kept, end, (t) => (inWait(t) ? WAIT_SPEED : 1));
   const lines: string[] = [];
-  kept.forEach((f, i) => {
-    const next = kept[i + 1]?.at ?? end;
-    let d = Math.max(next - f.at, 0.001);
-    if (inWait(f.at)) d /= WAIT_SPEED;
-    lines.push(`file '${f.file}'`, `duration ${d.toFixed(4)}`);
-  });
+  kept.forEach((f, i) => lines.push(`file '${f.file}'`, `duration ${timeline.durations[i]!.toFixed(4)}`));
   // The concat demuxer ignores the last duration unless the file repeats.
   lines.push(`file '${kept.at(-1)!.file}'`);
   const list = join(dir, "frames.txt");
@@ -384,12 +391,23 @@ function encode(name: string, { view, scale }: Shape, frames: Frame[], begin: nu
     "-c:v", "libx264", "-preset", "slow", "-crf", "24", "-tune", "stillimage",
     "-movflags", "+faststart", "-an", mp4,
   ]);
-  // The poster is the last frame: the verified receipt, which is the whole
-  // point for anyone who never presses play.
+
+  // One chapter per step number: "4 · Paid" is still the Pay chapter.
+  const firstOfStep = new Map<string, number>();
+  for (const m of marks) {
+    const n = /^(\d) ·/.exec(m.label)?.[1];
+    if (n && !firstOfStep.has(n)) firstOfStep.set(n, timeline.outputTime(m.at));
+  }
+  const chapters = [...firstOfStep.values()];
+  const posterMark = marks.find((m) => m.label === "poster");
+  if (!posterMark) throw new Error(`[${name}] the Check step never marked its poster`);
+  const posterAt = timeline.outputTime(posterMark.at);
+
   execFileSync("ffmpeg", [
-    "-y", "-loglevel", "error", "-sseof", "-0.1", "-i", mp4,
+    "-y", "-loglevel", "error", "-ss", posterAt.toFixed(3), "-i", mp4,
     "-frames:v", "1", "-q:v", "3", join(OUT, `run-${name}.jpg`),
   ]);
+  console.log(`[${name}] chapters ${chapters.map((c) => c.toFixed(3)).join(" ")} · poster ${posterAt.toFixed(1)}`);
 }
 
 const chainId = await chainClient.getChainId();
