@@ -13,25 +13,32 @@
 }
 .home-note { margin: 14px 0 0; font-size: 14px; max-width: var(--measure); }
 .home-note-mark { margin-right: 6px; padding: 0 6px; font-family: var(--font-mono), ui-monospace, monospace; font-weight: 700; }
-/* The demo: a recording of a real testnet run, one per theme (DemoVideo). */
+.example-caption { margin: 14px 0 0; text-align: center; }
+
+/* The demo: a recording of a real testnet run (DemoVideo). The phone
+   recording, 4:5, below 1024px; the desktop one, 16:9, from there up — the
+   same breakpoint where the app itself changes layout. */
 .demo { margin: 0; }
 .demo-video {
   display: block; width: 100%; height: auto; aspect-ratio: 4 / 5;
   border: 1px solid var(--rule);
-  background: var(--poster-light) center / cover no-repeat, var(--desk);
+  background: var(--poster-phone-light) center / cover no-repeat, var(--desk);
 }
-:root[data-theme="dark"] .demo-video { background-image: var(--poster-dark); }
-.demo-foot { margin-top: 12px; }
-.demo-foot .because { margin-top: 8px; }
+:root[data-theme="dark"] .demo-video { background-image: var(--poster-phone-dark); }
+.demo-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 20px; margin-top: 14px; }
+.demo-foot .because { flex: 1 1 32ch; margin-top: 0; }
 .demo-toggle {
-  display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px;
+  flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px;
   border: 1px solid var(--control); background: var(--tape); color: var(--ink); cursor: pointer;
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
 }
 .demo-toggle:hover { background: var(--tape-shade); }
-/* Full width below lg, but a 4:5 video that wide would fill a tablet. */
 @media (max-width: 1023px) { .demo { max-width: 420px; margin-inline: auto; } }
+@media (min-width: 1024px) {
+  .demo-video { aspect-ratio: 16 / 9; background-image: var(--poster-wide-light); }
+  :root[data-theme="dark"] .demo-video { background-image: var(--poster-wide-dark); }
+}
 
 /* The proof: three measured figures, each linked to its evidence. */
 .proof { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }
