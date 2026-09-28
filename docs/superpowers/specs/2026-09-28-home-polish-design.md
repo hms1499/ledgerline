@@ -186,8 +186,9 @@ buttons, `1 Upload` … `5 Receipt`, in mono like the app's step bar.
 `currentTime / duration` — the tape feeding out of the machine, which is what
 the dashed feed line already means (§6.1 of the parent).
 
-- Drawn with `transform: scaleX(p)`, `transform-origin: left`: no layout, no
-  shift.
+- A full-width dashed line inside a 2px track with `overflow: hidden`, slid in
+  with `transform: translateX((p − 1) × 100%)`: no layout, no shift, and the
+  dashes keep their length (`scaleX` would stretch them).
 - Updated in a `requestAnimationFrame` loop only while the video plays and is
   in view, writing the style directly — no React render per frame. The active
   chapter is React state and changes only when the chapter does.

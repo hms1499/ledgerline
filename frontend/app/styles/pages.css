@@ -34,6 +34,33 @@
   font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
 }
 .demo-toggle:hover { background: var(--tape-shade); }
+/* The feed line: the tape feeding out as the video plays (home polish §4.1).
+   A full-width dashed line slid in from the left, so its dashes keep their
+   length — scaling it would stretch them. */
+.demo-feed { height: 2px; margin-top: 10px; overflow: hidden; }
+.demo-feed > span {
+  display: block; height: 0; border-top: 1.5px dashed var(--ink);
+  transform: translateX(-100%); will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) { .demo-feed { display: none; } }
+
+.demo-chapters { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 6px; }
+.demo-chapters button {
+  display: inline-flex; align-items: baseline; gap: 6px; min-height: 28px; padding: 4px 8px;
+  background: none; border: 0; color: var(--ink-soft); cursor: pointer;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.demo-chapters button:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.demo-chapters button[aria-current="step"] { background: var(--highlight); color: var(--on-highlight); }
+.demo-chapter-n { font-weight: 700; }
+/* With the phone recording: five columns, number over label, at the bottom
+   tabs' size. */
+.demo-chapters.is-phone { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; }
+.demo-chapters.is-phone button {
+  width: 100%; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0;
+  font-size: 10.5px; letter-spacing: 0.04em;
+}
 @media (max-width: 1023px) { .demo { max-width: 420px; margin-inline: auto; } }
 @media (min-width: 1024px) {
   .demo-video { aspect-ratio: 16 / 9; background-image: var(--poster-wide-light); }

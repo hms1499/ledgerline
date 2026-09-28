@@ -4,7 +4,9 @@ import {
   useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties,
 } from "react";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import { DEMO_RUN, WIDE_QUERY, demoClip, type DemoLayout } from "@/lib/demo-run";
+import {
+  DEMO_BRIDGE, DEMO_RUN, DEMO_STEPS, WIDE_QUERY, chapterAt, demoClip, type DemoLayout,
+} from "@/lib/demo-run";
 
 function watchWide(onChange: () => void) {
   const mq = window.matchMedia(WIDE_QUERY);
@@ -21,7 +23,8 @@ const isWideOnServer = () => true;
  * plays only while it is on screen, starts on its own only for a viewer who
  * has not asked for less motion, and can always be paused (WCAG 2.2.2).
  * Wide screens get the desktop recording, narrower ones the phone recording,
- * each in the page's theme.
+ * each in the page's theme. Under it, a feed line and five chapters follow
+ * the video; pressing a chapter plays from there.
  */
 export default function DemoVideo() {
   const { mode } = useTheme();
@@ -33,6 +36,55 @@ export default function DemoVideo() {
   const [chosen, setChosen] = useState<"play" | "pause">();
   const [inView, setInView] = useState(false);
   const descId = useId();
+  const feed = useRef<HTMLSpanElement>(null);
+  // -1 until the video has played: the poster is a frame from Check, so
+  // highlighting Upload over it would say something untrue.
+  const [chapter, setChapter] = useState(-1);
+  const shown = useRef(-1);
+
+  // The rail and the feed line follow the video itself: one frame loop while
+  // it plays, one read when it pauses or seeks. The feed line is written
+  // straight to the DOM, so a frame costs no React render; the chapter is
+  // state, and changes only when the chapter does.
+  useEffect(() => {
+    const v = video.current;
+    if (!v) return;
+    shown.current = -1;
+    setChapter(-1);
+    let raf = 0;
+    const draw = () => {
+      const p = v.duration > 0 ? Math.min(1, v.currentTime / v.duration) : 0;
+      if (feed.current) feed.current.style.transform = `translateX(${(p - 1) * 100}%)`;
+      if (v.paused && v.currentTime === 0) return;
+      const c = chapterAt(clip.chapters, v.currentTime);
+      if (c !== shown.current) { shown.current = c; setChapter(c); }
+    };
+    const loop = () => { draw(); raf = requestAnimationFrame(loop); };
+    const start = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(loop); };
+    const stop = () => { cancelAnimationFrame(raf); draw(); };
+    v.addEventListener("play", start);
+    v.addEventListener("pause", stop);
+    v.addEventListener("ended", stop);
+    v.addEventListener("seeked", draw);
+    return () => {
+      cancelAnimationFrame(raf);
+      v.removeEventListener("play", start);
+      v.removeEventListener("pause", stop);
+      v.removeEventListener("ended", stop);
+      v.removeEventListener("seeked", draw);
+    };
+  }, [clip]);
+
+  /** A chapter pressed is the viewer choosing Play, as the Play button is. The
+   *  0.05s keeps the seek off the previous chapter's last frame. */
+  const seek = (i: number) => {
+    const v = video.current;
+    if (!v) return;
+    v.currentTime = clip.chapters[i]! + 0.05;
+    v.muted = true;
+    void v.play().catch(() => setPlaying(false));
+    setChosen("play");
+  };
 
   // Half on screen or more. It sits below the fold, and a video nobody can
   // see should not spend anyone's data.
@@ -106,6 +158,16 @@ export default function DemoVideo() {
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
       />
+      <div className="demo-feed" aria-hidden="true"><span ref={feed} /></div>
+      <ol className={`demo-chapters is-${layout}`} aria-label="Chapters">
+        {DEMO_STEPS.map((label, i) => (
+          <li key={label}>
+            <button type="button" aria-current={i === chapter ? "step" : undefined} onClick={() => seek(i)}>
+              <span className="demo-chapter-n">{i + 1}</span> {label}
+            </button>
+          </li>
+        ))}
+      </ol>
       <figcaption className="demo-foot">
         <button type="button" className="demo-toggle" onClick={toggle}>
           <span aria-hidden="true">{playing ? "❚❚" : "▶"}</span>
@@ -114,7 +176,8 @@ export default function DemoVideo() {
         </button>
         <span id={descId} className="because">
           Three invoices uploaded, checked against the chain, paid in one transaction, and
-          the first recipient&apos;s receipt verified. Recorded in this app on {DEMO_RUN.recorded}.{" "}
+          the first recipient&apos;s receipt verified, in this app on {DEMO_RUN.recorded}.{" "}
+          {DEMO_BRIDGE}{" "}
           <a href={clip.receipt}>Open that receipt</a>
           {" · "}
           <a href={`${DEMO_RUN.explorer}/tx/${clip.txHash}`} target="_blank" rel="noreferrer">
