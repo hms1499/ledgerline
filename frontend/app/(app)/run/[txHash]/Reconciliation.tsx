@@ -10,7 +10,8 @@ import {
   type Manifest, type RawLog, type Hex, type Completeness, type ManifestCheck,
   type PaymentRecord,
 } from "@ledgerline/core";
-import { networkFor, short, receiptUrl, type NetworkView } from "@/lib/chain";
+import { networkFor, otherNetwork, short, receiptUrl, type NetworkView } from "@/lib/chain";
+import { settleRun } from "@/lib/history";
 import { connect, knownWallets, watchWalletList, NoWalletError, type WalletChoice } from "@/lib/wallet";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { describeError } from "@/lib/errors";
@@ -111,8 +112,8 @@ export default function Reconciliation({
         </>
       )}
 
-      {phase === "tx_not_found" && failed("error", "No such transaction on Arc",
-        `Nothing on Arc ${net.name} matches this hash. If the run was sent on a different network, switch with ?n=mainnet.`)}
+      {phase === "tx_not_found" && failed("error", `No receipt on Arc ${net.name}`,
+        `Arc ${net.name} has no receipt for this hash. A run sent in the last few minutes may still be waiting to be included, so open this page again shortly. A run sent on Arc ${otherNetwork(net.name)} opens with ?n=${otherNetwork(net.name)}.`)}
 
       {phase === "run_reverted" && failed("error", "This payout run did not execute",
         "The transaction reverted. No money moved, nothing was paid, and nothing was recorded. The run is safe to send again.",
@@ -469,6 +470,10 @@ async function loadRun(
 ): Promise<Loaded | "reverted"> {
   const client = createPublicClient({ chain: net.chain, transport: http(endpoint) });
   const receipt = await client.getTransactionReceipt({ hash: txHash as Hex });
+
+  // Opening a run recorded at broadcast is how its "no receipt yet" usually
+  // ends: the receipt is here now, whichever way it went.
+  settleRun(txHash, receipt.from, net.chain.id, receipt.status);
 
   // A reverted run is a first-class state, not an error: it means nothing
   // was paid, which is a legitimate and important thing to show plainly.

@@ -134,13 +134,24 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const setHold = useCallback((on: boolean) => dispatch({ type: "hold", on }), []);
   const showNoWallet = useCallback(() => setNoWallet(true), []);
 
+  // The shell's links ask through useLeaveGuard; a reload, a closed tab or a
+  // typed URL only ever fires beforeunload. Both read the same warning, so a
+  // payment being sent is guarded as firmly as an unsaved run file.
+  const unloadWarning = leaveWarning({ held: session.held, unsavedRun });
+  useEffect(() => {
+    if (!unloadWarning) return;
+    const hold = (e: BeforeUnloadEvent) => { e.preventDefault(); };
+    window.addEventListener("beforeunload", hold);
+    return () => window.removeEventListener("beforeunload", hold);
+  }, [unloadWarning]);
+
   const api: WalletApi = {
     net, wallet,
     wrongChain: !!wallet && wallet.chainId !== net.chain.id,
     held: session.held,
     connecting, error, switching, switchError,
     connect, showNoWallet, disconnect, switchToArc, setHold, setUnsavedRun,
-    leaveWarning: leaveWarning({ held: session.held, unsavedRun }),
+    leaveWarning: unloadWarning,
   };
 
   return (

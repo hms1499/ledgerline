@@ -43,20 +43,13 @@ export default function Result({
   // The manifest is the only record of what each invoice was owed; the chain
   // holds what was paid. Until it is saved, leaving asks first. Receipt links
   // are not guarded the same way: they can be rebuilt by signing again.
-  // The shell's own links navigate client-side and never see beforeunload;
-  // they read this instead.
+  // The provider turns this into both guards: the shell links' confirm and
+  // the browser's beforeunload.
   const { setUnsavedRun } = useWallet();
   useEffect(() => {
     setUnsavedRun(!manifestSaved);
     return () => setUnsavedRun(false);
   }, [manifestSaved, setUnsavedRun]);
-
-  useEffect(() => {
-    if (manifestSaved) return;
-    const hold = (e: BeforeUnloadEvent) => { e.preventDefault(); };
-    window.addEventListener("beforeunload", hold);
-    return () => window.removeEventListener("beforeunload", hold);
-  }, [manifestSaved]);
 
   const origin = typeof window === "undefined" ? "" : window.location.origin;
   const rows: LinkRow[] = prepared.manifest.items.map((item, i) => ({

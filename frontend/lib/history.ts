@@ -29,6 +29,21 @@ export interface RunRecord {
   /** Epoch ms, this browser's clock — a label for the list, never evidence. */
   seenAt: number;
   itemCount: number;
+  /**
+   * Set when the run is recorded at broadcast, before any receipt: the hash
+   * is the payer's only handle on money that may have moved, so it is kept
+   * the moment it exists rather than lost to a reload. Cleared by recording
+   * the run again once its receipt arrives. Records written before this
+   * field existed were only ever written on a receipt, so absent means seen.
+   */
+  awaitingReceipt?: boolean;
+}
+
+/** The list's "Paid" cell. A run this browser has no receipt for is never
+ *  called paid: the chain decides, and the run's page asks it. */
+export function paidText(r: Pick<RunRecord, "itemCount" | "awaitingReceipt">): string {
+  if (r.awaitingReceipt) return "No receipt yet";
+  return `${r.itemCount} invoice${r.itemCount === 1 ? "" : "s"}`;
 }
 
 type Store = Record<string, RunRecord[]>;
@@ -70,6 +85,31 @@ export function recordRun(run: RunRecord): void {
 export function runsFor(payer: string, chainId: number): RunRecord[] {
   const list = read()[keyFor(payer, chainId)] ?? [];
   return [...list].sort((a, b) => b.seenAt - a.seenAt);
+}
+
+/**
+ * What a receipt read anywhere in the app does to the list: a run recorded at
+ * broadcast loses its "no receipt yet" once the chain shows it succeeded, and
+ * leaves the list if it reverted, since it moved nothing. A run recorded on
+ * its receipt is left as it is. Pure, for the tests; settleRun applies it.
+ */
+export function settled(list: RunRecord[], txHash: string, outcome: "success" | "reverted"): RunRecord[] {
+  const same = (r: RunRecord) => r.txHash.toLowerCase() === txHash.toLowerCase();
+  if (outcome === "reverted") return list.filter((r) => !(same(r) && r.awaitingReceipt));
+  return list.map((r) => {
+    if (!same(r) || !r.awaitingReceipt) return r;
+    const { awaitingReceipt: _, ...seen } = r;
+    return seen;
+  });
+}
+
+export function settleRun(txHash: string, payer: string, chainId: number, outcome: "success" | "reverted"): void {
+  if (typeof window === "undefined") return;
+  const store = read();
+  const k = keyFor(payer, chainId);
+  if (!store[k]) return;
+  store[k] = settled(store[k], txHash, outcome);
+  write(store);
 }
 
 export function forgetRun(txHash: string, payer: string, chainId: number): void {

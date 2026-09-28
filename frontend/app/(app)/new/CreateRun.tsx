@@ -11,7 +11,7 @@ import { history, START } from "@/lib/edit-history";
 import {
   browserStorage, draftKey, dropDraft, loadDraft, saveDraft, type Draft,
 } from "@/lib/draft-store";
-import { recordRun } from "@/lib/history";
+import { forgetRun, recordRun } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { sendStaysOnScreen, shouldResetPrepared } from "@/lib/wallet-session";
 import { Grid, Col } from "@/components/grid/Grid";
@@ -213,14 +213,26 @@ export default function CreateRun() {
           {step === 3 && prepared && wallet && sendStaysOnScreen({ wrongChain, held }) && (
             <StepSend
               prepared={prepared} net={net} wallet={wallet}
+              // Recorded the moment the wallet returns a hash, marked as
+              // awaiting its receipt. A reload, Back or a closed tab during the
+              // wait for a receipt would otherwise lose the only handle on
+              // money that may have moved, and a payer who cannot find a run
+              // re-sends it under a new name, which nothing on chain refuses.
+              // The list never calls such a run paid; the chain decides when
+              // the run is opened.
+              onSent={(txHash) => recordRun({
+                txHash, payer: wallet.address, chainId: net.chain.id,
+                runLabel: draft?.runLabel ?? "", seenAt: Date.now(),
+                itemCount: prepared.manifest.items.length, awaitingReceipt: true,
+              })}
+              // A reverted run moved nothing and is safe to send again, so it
+              // leaves the list, as it never entered it before.
+              onReverted={(txHash) => forgetRun(txHash, wallet.address, net.chain.id)}
               onDone={(o) => {
                 if (o.state !== "confirmed") return;
                 setOutcome(o);
                 setStep(4);
                 forgetDraft();
-                // Only a confirmed run is worth remembering: a list that
-                // included attempts without receipts would be a list of things
-                // that might not have happened.
                 recordRun({
                   txHash: o.txHash, payer: wallet.address, chainId: net.chain.id,
                   runLabel: draft?.runLabel ?? "", seenAt: Date.now(),

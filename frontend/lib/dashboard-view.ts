@@ -48,7 +48,9 @@ export function excludedNote(n: number): string {
 export const RUN_STATUS: Record<RunRead["state"], { label: string; color: "success" | "warning" | "error" | "default" }> = {
   read: { label: "Read", color: "success" },
   attention: { label: "Needs a look", color: "warning" },
-  not_found: { label: "Not found", color: "default" },
+  // Also a run sent from this browser that has no receipt yet: "not found"
+  // read as "lost" for a payment that may be minutes from landing.
+  not_found: { label: "No receipt", color: "default" },
   reverted: { label: "Reverted", color: "error" },
   unreadable: { label: "Couldn't read", color: "warning" },
 };

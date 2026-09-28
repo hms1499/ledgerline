@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
 import { short } from "@/lib/chain";
 import { withNet } from "@/lib/nav";
-import { runsFor, forgetRun, type RunRecord } from "@/lib/history";
+import { runsFor, forgetRun, paidText, type RunRecord } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
@@ -30,8 +30,8 @@ export default function RunHistory() {
       render: (label: string) => label || <span style={{ color: "var(--ink-soft)" }}>unnamed</span>,
     },
     {
-      title: "Paid", dataIndex: "itemCount", width: 110,
-      render: (n: number) => `${n} invoice${n === 1 ? "" : "s"}`,
+      title: "Paid", dataIndex: "itemCount", width: 130,
+      render: (_: number, r) => paidText(r),
     },
     {
       title: "Sent", dataIndex: "seenAt", width: 190,

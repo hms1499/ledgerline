@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Alert, Button, Steps } from "antd";
 import { createPublicClient, http } from "viem";
-import { executeRun, ioFromPublicClient, type RunOutcome, type RunStage } from "@ledgerline/core";
+import { executeRun, ioFromPublicClient, type Hex, type RunOutcome, type RunStage } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import { describeError } from "@/lib/errors";
@@ -22,10 +22,15 @@ const STAGE_LABEL: Record<RunStage, string> = {
 const ORDER: RunStage[] = ["balances", "preflight", "fees", "signing", "broadcast", "confirming"];
 
 export default function StepSend({
-  prepared, net, wallet, onDone, onBusy,
+  prepared, net, wallet, onDone, onSent, onReverted, onBusy,
 }: {
   prepared: PreparedRun; net: NetworkView; wallet: ConnectedWallet;
   onDone: (outcome: RunOutcome) => void;
+  /** The wallet returned a hash: money may move from here on, whether or
+   *  not this screen lives to see the receipt. */
+  onSent?: (txHash: Hex) => void;
+  /** The run's receipt says it reverted: nothing moved. */
+  onReverted?: (txHash: Hex) => void;
   /** True while this screen holds the only copy of a transaction hash. */
   onBusy?: (busy: boolean) => void;
 }) {
@@ -59,7 +64,9 @@ export default function StepSend({
         io: ioFromPublicClient(client),
         send: async (tx) => {
           try {
-            return await wallet.walletClient.sendTransaction({ account: wallet.address, chain: net.chain, ...tx });
+            const hash = await wallet.walletClient.sendTransaction({ account: wallet.address, chain: net.chain, ...tx });
+            onSent?.(hash);
+            return hash;
           } catch (err) {
             setStop(sendStop(err));
             throw err;
@@ -70,10 +77,11 @@ export default function StepSend({
       });
       setOutcome(result);
       if (result.state === "confirmed") onDone(result);
+      if (result.state === "reverted") onReverted?.(result.txHash);
     } catch (err) {
       setCrash(describeError(err));
     }
-  }, [prepared, net, wallet, onDone]);
+  }, [prepared, net, wallet, onDone, onSent, onReverted]);
 
   /**
    * The wallet must not be dropped out from under this screen while it is the

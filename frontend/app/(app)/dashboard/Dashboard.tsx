@@ -9,7 +9,7 @@ import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
 import StatTile from "@/components/ui/StatTile";
 import Tape from "@/components/ui/Tape";
-import { runsFor, type RunRecord } from "@/lib/history";
+import { runsFor, settleRun, type RunRecord } from "@/lib/history";
 import { readRuns, describeCoverage, type RunRead } from "@/lib/run-reads";
 import { readTokenMeta } from "@/lib/token-meta";
 import { coverageView, excludedNote, RUN_STATUS, amountText, paidLine, type TokenMeta } from "@/lib/dashboard-view";
@@ -53,6 +53,11 @@ export default function Dashboard() {
           ) as Record<string, TokenMeta>)
           .catch(() => ({} as Record<string, TokenMeta>)),
       ]);
+      // A run recorded at broadcast settles here once its receipt is read.
+      for (const r of reads) {
+        if (r.state === "read" || r.state === "attention") settleRun(r.txHash, payer, net.chain.id, "success");
+        if (r.state === "reverted") settleRun(r.txHash, payer, net.chain.id, "reverted");
+      }
       if (!cancelled) setLoaded({ records, reads, meta, attempt });
     })();
     return () => { cancelled = true; };

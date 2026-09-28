@@ -54,6 +54,11 @@ export function networkFor(name: string | null | undefined): NetworkView {
 
 /** Mainnet unless testnet is asked for by name: the product runs on mainnet,
  *  and testnet is the place to try it without real funds (`?n=testnet`). */
+/** The one Arc network a page is not on: where to look for a hash it cannot find. */
+export function otherNetwork(name: NetworkView["name"]): NetworkView["name"] {
+  return name === "mainnet" ? "testnet" : "mainnet";
+}
+
 export function defaultNetwork(): NetworkView {
   return process.env.NEXT_PUBLIC_DEFAULT_NETWORK === "testnet" ? TESTNET : MAINNET;
 }
