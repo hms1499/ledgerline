@@ -5,8 +5,8 @@ import { MAINNET_PROOF as P, controlComparison } from "@/lib/mainnet-proof";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import DemoVideo from "@/components/ui/DemoVideo";
-
-const PAYS_IN = ["USDC", "EURC", "cirBTC"] as const;
+import Coin from "@/components/ui/Coin";
+import { PAYS_IN } from "@/lib/pays-in";
 
 const shortHash = (h: string) => `${h.slice(0, 10)}…${h.slice(-8)}`;
 
@@ -30,9 +30,16 @@ export default function Home() {
         </div>
         <p className="pays-in">
           <span className="label">Pays in</span>
-          {PAYS_IN.map((symbol) => (
-            <span key={symbol} className="chip">{symbol}</span>
-          ))}
+          {/* The tray clips the roll, so a coin comes out from beside the
+              label rather than across it. */}
+          <span className="coin-tray">
+            {PAYS_IN.map(({ symbol, glyph }) => (
+              <span key={symbol} className="coin-token">
+                <Coin glyph={glyph} />
+                <span className="coin-symbol">{symbol}</span>
+              </span>
+            ))}
+          </span>
         </p>
         {testnet ? (
           <p className="home-note">
