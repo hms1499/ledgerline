@@ -19,7 +19,7 @@ import { fixList, RECIPIENT_HELP } from "@/lib/fix-list";
 import { NO_EDITS, changesText, correctionReminder, headerWarning } from "@/lib/sheet-edits";
 import { NOTHING_CHANGED } from "@/lib/changes-view";
 import { DRAFT_REFUSED, DRAFT_SAVED, draftPrompt } from "@/lib/draft-store";
-import { noWalletHelp } from "@/lib/wallet-help";
+import { noWalletHelp, phoneWalletHelp } from "@/lib/wallet-help";
 import { topUpHint } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
 import { TX_HASH_HINT } from "@/lib/tx-hash";
@@ -224,6 +224,8 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     for (const n of ["mainnet", "testnet"] as const) {
       const h = noWalletHelp(n);
       plain(h.title); plain(h.install); plain(h.funds); plain(h.kind);
+      const p = phoneWalletHelp(n);
+      plain(p.title); plain(p.body); plain(p.metamask); plain(p.metamaskMissing); plain(p.others);
       plain(topUpHint("USDC", n).text); plain(topUpHint("cirBTC", n).text);
     }
     Object.values(BLOCKED_COPY).forEach(plain);
