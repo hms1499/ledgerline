@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { paidText, settled } from "@/lib/history";
+import { markedReverted, paidText, settled } from "@/lib/history";
 
 describe("the run list's Paid cell", () => {
   it("counts the invoices of a run whose receipt this browser saw", () => {
@@ -33,5 +33,26 @@ describe("a run recorded at broadcast settles on its receipt", () => {
   it("never touches a run recorded on its receipt, or another run", () => {
     expect(settled([older], "0xcd", "reverted")).toEqual([older]);
     expect(settled([sent, older], "0xcd", "success")).toEqual([sent, older]);
+  });
+});
+
+describe("a reverted run the dashboard found stays, and says so", () => {
+  const sent = { txHash: "0xAB", payer: "0x1", chainId: 5042, runLabel: "2026-09", seenAt: 1, itemCount: 3, awaitingReceipt: true };
+  const older = { txHash: "0xCD", payer: "0x1", chainId: 5042, runLabel: "2026-08", seenAt: 0, itemCount: 2 };
+
+  it("keeps the run, marked as not gone through, and the list says so instead of 'no receipt yet'", () => {
+    const list = markedReverted([sent, older], "0xab");
+    expect(list).toHaveLength(2);
+    expect(list[0]).toMatchObject({ txHash: "0xAB", reverted: true });
+    expect(paidText(list[0]!)).toBe("Didn't go through");
+  });
+
+  it("still leaves the list once the run's own page settles it", () => {
+    const list = markedReverted([sent, older], "0xab");
+    expect(settled(list, "0xab", "reverted")).toEqual([older]);
+  });
+
+  it("never touches another run", () => {
+    expect(markedReverted([sent, older], "0xcd")[0]).toEqual(sent);
   });
 });

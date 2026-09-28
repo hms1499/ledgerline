@@ -37,11 +37,19 @@ export interface RunRecord {
    * field existed were only ever written on a receipt, so absent means seen.
    */
   awaitingReceipt?: boolean;
+  /**
+   * Set by the dashboard when this run's receipt shows a revert. The run
+   * stays listed until the payer removes it or opens its page, so a payroll
+   * that did not go through is never silently dropped (dashboard part 2,
+   * decision 4). `awaitingReceipt` is kept, so the run page still settles it.
+   */
+  reverted?: boolean;
 }
 
 /** The list's "Paid" cell. A run this browser has no receipt for is never
  *  called paid: the chain decides, and the run's page asks it. */
-export function paidText(r: Pick<RunRecord, "itemCount" | "awaitingReceipt">): string {
+export function paidText(r: Pick<RunRecord, "itemCount" | "awaitingReceipt" | "reverted">): string {
+  if (r.reverted) return "Didn't go through";
   if (r.awaitingReceipt) return "No receipt yet";
   return `${r.itemCount} invoice${r.itemCount === 1 ? "" : "s"}`;
 }
@@ -109,6 +117,21 @@ export function settleRun(txHash: string, payer: string, chainId: number, outcom
   const k = keyFor(payer, chainId);
   if (!store[k]) return;
   store[k] = settled(store[k], txHash, outcome);
+  write(store);
+}
+
+/** A reverted run the dashboard found: kept, and marked so every list says it
+ *  did not go through. Pure, for the tests; markReverted applies it. */
+export function markedReverted(list: RunRecord[], txHash: string): RunRecord[] {
+  return list.map((r) => (r.txHash.toLowerCase() === txHash.toLowerCase() ? { ...r, reverted: true } : r));
+}
+
+export function markReverted(txHash: string, payer: string, chainId: number): void {
+  if (typeof window === "undefined") return;
+  const store = read();
+  const k = keyFor(payer, chainId);
+  if (!store[k]) return;
+  store[k] = markedReverted(store[k], txHash);
   write(store);
 }
 

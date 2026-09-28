@@ -4,7 +4,7 @@ import { tokensForChain, type Address, type RunSummary } from "@ledgerline/core"
 import type { RunRead } from "@/lib/run-reads";
 import {
   excludedNote, amountText, paidLine,
-  runStatus, inMonth, monthTitle, paidThisMonth, allTimeLine, coverageLine, toSettle, whenText, balanceText,
+  runStatus, inMonth, monthTitle, paidThisMonth, allTimeLine, coverageLine, toSettle, toMarkReverted, whenText, balanceText,
   needsYou, feeHelp, setupSteps, STALE_AFTER_MS,
 } from "@/lib/dashboard-view";
 import type { RunRecord } from "@/lib/history";
@@ -162,6 +162,14 @@ describe("toSettle — a reverted run is never taken off the list here", () => {
       { txHash: "0x4", state: "not_found" },
       { txHash: "0x5", state: "unreadable", reason: "x" },
     ])).toEqual(["0x1", "0x2"]);
+  });
+
+  it("marks reverted runs instead, so the run list says they did not go through", () => {
+    expect(toMarkReverted([
+      read("0x1", sum(1n)),
+      { txHash: "0x3", state: "reverted" },
+      { txHash: "0x4", state: "not_found" },
+    ])).toEqual(["0x3"]);
   });
 });
 

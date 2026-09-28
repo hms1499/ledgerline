@@ -129,6 +129,12 @@ export function toSettle(reads: RunRead[]): string[] {
   return counted(reads).map((r) => r.txHash);
 }
 
+/** The reverted runs: kept in the history and marked, so /runs says they did
+ *  not go through rather than "no receipt yet" (spec decision 4). */
+export function toMarkReverted(reads: RunRead[]): string[] {
+  return reads.filter((r) => r.state === "reverted").map((r) => r.txHash);
+}
+
 /** The When column: the block's time, "Sending…" while a sent run waits for
  *  its receipt, otherwise "—". Never the browser's clock. */
 export function whenText(read: RunRead, record: Pick<RunRecord, "awaitingReceipt">, timeZone?: string): string {

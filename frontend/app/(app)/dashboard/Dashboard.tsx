@@ -8,11 +8,11 @@ import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import OpenRunByHash from "@/components/OpenRunByHash";
-import { runsFor, settleRun, forgetRun, type RunRecord } from "@/lib/history";
+import { runsFor, settleRun, markReverted, forgetRun, type RunRecord } from "@/lib/history";
 import { readRuns, type RunRead } from "@/lib/run-reads";
 import { readBalances } from "@/lib/balances";
 import { readTokenMeta } from "@/lib/token-meta";
-import { needsYou, toSettle, type TokenMeta } from "@/lib/dashboard-view";
+import { needsYou, toMarkReverted, toSettle, type TokenMeta } from "@/lib/dashboard-view";
 import { withNet } from "@/lib/nav";
 import { realFundsNotice } from "@/lib/network-notice";
 import NeedsYou from "./NeedsYou";
@@ -54,8 +54,10 @@ export default function Dashboard() {
     let cancelled = false;
     void readRuns(records, payer, net).then((reads) => {
       // A run recorded at broadcast settles once its receipt shows it paid.
-      // A reverted one stays for the payer to see and remove (spec decision 4).
+      // A reverted one stays for the payer to see and remove (spec decision 4),
+      // marked so the run list says it did not go through.
       for (const h of toSettle(reads)) settleRun(h, payer, net.chain.id, "success");
+      for (const h of toMarkReverted(reads)) markReverted(h, payer, net.chain.id);
       if (!cancelled) setRunsRead({ records, attempt, reads, at: Date.now() });
     });
     return () => { cancelled = true; };
