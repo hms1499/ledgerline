@@ -12,10 +12,9 @@ import {
 } from "@ledgerline/core";
 import { networkFor, otherNetwork, short, receiptUrl, type NetworkView } from "@/lib/chain";
 import { settleRun } from "@/lib/history";
-import { connect, knownWallets, watchWalletList, NoWalletError, type WalletChoice } from "@/lib/wallet";
 import { useWallet } from "@/components/wallet/WalletProvider";
+import { recoverGate, wrongWalletText } from "@/lib/recover-view";
 import { describeError } from "@/lib/errors";
-import WalletPicker from "@/components/WalletPicker";
 import { SEVERITY, statusView } from "@/lib/reconcile-view";
 import { amountFigure, amountText, type TokenMeta } from "@/lib/token-meta";
 import {
@@ -581,29 +580,18 @@ function RecoverLinks({
   const [label, setLabel] = useState(initialLabel ?? "");
   const [invoices, setInvoices] = useState("");
   const [state, setState] = useState<"idle" | "working" | "ok" | "mismatch" | "error">("idle");
-  const { showNoWallet } = useWallet();
+  // The page's one wallet session, the same as the top bar's. This used to
+  // connect on its own, with its own picker, so the top bar could say one
+  // account while this signed with another, and a connected payer was asked
+  // to connect again.
+  const { wallet, connect, connecting } = useWallet();
+  const gate = recoverGate(wallet?.address, anchorPayer);
   const [error, setError] = useState<string>();
   const [links, setLinks] = useState<{ invoiceId: string; url: string }[]>([]);
   const [copied, setCopied] = useState<string>();
-  const [choices, setChoices] = useState<WalletChoice[]>([]);
-  const [picking, setPicking] = useState(false);
 
-  // Same reason as the history page: without an ask, this page sees only the
-  // wallets that announced before it mounted, which is none of them.
-  useEffect(() => watchWalletList(() => setChoices(knownWallets())), []);
-
-  // Recovery re-derives the salt from a signature, so it must be signed by the
-  // payer's wallet specifically. With two wallets installed, connecting to
-  // whichever one the browser happened to hand over would sign with the wrong
-  // account and report a mismatch that says nothing about the run.
-  const onRebuild = () => {
-    const found = knownWallets();
-    if (found.length > 1) { setChoices(found); setPicking(true); return; }
-    void recover(found[0]);
-  };
-
-  const recover = async (choice?: WalletChoice) => {
-    setPicking(false);
+  const recover = async () => {
+    if (!wallet) return;
     setState("working");
     setError(undefined);
     setCopied(undefined);
@@ -611,12 +599,12 @@ function RecoverLinks({
       const ids = invoices.split(/[\n,]+/).map((s) => s.trim()).filter(Boolean);
       if (ids.length === 0) throw new Error("List the invoice references, one per line.");
 
-      const { address, walletClient } = await connect(net, choice);
+      const { address, walletClient } = wallet;
 
-      // Checked before signing, not after. Signing with the wrong account
-      // produces a different salt and therefore a mismatch, which is correct
-      // but says nothing useful — "these do not match the chain" is a poor
-      // way to tell someone they connected the wrong wallet.
+      // Checked before signing, not after. The gate above already disables
+      // the button for another account; this holds even if it did not.
+      // Signing with the wrong account produces a different salt and
+      // therefore a mismatch, which is correct but says nothing useful.
       if (anchorPayer && address.toLowerCase() !== anchorPayer.toLowerCase()) {
         throw new Error(
           `This run was paid by ${anchorPayer}, but the wallet you connected is ${address}. ` +
@@ -656,12 +644,6 @@ function RecoverLinks({
       })));
       setState("ok");
     } catch (err) {
-      // No wallet is a next step, not a failure: the dialog says what to get.
-      if (err instanceof NoWalletError) {
-        setState("idle");
-        showNoWallet();
-        return;
-      }
       setError(describeError(err));
       setState("error");
     }
@@ -693,15 +675,23 @@ function RecoverLinks({
         <Input.TextArea rows={4} value={invoices} onChange={(e) => setInvoices(e.target.value)} />
       </label>
 
-      <Button style={{ marginTop: 14 }} loading={state === "working"} onClick={onRebuild}>
-        Sign and rebuild
-      </Button>
+      {gate.kind === "wrong_wallet" && (
+        <Alert style={{ marginTop: 14 }} type="warning" showIcon
+          title={wrongWalletText(gate).title} description={wrongWalletText(gate).body} />
+      )}
 
-      <WalletPicker
-        choices={choices} open={picking}
-        onPick={(c) => void recover(c)}
-        onCancel={() => setPicking(false)}
-      />
+      {/* Signing follows a click, never a connect: connecting and signing
+          are two presses, as on /new. */}
+      {gate.kind === "connect" ? (
+        <Button style={{ marginTop: 14 }} loading={connecting} onClick={connect}>
+          Connect the paying wallet
+        </Button>
+      ) : (
+        <Button style={{ marginTop: 14 }} loading={state === "working"}
+          disabled={gate.kind !== "ready"} onClick={() => void recover()}>
+          Sign and rebuild
+        </Button>
+      )}
 
       {state === "mismatch" && (
         <Alert style={{ marginTop: 16 }} type="error" showIcon

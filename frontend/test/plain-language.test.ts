@@ -11,6 +11,7 @@ import { runStatsView } from "@/lib/run-view";
 import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { accountLostNotice, connectWaitingNotice, describeConnectError } from "@/lib/connect-error";
+import { recoverGate, wrongWalletText } from "@/lib/recover-view";
 import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
 import { runSummaryView } from "@/lib/run-summary-view";
 import { checkRows, ALL_LEFT_OUT } from "@/lib/review-view";
@@ -57,6 +58,13 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     for (const n of [connectWaitingNotice(), describeConnectError({ code: -32002 })]) {
       clean(n.title); clean(n.description);
     }
+  });
+
+  it("the run page's warning when the wrong wallet would rebuild links", () => {
+    const g = recoverGate("0x2222222222222222222222222222222222222222", "0xe48A096B9E74f064b13c17734af29F85E02d732a");
+    if (g.kind !== "wrong_wallet") throw new Error("expected wrong_wallet");
+    const t = wrongWalletText(g);
+    clean(t.title); clean(t.body);
   });
 
   it("the notice when the wallet changes account on its own", () => {
