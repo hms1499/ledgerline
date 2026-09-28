@@ -19,6 +19,9 @@ export interface DemoClip {
 export const DEMO_RUN = {
   network: "testnet",
   date: "2026-09-28",
+  /** Spelled out rather than formatted: Node's ICU and a browser's disagree
+   *  ("Sep" / "Sept"), and the page renders on both. */
+  recorded: "28 Sep 2026",
   explorer: "https://explorer.testnet.arc.io",
   /** 420×525 CSS pixels at 2×. */
   width: 840,

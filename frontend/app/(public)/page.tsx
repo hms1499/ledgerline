@@ -5,6 +5,7 @@ import { MAINNET_PROOF as P, controlComparison } from "@/lib/mainnet-proof";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import SiteFooter from "@/components/ui/SiteFooter";
+import DemoVideo from "@/components/ui/DemoVideo";
 
 const PAYS_IN = ["USDC", "EURC", "cirBTC"] as const;
 
@@ -52,28 +53,10 @@ export default function Home() {
       </Col>
 
       <Col span={4} md={12}>
-        {/* Labelled so it is never read as someone's real payment. */}
-        <Tape head={<><strong>Payment advice</strong><span className="hl">Example</span></>}>
-          <p className="leader">
-            <span className="leader-key">Invoice</span>
-            <span className="leader-dots" aria-hidden="true" />
-            <span className="leader-val"><span aria-hidden="true"># </span>INV-US-001</span>
-          </p>
-          <p className="leader">
-            <span className="leader-key">To</span>
-            <span className="leader-dots" aria-hidden="true" />
-            <span className="leader-val hex addr">0xe48A…732a</span>
-          </p>
-          <p className="amount slip-amount">0.10<span className="unit">USDC</span></p>
-          <div className="rule-dashed" aria-hidden="true" />
-          <p className="leader">
-            <span className="leader-key">Five checks against the chain</span>
-            <span className="leader-dots" aria-hidden="true" />
-            <span className="leader-val">✓</span>
-          </p>
-          <p className="stamp">Verified</p>
+        {/* A recording of a real run, labelled with the network it ran on. */}
+        <Tape head={<><strong>Watch a run</strong><span className="hl">Arc testnet</span></>}>
+          <DemoVideo />
         </Tape>
-        <p className="label example-caption">What a recipient sees</p>
       </Col>
 
       <Col span={12}>

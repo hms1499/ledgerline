@@ -13,7 +13,25 @@
 }
 .home-note { margin: 14px 0 0; font-size: 14px; max-width: var(--measure); }
 .home-note-mark { margin-right: 6px; padding: 0 6px; font-family: var(--font-mono), ui-monospace, monospace; font-weight: 700; }
-.example-caption { margin: 14px 0 0; text-align: center; }
+/* The demo: a recording of a real testnet run, one per theme (DemoVideo). */
+.demo { margin: 0; }
+.demo-video {
+  display: block; width: 100%; height: auto; aspect-ratio: 4 / 5;
+  border: 1px solid var(--rule);
+  background: var(--poster-light) center / cover no-repeat, var(--desk);
+}
+:root[data-theme="dark"] .demo-video { background-image: var(--poster-dark); }
+.demo-foot { margin-top: 12px; }
+.demo-foot .because { margin-top: 8px; }
+.demo-toggle {
+  display: inline-flex; align-items: center; gap: 8px; padding: 5px 10px;
+  border: 1px solid var(--control); background: var(--tape); color: var(--ink); cursor: pointer;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+}
+.demo-toggle:hover { background: var(--tape-shade); }
+/* Full width below lg, but a 4:5 video that wide would fill a tablet. */
+@media (max-width: 1023px) { .demo { max-width: 420px; margin-inline: auto; } }
 
 /* The proof: three measured figures, each linked to its evidence. */
 .proof { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 0; }

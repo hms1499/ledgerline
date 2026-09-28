@@ -30,6 +30,12 @@ describe("the home page's demo is the runs the note measured", () => {
     expect(D.clips.light.txHash).not.toBe(D.clips.dark.txHash);
   });
 
+  it("prints the date it was recorded, the way a receipt prints one", () => {
+    expect(D.recorded).toBe("28 Sep 2026");
+    expect(D.date).toBe("2026-09-28");
+    expect(NOTE).toContain(D.date);
+  });
+
   it("is labelled with the network it was recorded on", () => {
     expect(D.network).toBe("testnet");
     expect(D.explorer).toBe("https://explorer.testnet.arc.io");
