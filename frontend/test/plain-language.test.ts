@@ -12,7 +12,7 @@ import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { accountLostNotice, connectWaitingNotice, describeConnectError } from "@/lib/connect-error";
 import { recoverGate, wrongWalletText } from "@/lib/recover-view";
-import { coverageView, RUN_STATUS, needsYou, runStatus, feeHelp, setupSteps, coverageLine } from "@/lib/dashboard-view";
+import { needsYou, runStatus, feeHelp, setupSteps, coverageLine } from "@/lib/dashboard-view";
 import type { RunRead } from "@/lib/run-reads";
 import type { RunRecord } from "@/lib/history";
 import { runSummaryView } from "@/lib/run-summary-view";
@@ -140,20 +140,6 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
     clean(preflightRows([{ success: true, returnData: "0x" }], [])[0]!.label);
     clean(explainRevert({ data: RUN_EXISTS_SELECTOR }).message);
     clean(explainRevert({ data: EMPTY_RUN_SELECTOR }).message);
-  });
-
-  it("the dashboard's coverage line and statuses", () => {
-    const cases = [
-      { total: 2, covered: 2, missing: [], attention: [] },
-      { total: 2, covered: 1, missing: ["0x1"], attention: ["0x2"] },
-      { total: 2, covered: 0, missing: ["0x1", "0x2"], attention: [] },
-    ];
-    for (const c of cases) {
-      const v = coverageView(c, "testnet");
-      clean(v.text);
-      clean(v.attentionNote);
-    }
-    for (const s of Object.values(RUN_STATUS)) clean(s.label);
   });
 
   it("the dashboard's needs, steps, statuses and totals lines", () => {

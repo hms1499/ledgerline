@@ -252,6 +252,43 @@
 
 /* ── dashboard ────────────────────────────────────────────────────────── */
 .coverage-line { margin: 0; color: var(--ink-soft); }
+.all-time { margin: 0 0 4px; }
+.all-clear { margin: 0; }
+.section-title {
+  margin: 10px 0 0;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.needs, .setup, .balances { list-style: none; margin: 0; padding: 0; }
+.needs li, .setup li {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 8px 0; border-top: 1.5px dotted var(--rule);
+}
+.needs li:last-child, .setup li:last-child { border-bottom: 1.5px dotted var(--rule); }
+:is(.needs, .setup) .mark {
+  width: 1.2rem; flex: none; text-align: center;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+/* Colour marks exceptions only: the ribbon for money that did not move,
+   the highlighter for anything left to do. */
+.need.is-reverted .mark { color: var(--ribbon); }
+.need:not(.is-reverted) .mark, .setup :is(.is-todo, .is-unknown) .mark {
+  background: var(--highlight); color: var(--on-highlight);
+}
+.need-text, .setup-text { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.need-actions, .setup-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
+.need-actions { flex: none; }
+.setup-body { display: block; margin-top: 4px; color: var(--ink-soft); }
+.balances {
+  display: flex; flex-wrap: wrap; gap: 6px 28px; margin-top: 6px;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; font-size: 17px;
+}
+.wallet-addr { margin: 0; color: var(--ink-soft); }
+.wallet-cta { margin: 18px 0 0; }
+@media (max-width: 639px) {
+  .needs li { flex-wrap: wrap; }
+  .need-actions { flex-basis: 100%; padding-left: calc(1.2rem + 10px); }
+}
 
 /* ── create flow ──────────────────────────────────────────────────────── */
 .tape dl.detail, dl.detail.run-summary { grid-template-columns: minmax(6rem, auto) 1fr; }

@@ -48,7 +48,7 @@ describe("data inside an uppercased control keeps its case", () => {
 
   it("a dashboard tile's token symbol is data, not a label", () => {
     // The review caught "CIRBTC": `.stat-label` prints in capitals.
-    const src = readFileSync(fileURLToPath(new URL("../app/(app)/dashboard/Dashboard.tsx", import.meta.url)), "utf8");
+    const src = readFileSync(fileURLToPath(new URL("../app/(app)/dashboard/PaidTotals.tsx", import.meta.url)), "utf8");
     expect(src).toMatch(/<StatTile\s+label=\{<span className="keep-case">/);
   });
 });

@@ -9,15 +9,6 @@ import { FAUCET_URL } from "@/lib/wallet-help";
 export { amountText };
 export type { TokenMeta };
 
-export interface CoverageView {
-  tone: "plain" | "warning";
-  text: string;
-  retry: boolean;
-  attentionNote?: string;
-  /** No run could be read: a 0 on a tile would be a claim, so show "—". */
-  tilesBlank: boolean;
-}
-
 const runs = (n: number) => `${n} run${n === 1 ? "" : "s"}`;
 
 // An attention run's clean payments are still counted — only its broken
@@ -30,39 +21,12 @@ function attentionNote(n: number): string | undefined {
     : `${n} runs have a payment that needs a look. Those payments are left out of the totals; the runs' other payments are counted.`;
 }
 
-export function coverageView(c: Coverage, networkName: string): CoverageView {
-  const note = attentionNote(c.attention.length);
-
-  if (c.missing.length === 0) {
-    const text = c.total === 1
-      ? `From the 1 run sent from this browser, read from Arc ${networkName}.`
-      : `From ${c.covered} of ${c.total} runs sent from this browser, read from Arc ${networkName}.`;
-    return { tone: "plain", retry: false, tilesBlank: false, attentionNote: note, text };
-  }
-  if (c.covered === 0) {
-    return { tone: "warning", retry: true, tilesBlank: true, attentionNote: note,
-      text: `None of the ${runs(c.total)} could be read, so there are no totals to show.` };
-  }
-  return { tone: "warning", retry: true, tilesBlank: false, attentionNote: note,
-    text: `Totals cover ${c.covered} of ${c.total} runs. ${c.missing.length} could not be read.` };
-}
-
 /** For an `attention` run's Paid cell (Important 2): how many payments were
  *  left out of that run's own line, since the dashboard and `/run/[tx]`
  *  otherwise disagree on the figure with no explanation. */
 export function excludedNote(n: number): string {
   return `${n} payment${n === 1 ? "" : "s"} excluded`;
 }
-
-export const RUN_STATUS: Record<RunRead["state"], { label: string; color: "success" | "warning" | "error" | "default" }> = {
-  read: { label: "Read", color: "success" },
-  attention: { label: "Needs a look", color: "warning" },
-  // Also a run sent from this browser that has no receipt yet: "not found"
-  // read as "lost" for a payment that may be minutes from landing.
-  not_found: { label: "No receipt", color: "default" },
-  reverted: { label: "Reverted", color: "error" },
-  unreadable: { label: "Couldn't read", color: "warning" },
-};
 
 export function paidLine(
   paid: Map<string, { value: bigint }>, order: string[], meta: Record<string, TokenMeta>,

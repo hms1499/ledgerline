@@ -3,45 +3,12 @@ import { getAddress } from "viem";
 import { tokensForChain, type Address, type RunSummary } from "@ledgerline/core";
 import type { RunRead } from "@/lib/run-reads";
 import {
-  coverageView, excludedNote, RUN_STATUS, amountText, paidLine,
+  excludedNote, amountText, paidLine,
   runStatus, inMonth, monthTitle, paidThisMonth, allTimeLine, coverageLine, toSettle, whenText, balanceText,
   needsYou, feeHelp, setupSteps, STALE_AFTER_MS,
 } from "@/lib/dashboard-view";
 import type { RunRecord } from "@/lib/history";
 import { FAUCET_URL } from "@/lib/wallet-help";
-
-describe("coverageView — the line under the tiles", () => {
-  it("all read: plain text naming the network", () => {
-    const v = coverageView({ total: 12, covered: 12, missing: [], attention: [] }, "testnet");
-    expect(v).toMatchObject({ tone: "plain", retry: false, tilesBlank: false });
-    expect(v.text).toBe("From 12 of 12 runs sent from this browser, read from Arc testnet.");
-  });
-
-  it("all read, exactly one run: singular phrasing (M5)", () => {
-    const v = coverageView({ total: 1, covered: 1, missing: [], attention: [] }, "testnet");
-    expect(v).toMatchObject({ tone: "plain", retry: false, tilesBlank: false });
-    expect(v.text).toBe("From the 1 run sent from this browser, read from Arc testnet.");
-  });
-
-  it("some missing: a warning with Retry, figures still shown", () => {
-    const v = coverageView({ total: 12, covered: 11, missing: ["0x1"], attention: [] }, "testnet");
-    expect(v).toMatchObject({ tone: "warning", retry: true, tilesBlank: false });
-    expect(v.text).toBe("Totals cover 11 of 12 runs. 1 could not be read.");
-  });
-
-  it("none readable: the tiles go blank rather than claim zero", () => {
-    const v = coverageView({ total: 3, covered: 0, missing: ["0x1", "0x2", "0x3"], attention: [] }, "mainnet");
-    expect(v).toMatchObject({ tone: "warning", retry: true, tilesBlank: true });
-    expect(v.text).toBe("None of the 3 runs could be read, so there are no totals to show.");
-  });
-
-  it("a run needing a look adds a note, in the singular and the plural (Important 1)", () => {
-    expect(coverageView({ total: 2, covered: 2, missing: [], attention: ["0x1"] }, "testnet").attentionNote)
-      .toBe("1 run has a payment that needs a look. That payment is left out of the totals; the run's other payments are counted.");
-    expect(coverageView({ total: 3, covered: 3, missing: [], attention: ["0x1", "0x2"] }, "testnet").attentionNote)
-      .toBe("2 runs have a payment that needs a look. Those payments are left out of the totals; the runs' other payments are counted.");
-  });
-});
 
 describe("excludedNote — the Paid cell's note for an attention run (Important 2)", () => {
   it("singular", () => {
@@ -50,13 +17,6 @@ describe("excludedNote — the Paid cell's note for an attention run (Important 
 
   it("plural", () => {
     expect(excludedNote(2)).toBe("2 payments excluded");
-  });
-});
-
-describe("RUN_STATUS", () => {
-  it("names every state", () => {
-    expect(Object.keys(RUN_STATUS).sort()).toEqual(["attention", "not_found", "read", "reverted", "unreadable"]);
-    expect(RUN_STATUS.attention.label).toBe("Needs a look");
   });
 });
 
@@ -183,6 +143,8 @@ describe("coverageLine — what the totals stand on, in plain text", () => {
   it("keeps the note that a payment needing a look is left out", () => {
     expect(coverageLine({ total: 2, covered: 2, missing: [], attention: ["0x1"] }, 0, "testnet", NOW).text).toContain(
       "1 run has a payment that needs a look. That payment is left out of the totals; the run's other payments are counted.");
+    expect(coverageLine({ total: 3, covered: 3, missing: [], attention: ["0x1", "0x2"] }, 0, "testnet", NOW).text).toContain(
+      "2 runs have a payment that needs a look. Those payments are left out of the totals; the runs' other payments are counted.");
   });
 
   it("none readable: the tiles go blank rather than claim zero", () => {
