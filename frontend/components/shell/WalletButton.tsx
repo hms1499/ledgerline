@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { Button, Dropdown, message } from "antd";
+import { Button, Dropdown, Space, message, type MenuProps } from "antd";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { short } from "@/lib/chain";
+import { walletMenu, type WalletMenuKey } from "@/lib/wallet-menu";
 
 export default function WalletButton() {
   const w = useWallet();
@@ -35,39 +36,54 @@ export default function WalletButton() {
     );
   }
 
-  // One action on the wrong chain, replacing the two primary buttons the
-  // audit found on /new.
+  const address = w.wallet.address;
+  const act: Partial<Record<WalletMenuKey, () => void>> = {
+    copy: () => { void navigator.clipboard.writeText(address); void toast.success("Address copied"); },
+    disconnect: () => void w.disconnect(),
+  };
+  const items: MenuProps["items"] = walletMenu({
+    address, chainId: w.wallet.chainId, wrongChain: w.wrongChain, held: w.held,
+  }).flatMap((i) => [
+    ...(i.key === "disconnect" || (i.key === "copy" && w.wrongChain) ? [{ type: "divider" as const }] : []),
+    {
+      key: i.key,
+      disabled: i.disabled,
+      onClick: act[i.key],
+      label: i.key === "explorer"
+        ? <a href={`${w.net.explorer}/address/${address}`} target="_blank" rel="noreferrer">{i.label}</a>
+        : i.key === "who" ? <span className="hex addr">{i.label}</span> : i.label,
+    },
+  ]);
+
+  // On the wrong chain the switch is the one thing to press, replacing the
+  // two primary buttons the audit found on /new. The menu stays beside it,
+  // so which account is connected, and Disconnect, never wait on a switch.
   if (w.wrongChain) {
     return (
       <>
         {holder}
-        <Button className="wallet-wrong-chain" loading={w.switching} onClick={() => void w.switchToArc()}
-          title={w.switchError}>
-          Switch to Arc {w.net.name}
-        </Button>
+        <Space.Compact>
+          <Button className="wallet-wrong-chain" loading={w.switching} onClick={() => void w.switchToArc()}
+            title={w.switchError} aria-label={`Switch to Arc ${w.net.name}`}>
+            {/* The badge beside it names the network; a phone's header has
+                room for the verb alone, down to 320px. */}
+            <span className="hide-sm">Switch to Arc {w.net.name}</span>
+            <span className="only-sm" aria-hidden="true">Switch</span>
+          </Button>
+          <Dropdown trigger={["click"]} menu={{ items }}>
+            <Button className="wallet-wrong-chain wallet-caret" aria-label={`Wallet ${short(address)}`}>
+              <span aria-hidden="true">▾</span>
+            </Button>
+          </Dropdown>
+        </Space.Compact>
       </>
     );
   }
 
-  const address = w.wallet.address;
   return (
     <>
       {holder}
-      <Dropdown
-        trigger={["click"]}
-        menu={{ items: [
-          { key: "copy", label: "Copy address", onClick: () => { void navigator.clipboard.writeText(address); void toast.success("Address copied"); } },
-          { key: "explorer", label: <a href={`${w.net.explorer}/address/${address}`} target="_blank" rel="noreferrer">View on explorer</a> },
-          { type: "divider" },
-          {
-            key: "disconnect",
-            label: w.held ? "Disconnect (after this payment settles)" : "Disconnect",
-            // Disabled while a payment holds the only copy of its hash.
-            disabled: w.held,
-            onClick: () => void w.disconnect(),
-          },
-        ] }}
-      >
+      <Dropdown trigger={["click"]} menu={{ items }}>
         <Button className="wallet-chip"><span className="hex addr">{short(address)}</span></Button>
       </Dropdown>
     </>

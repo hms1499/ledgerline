@@ -45,6 +45,12 @@ html .ant-btn.wallet-chip { text-transform: none; letter-spacing: 0; }
   color: var(--on-highlight) !important;
   border-color: var(--highlight) !important;
 }
+/* The menu beside the switch: a rule in the button's own ink divides them. */
+.wallet-wrong-chain.wallet-caret { border-left-color: var(--on-highlight) !important; padding-inline: 10px; }
+@media (max-width: 639px) {
+  html .ant-btn.wallet-wrong-chain { padding-inline: 10px; }
+  html .ant-btn.wallet-wrong-chain.wallet-caret { padding-inline: 8px; }
+}
 
 /* ── tables print like tape ───────────────────────────────────────────── */
 html .ant-table-wrapper .ant-table-thead > tr > th {

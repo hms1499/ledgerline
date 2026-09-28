@@ -145,7 +145,7 @@ export default function CreateRun() {
             description={
               <>
                 <p style={{ margin: 0 }}>
-                  {`Your wallet is on ${chainName(wallet.chainId)}. This run pays on Arc ${net.name}. Use "Switch to Arc ${net.name}" at the top of the page — your wallet will ask you to confirm.`}
+                  {`Your wallet is on ${chainName(wallet.chainId)}. This run pays on Arc ${net.name}. Press "Switch" at the top of the page — your wallet will ask you to confirm.`}
                 </p>
                 {switchError && <p role="status" style={{ margin: "12px 0 0" }}>{switchError}</p>}
               </>
