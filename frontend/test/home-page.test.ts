@@ -7,6 +7,14 @@ const src = read("../app/(public)/page.tsx");
 const shell = read("../components/shell/PublicShell.tsx");
 
 describe("the home page", () => {
+  it("follows ?n= like the badge above it, and carries it on its links", () => {
+    // It read the build's default network while the badge read the URL, so
+    // /?n=testnet said "Arc testnet" above "This is Arc mainnet".
+    expect(src).toContain('const net = networkFor(search.get("n"));');
+    expect(src).not.toContain("defaultNetwork()");
+    expect(src).toContain('href={withNet("/new", search)}');
+    expect(src).toContain('href={withNet("/dashboard", search)}');
+  });
   it("says how a run works before it shows the proof", () => {
     expect(src.indexOf("How a run works")).toBeGreaterThan(-1);
     expect(src.indexOf("How a run works")).toBeLessThan(src.indexOf("Proof · Arc mainnet"));

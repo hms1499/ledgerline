@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { defaultNetwork } from "@/lib/chain";
+import { networkFor } from "@/lib/chain";
+import { withNet } from "@/lib/nav";
 import { sampleCsvHref } from "@/lib/sample-csv";
 import { MAINNET_PROOF as P, controlComparison } from "@/lib/mainnet-proof";
 import { Grid, Col } from "@/components/grid/Grid";
@@ -10,8 +11,17 @@ import { PAYS_IN } from "@/lib/pays-in";
 
 const shortHash = (h: string) => `${h.slice(0, 10)}…${h.slice(-8)}`;
 
-export default function Home() {
-  const net = defaultNetwork();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  // The page follows ?n= like the badge above it, so the two never disagree,
+  // and its links carry it on: a visitor rehearsing on testnet must not land
+  // on mainnet one click later.
+  const q = await searchParams;
+  const search = { get: (k: string) => { const v = q[k]; return (Array.isArray(v) ? v[0] : v) ?? null; } };
+  const net = networkFor(search.get("n"));
   const testnet = net.name === "testnet";
 
   return (
@@ -25,8 +35,8 @@ export default function Home() {
           spreadsheet — or trusting us.
         </p>
         <div className="home-actions">
-          <Link href="/new" className="button-primary">Create a payout run</Link>
-          <Link href="/dashboard">Open your dashboard</Link>
+          <Link href={withNet("/new", search)} className="button-primary">Create a payout run</Link>
+          <Link href={withNet("/dashboard", search)}>Open your dashboard</Link>
         </div>
         <p className="pays-in">
           <span className="label">Pays in</span>

@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Alert, Button, Table, type TableColumnsType } from "antd";
 import { short } from "@/lib/chain";
+import { withNet } from "@/lib/nav";
 import { runsFor, forgetRun, type RunRecord } from "@/lib/history";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { Grid, Col } from "@/components/grid/Grid";
@@ -13,6 +15,7 @@ import Verdict from "@/components/ui/Verdict";
 
 export default function RunHistory() {
   const { net, wallet, connect } = useWallet();
+  const search = useSearchParams();
   const [rows, setRows] = useState<RunRecord[]>([]);
 
   const refresh = useCallback(() => {
@@ -78,7 +81,7 @@ export default function RunHistory() {
               </>
             } />
             <p style={{ marginTop: 22, marginBottom: 0 }}>
-              <Link href="/new">Create a payout run</Link>
+              <Link href={withNet("/new", search)}>Create a payout run</Link>
               {" · "}
               <a href={`${net.explorer}/address/${wallet.address}`} target="_blank" rel="noreferrer">
                 Find an earlier one on the explorer
