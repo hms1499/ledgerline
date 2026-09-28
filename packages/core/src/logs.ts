@@ -1,5 +1,6 @@
 import { decodeAbiParameters, getAddress } from "viem";
 import {
+  MEMO_ADDRESS,
   MEMO_TOPIC,
   TRANSFER_TOPIC,
   SYSTEM_EMITTER,
@@ -16,11 +17,17 @@ function topicToAddress(topic: Hex): Address {
  *
  * Indexed: sender, target, memoId. The data section holds callDataHash,
  * the memo bytes, and memoIndex.
+ *
+ * Only the `Memo` predeploy's own logs count. Any contract can emit this
+ * topic, and one that is merely shaped right could name itself as `sender`
+ * and pass the identity check, although the real `Memo` would have refused
+ * it as a caller. Same address on mainnet and testnet.
  */
 export function decodeMemoLogs(logs: RawLog[]): MemoEvent[] {
   const out: MemoEvent[] = [];
   for (const log of logs) {
     if (log.topics[0] !== MEMO_TOPIC) continue;
+    if (log.address.toLowerCase() !== MEMO_ADDRESS.toLowerCase()) continue;
     if (log.topics.length < 4) continue;
 
     const [callDataHash, memoData, memoIndex] = decodeAbiParameters(

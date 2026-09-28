@@ -104,7 +104,7 @@ Pure TypeScript shared by the CLI, the scripts and the browser. Apart from
 
 | Module | Responsibility |
 |---|---|
-| `logs.ts` | Decode `Memo` and `Transfer` logs. Drops the system emitter `0xffff…fFfE`, which emits a second, 18-decimal `Transfer` for every USDC transfer |
+| `logs.ts` | Decode `Memo` and `Transfer` logs. Keeps only `Memo` logs emitted by the predeploy, since any contract can emit the topic. Drops the system emitter `0xffff…fFfE`, which emits a second, 18-decimal `Transfer` for every USDC transfer |
 | `join.ts` | Join each memo to its transfer by `callDataHash`. A memo with no matching transfer is `unlinked` |
 | `reconcile.ts` | `reconcile(logs, manifest?)`: the pure reconciler. Six statuses: `matched`, `amount_mismatch`, `recipient_mismatch`, `unpaid`, `unexpected`, `unlinked`. Without a manifest every payment is `unexpected`, and the UI and CLI present that as "paid" |
 | `completeness.ts` | `assessCompleteness` compares payments found with the anchored `itemCount`. `checkManifestAgainstRoot` rebuilds a run file's root and compares it with the anchored one |

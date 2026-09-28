@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { decodeMemoLogs, decodeTransferLogs } from "../src/logs.js";
-import { SYSTEM_EMITTER, USDC_ADDRESS } from "../src/constants.js";
+import { MEMO_ADDRESS, MEMO_TOPIC, SYSTEM_EMITTER, USDC_ADDRESS } from "../src/constants.js";
 import type { RawLog } from "../src/types.js";
 import fixture from "./fixtures/mainnet-2pay.json" with { type: "json" };
 
@@ -29,6 +29,16 @@ describe("decodeMemoLogs", () => {
 
   it("ignores BeforeMemo logs", () => {
     expect(decodeMemoLogs(logs).every((m) => m.callDataHash.length === 66)).toBe(true);
+  });
+
+  it("ignores a Memo-shaped log from any contract but the predeploy", () => {
+    // A contract can emit this topic naming itself as sender. Counting it
+    // would let a smart-contract wallet pass as a payer who signed directly.
+    const real = logs.filter((l) => l.topics[0] === MEMO_TOPIC);
+    expect(real.every((l) => l.address.toLowerCase() === MEMO_ADDRESS.toLowerCase())).toBe(true);
+    const impostor = real.map((l) => ({ ...l, address: "0x000000000000000000000000000000000000beef" as const }));
+    expect(decodeMemoLogs(impostor)).toEqual([]);
+    expect(decodeMemoLogs([...logs, ...impostor])).toHaveLength(2);
   });
 });
 
