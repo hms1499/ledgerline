@@ -426,7 +426,7 @@ Public copy follows the plain-language rule in
 
 ## 10. Theme infrastructure
 
-> Amended 2026-09-28: the theme control offers Dark and Light, the one on screen selected. `system` stays the default and the cookies are unchanged; "Use device setting" (shown once a theme is picked) returns to it. Below 1024px the control lives in the ⋯ menu, on public and app pages alike.
+> Amended 2026-09-28: the theme control offers Dark and Light, the one on screen selected. `system` stays the default and the cookies are unchanged; "Use device setting" in the ⋯ menu returns to it; the toggle itself offers no way back. Below 1024px the control lives in the ⋯ menu, on public and app pages alike.
 
 - `Palette` takes the §4.1 names. CSS variables follow in kebab case
   (`--desk`, `--desk-deep`, `--tape`, `--tape-shade`, `--rule`, `--control`,

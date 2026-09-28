@@ -25,8 +25,8 @@ export default function PublicShell({ children }: { children: React.ReactNode })
           <nav className="public-links" aria-label="Main">
             <Link href={withNet(LEARN_NAV[0]!.href, search)} className="nav-link hide-sm">{LEARN_NAV[0]!.label}</Link>
             <NetworkBadge />
-            {/* Below 1024px the toggle and its Use device do not fit beside
-                the badge and Open app; the theme moves to ⋯, as in the app. */}
+            {/* Below 1024px the toggle does not fit beside the badge and
+                Open app; the theme moves to ⋯, as in the app. */}
             <span className="lg-only"><ThemeToggle /></span>
             <span className="below-lg"><MoreMenu /></span>
             <Link href={withNet("/dashboard", search)} className="button-primary">Open app</Link>
