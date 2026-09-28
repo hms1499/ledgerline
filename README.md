@@ -4,6 +4,12 @@
 reference on chain, so the payer and the recipient can each reconcile it
 without trusting the other, or us.**
 
+**Live app: [ledgerline-chi-sandy.vercel.app](https://ledgerline-chi-sandy.vercel.app/)**
+runs on Arc mainnet. Add `?n=testnet` to any page to try it with tokens that
+have no value. To see a real run without a wallet, open the
+[mainnet proof run](https://ledgerline-chi-sandy.vercel.app/run/0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0?n=mainnet)
+there: its table is read from the chain as you watch.
+
 One transaction, signed by the payer, can pay USDC, EURC and cirBTC to many
 recipients. Each payment is tied to its invoice by Arc's protocol-native `Memo`,
 and the whole list is committed to a Merkle root on chain. Anyone holding the
@@ -112,8 +118,9 @@ uses no Ledgerline backend.
 
 ### Paying a run
 
-1. Open the app (see [Run the web app](#run-the-web-app)) and connect an EOA
-   wallet on Arc, such as MetaMask or Rabby.
+1. Open the [live app](https://ledgerline-chi-sandy.vercel.app/) (or
+   [run it locally](#run-the-web-app)) and connect an EOA wallet on Arc, such
+   as MetaMask or Rabby. On a phone, open it inside the wallet app's browser.
 2. Go to **New payout** and upload a CSV (format below). Name the run for its
    period, such as `2026-09`.
 3. Review the list and sign the run name. That signature derives the salt that
@@ -224,6 +231,11 @@ docs              Design specs, implementation plans, and dated notes of what wa
 |---|---|
 | Arc mainnet (5042) | [`0xd4838881EcBa8320d456B8B65A07A0ac167F0890`](https://explorer.arc.io/address/0xd4838881EcBa8320d456B8B65A07A0ac167F0890?tab=contract), source-verified |
 | Arc testnet (5042002) | `0xb8907A07768D936D1D498257E5803c91033a8802` |
+
+The web app is deployed on Vercel at
+[ledgerline-chi-sandy.vercel.app](https://ledgerline-chi-sandy.vercel.app/), built
+from `frontend/`. It has no backend: every chain read happens in the browser,
+so the deployment renders pages and holds no data.
 
 ### Mainnet proof
 
