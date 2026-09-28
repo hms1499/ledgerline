@@ -230,6 +230,17 @@ describe("needsYou — what the payer has to do", () => {
       "if it is still pending there, sending again could pay twice.");
   });
 
+  it("a run stuck for hours or days says so in hours or days, and can be removed; a fresh one cannot", () => {
+    const records = [record("0x1", { awaitingReceipt: true })];
+    const reads: RunRead[] = [{ txHash: "0x1", state: "not_found" }];
+    const at = (ms: number) => needsYou({ ...base, records, reads, balances: FULL, now: T0 + ms })![0]!;
+    expect(at(STALE_AFTER_MS - 1).stale).toBeFalsy();
+    expect(at(STALE_AFTER_MS).stale).toBe(true);
+    expect(at(119 * 60_000).text).toMatch(/^Still no receipt for Run 0x1 after 119 minutes\./);
+    expect(at(3 * 3_600_000).text).toMatch(/^Still no receipt for Run 0x1 after 3 hours\./);
+    expect(at(3 * 86_400_000).text).toMatch(/^Still no receipt for Run 0x1 after 3 days\./);
+  });
+
   it("a browser clock behind the recorded time still reads as waiting, never negative minutes", () => {
     const items = needsYou({ ...base, records: [record("0x1", { awaitingReceipt: true })],
       reads: [{ txHash: "0x1", state: "not_found" }], balances: FULL, now: T0 - 5 * 60_000 })!;

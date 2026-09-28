@@ -156,7 +156,12 @@ export function balanceText(value: bigint | undefined, token: string, meta: Toke
 export const STALE_AFTER_MS = 10 * 60_000;
 
 export type NeedKind = "reverted" | "waiting" | "attention" | "unreadable" | "balances" | "no_fee";
-export interface NeedItem { kind: NeedKind; key: string; text: string; txHash?: string; runLabel?: string }
+export interface NeedItem {
+  kind: NeedKind; key: string; text: string; txHash?: string; runLabel?: string;
+  /** A waiting run past STALE_AFTER_MS: a replaced or dropped transaction
+   *  never gets a receipt, so the payer can take it off the list. */
+  stale?: boolean;
+}
 
 const NEED_ORDER: NeedKind[] = ["reverted", "waiting", "attention", "unreadable", "balances", "no_fee"];
 
@@ -166,6 +171,14 @@ const clock = (ms: number) => {
   return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 };
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+/** How long a run has waited, in the unit a person would use. Only ever
+ *  called from STALE_AFTER_MS up, so every unit is plural. */
+const waited = (ms: number) => {
+  const minutes = Math.floor(ms / 60_000);
+  if (minutes < 120) return `${minutes} minutes`;
+  const hours = Math.floor(minutes / 60);
+  return hours < 48 ? `${hours} hours` : `${Math.floor(hours / 24)} days`;
+};
 
 /**
  * What the payer has to do, one item per thing, in the order of NEED_ORDER
@@ -195,9 +208,11 @@ export function needsYou({ records, reads, balances, tokens, usdc, now }: {
         text: `${cap(label)} did not go through. No money moved.` });
     } else if (read.state === "not_found" && rec?.awaitingReceipt) {
       const age = now - rec.seenAt;
-      items.push({ ...about, kind: "waiting", key: `waiting:${read.txHash}`, text: age < STALE_AFTER_MS
-        ? `${cap(label)} is waiting for the network (sent ${clock(rec.seenAt)}).`
-        : `Still no receipt for ${label} after ${Math.floor(age / 60_000)} minutes. Open your wallet's activity before sending this run again: if it is still pending there, sending again could pay twice.` });
+      items.push(age < STALE_AFTER_MS
+        ? { ...about, kind: "waiting", key: `waiting:${read.txHash}`,
+          text: `${cap(label)} is waiting for the network (sent ${clock(rec.seenAt)}).` }
+        : { ...about, kind: "waiting", key: `waiting:${read.txHash}`, stale: true,
+          text: `Still no receipt for ${label} after ${waited(age)}. Open your wallet's activity before sending this run again: if it is still pending there, sending again could pay twice.` });
     } else if (read.state === "attention") {
       const n = read.summary.identityBroken;
       items.push({ ...about, kind: "attention", key: `attention:${read.txHash}`, text: n === 1

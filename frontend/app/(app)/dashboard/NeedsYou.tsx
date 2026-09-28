@@ -39,7 +39,14 @@ export default function NeedsYou({ items, network, runHref, newRunHref, onRetry,
           </>
         );
       case "waiting":
-        return <Link href={runHref(it.txHash!, it.runLabel ?? "")}>Check</Link>;
+        return (
+          <>
+            <Link href={runHref(it.txHash!, it.runLabel ?? "")}>Check</Link>
+            {it.stale && (
+              <button type="button" className="linkish" onClick={() => onRemove(it.txHash!)}>Remove</button>
+            )}
+          </>
+        );
       case "attention":
         return <Link href={runHref(it.txHash!, it.runLabel ?? "")}>Open</Link>;
       case "unreadable":
