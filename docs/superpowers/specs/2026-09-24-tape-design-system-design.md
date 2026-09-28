@@ -300,6 +300,8 @@ Tokens first; CSS only where a token cannot reach.
 
 ### 7.1 Home `/` — Split, then Ledger
 
+> Amended by `2026-09-28-home-polish-design.md` §3: the demo video, h2 section heads, the comparison as a list on a phone.
+
 Learned from credible.finance's *structure*, not its look: one thesis per
 screen, a row that states scope right under the actions, and a row of figures
 as proof. Not taken: the centred sans-plus-italic-serif headline, glowing
@@ -371,6 +373,8 @@ pointing the page at your own node. The ladder prints in (§8). No site footer.
 
 ### 7.4 Site footer — `/` and `/why` only
 
+> Amended by `2026-09-28-home-polish-design.md` §3.5: a full-width band after `<main>`, not a tape.
+
 The last tape on the page, torn, two columns (2 : 1) split by a dotted rule:
 
 - Head: `✱ LEDGERLINE` / the current network and its chain id, e.g.
@@ -393,6 +397,8 @@ Public copy follows the plain-language rule in
 "PayoutAnchor".
 
 ## 8. Motion
+
+> Amended by `2026-09-28-home-polish-design.md` §4: chapters that follow the demo video, the example receipt printing in, and no count-ups.
 
 - **Print-in**: on `/r`, the five checks appear one after another, 70ms
   apart, each fading in with a 4px upward feed (the existing `settle`
