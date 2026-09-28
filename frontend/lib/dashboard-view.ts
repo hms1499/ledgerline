@@ -4,6 +4,7 @@ import type { RunRecord } from "@/lib/history";
 import { amountText, type TokenMeta } from "@/lib/token-meta";
 import { paidAtText } from "@/lib/receipt-view";
 import { short } from "@/lib/chain";
+import { FAUCET_URL } from "@/lib/wallet-help";
 
 export { amountText };
 export type { TokenMeta };
@@ -178,4 +179,105 @@ export function whenText(read: RunRead, record: Pick<RunRecord, "awaitingReceipt
 export function balanceText(value: bigint | undefined, token: string, meta: TokenMeta): string {
   if (value === undefined) return `— ${meta.symbol || short(token)}`;
   return amountText(value, token, meta);
+}
+
+/** From this age, a run with no receipt gets the wording that stops a second
+ *  payment (spec §3.3). Arc drops a fee under 20 Gwei without a word. */
+export const STALE_AFTER_MS = 10 * 60_000;
+
+export type NeedKind = "reverted" | "waiting" | "attention" | "unreadable" | "balances" | "no_fee";
+export interface NeedItem { kind: NeedKind; key: string; text: string; txHash?: string; runLabel?: string }
+
+const NEED_ORDER: NeedKind[] = ["reverted", "waiting", "attention", "unreadable", "balances", "no_fee"];
+
+/** 14:02, from this browser's clock: wording only, never evidence. */
+const clock = (ms: number) => {
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * What the payer has to do, one item per thing, in the order of NEED_ORDER
+ * and newest run first within a kind (spec §3.3). Undefined while the run
+ * reads or the balance read have not settled: an all-clear shown before then
+ * would be a claim the page cannot make.
+ */
+export function needsYou({ records, reads, balances, tokens, usdc, now }: {
+  records: RunRecord[];
+  reads: RunRead[] | undefined;
+  /** Keyed by lowercased token; a token whose read failed is absent. */
+  balances: Record<string, bigint> | undefined;
+  tokens: Address[];
+  usdc: Address;
+  now: number;
+}): NeedItem[] | undefined {
+  if (!reads || !balances) return undefined;
+  const byHash = new Map(records.map((r) => [r.txHash.toLowerCase(), r]));
+  const items: NeedItem[] = [];
+  let unreadable = 0;
+  for (const read of reads) {
+    const rec = byHash.get(read.txHash.toLowerCase());
+    const label = rec?.runLabel || "an unnamed run";
+    const about = { txHash: read.txHash, runLabel: rec?.runLabel ?? "" };
+    if (read.state === "reverted") {
+      items.push({ ...about, kind: "reverted", key: `reverted:${read.txHash}`,
+        text: `${cap(label)} did not go through. No money moved.` });
+    } else if (read.state === "not_found" && rec?.awaitingReceipt) {
+      const age = now - rec.seenAt;
+      items.push({ ...about, kind: "waiting", key: `waiting:${read.txHash}`, text: age < STALE_AFTER_MS
+        ? `${cap(label)} is waiting for the network (sent ${clock(rec.seenAt)}).`
+        : `Still no receipt for ${label} after ${Math.floor(age / 60_000)} minutes. Open your wallet's activity before sending this run again: if it is still pending there, sending again could pay twice.` });
+    } else if (read.state === "attention") {
+      const n = read.summary.identityBroken;
+      items.push({ ...about, kind: "attention", key: `attention:${read.txHash}`, text: n === 1
+        ? `One payment in ${label} needs a look.`
+        : `${n} payments in ${label} need a look.` });
+    } else if (read.state === "unreadable") {
+      unreadable++;
+    }
+  }
+  if (unreadable > 0) {
+    items.push({ kind: "unreadable", key: "unreadable", text: `Couldn't reach Arc to check ${runs(unreadable)}.` });
+  }
+  if (tokens.some((t) => balances[t.toLowerCase()] === undefined)) {
+    items.push({ kind: "balances", key: "balances", text: "Couldn't read this wallet's balances." });
+  }
+  if (balances[usdc.toLowerCase()] === 0n) {
+    items.push({ kind: "no_fee", key: "no_fee",
+      text: "No USDC left for network fees. Arc takes its fee in USDC, so no run can be sent." });
+  }
+  // Array.prototype.sort is stable, so the history's newest-first order holds within a kind.
+  return items.sort((a, b) => NEED_ORDER.indexOf(a.kind) - NEED_ORDER.indexOf(b.kind));
+}
+
+export interface FeeHelp { text: string; link?: { text: string; href: string } }
+
+/** Where USDC for fees comes from: the faucet on testnet. On mainnet no bridge
+ *  or swap link is verified, so words only (non-tech spec §10). */
+export function feeHelp(network: "mainnet" | "testnet"): FeeHelp {
+  return network === "testnet"
+    ? { text: "Get free test USDC at", link: { text: "faucet.circle.com", href: FAUCET_URL } }
+    : { text: "Add USDC to this wallet on Arc mainnet." };
+}
+
+export type StepState = "done" | "todo" | "unknown" | "loading";
+export interface SetupStep { key: "wallet" | "network" | "fees" | "first"; title: string; state: StepState }
+
+/** State B's checklist (spec §3.2). `balances` undefined means still reading;
+ *  USDC absent from it means its read failed. */
+export function setupSteps({ wrongChain, balances, usdc, network }: {
+  wrongChain: boolean;
+  balances: Record<string, bigint> | undefined;
+  usdc: Address;
+  network: "mainnet" | "testnet";
+}): SetupStep[] {
+  const held = balances?.[usdc.toLowerCase()];
+  const fees: StepState = !balances ? "loading" : held === undefined ? "unknown" : held > 0n ? "done" : "todo";
+  return [
+    { key: "wallet", title: "Wallet connected", state: "done" },
+    { key: "network", title: `On Arc ${network}`, state: wrongChain ? "todo" : "done" },
+    { key: "fees", title: "USDC for network fees", state: fees },
+    { key: "first", title: "Send your first run", state: "todo" },
+  ];
 }

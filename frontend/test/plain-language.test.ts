@@ -4,7 +4,7 @@ import {
   verifyReceipt, assessCompleteness, checkManifestAgainstRoot, explainRevert,
   RUN_EXISTS_SELECTOR, EMPTY_RUN_SELECTOR, reconcile,
   parseCsv, tokensForChain, MEMO_TOPIC,
-  type Manifest, type RawLog, type ReconcileStatus, type ReceiptState,
+  type Manifest, type RawLog, type ReconcileStatus, type ReceiptState, type Address,
 } from "@ledgerline/core";
 import { statusView } from "@/lib/reconcile-view";
 import { runStatsView } from "@/lib/run-view";
@@ -12,7 +12,9 @@ import { preflightRows } from "@/lib/preflight-view";
 import { RECEIPT_COPY } from "@/lib/receipt-view";
 import { accountLostNotice, connectWaitingNotice, describeConnectError } from "@/lib/connect-error";
 import { recoverGate, wrongWalletText } from "@/lib/recover-view";
-import { coverageView, RUN_STATUS } from "@/lib/dashboard-view";
+import { coverageView, RUN_STATUS, needsYou, runStatus, feeHelp, setupSteps, coverageLine } from "@/lib/dashboard-view";
+import type { RunRead } from "@/lib/run-reads";
+import type { RunRecord } from "@/lib/history";
 import { runSummaryView } from "@/lib/run-summary-view";
 import { checkRows, ALL_LEFT_OUT } from "@/lib/review-view";
 import { fixList, RECIPIENT_HELP } from "@/lib/fix-list";
@@ -152,6 +154,39 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       clean(v.attentionNote);
     }
     for (const s of Object.values(RUN_STATUS)) clean(s.label);
+  });
+
+  it("the dashboard's needs, steps, statuses and totals lines", () => {
+    const now = new Date(2026, 8, 28, 14, 30).getTime();
+    const rec = (txHash: string, over: Partial<RunRecord> = {}): RunRecord =>
+      ({ txHash, payer: "0x1", chainId: 5_042_002, runLabel: "", seenAt: now - 60_000, itemCount: 1, ...over });
+    const summary = (identityBroken: number) => ({ paid: new Map(), payments: 0, identityBroken });
+    const reads: RunRead[] = [
+      { txHash: "0x1", state: "reverted" },
+      { txHash: "0x2", state: "not_found" },
+      { txHash: "0x3", state: "not_found" },
+      { txHash: "0x4", state: "attention", summary: summary(1) },
+      { txHash: "0x5", state: "attention", summary: summary(2) },
+      { txHash: "0x6", state: "unreadable", reason: "x" },
+      { txHash: "0x7", state: "read", summary: summary(0) },
+    ];
+    const records = [rec("0x1"), rec("0x2", { awaitingReceipt: true }),
+      rec("0x3", { awaitingReceipt: true, seenAt: now - 3_600_000 }), rec("0x4"), rec("0x5"), rec("0x6"), rec("0x7")];
+    const usdc = tokensForChain(5_042_002).USDC as Address;
+    const items = needsYou({ records, reads, balances: { [usdc.toLowerCase()]: 0n },
+      tokens: [usdc, "0x0000000000000000000000000000000000000002"], usdc, now })!;
+    expect(items.map((i) => i.kind)).toEqual(["reverted", "waiting", "waiting", "attention", "attention", "unreadable", "balances", "no_fee"]);
+    for (const it of items) clean(it.text);
+    for (const r of reads) {
+      clean(runStatus(r, { awaitingReceipt: true }).label);
+      clean(runStatus(r, {}).label);
+    }
+    for (const network of ["mainnet", "testnet"] as const) {
+      clean(feeHelp(network).text);
+      for (const s of setupSteps({ wrongChain: true, balances: {}, usdc, network })) clean(s.title);
+    }
+    clean(coverageLine({ total: 3, covered: 1, missing: ["0x1", "0x2"], attention: ["0x3"] }, 1, "testnet", new Date(now)).text);
+    clean(coverageLine({ total: 2, covered: 0, missing: ["0x1", "0x2"], attention: [] }, 0, "testnet", new Date(now)).text);
   });
 
   it("the run page's tiles", () => {

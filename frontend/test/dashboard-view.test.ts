@@ -5,7 +5,10 @@ import type { RunRead } from "@/lib/run-reads";
 import {
   coverageView, excludedNote, RUN_STATUS, amountText, paidLine,
   runStatus, inMonth, monthTitle, paidThisMonth, allTimeLine, coverageLine, toSettle, whenText, balanceText,
+  needsYou, feeHelp, setupSteps, STALE_AFTER_MS,
 } from "@/lib/dashboard-view";
+import type { RunRecord } from "@/lib/history";
+import { FAUCET_URL } from "@/lib/wallet-help";
 
 describe("coverageView — the line under the tiles", () => {
   it("all read: plain text naming the network", () => {
@@ -216,5 +219,131 @@ describe("whenText / balanceText", () => {
     expect(balanceText(36_807_197n, T.USDC, META[T.USDC.toLowerCase()]!)).toBe("36.807197 USDC");
     expect(balanceText(undefined, T.USDC, META[T.USDC.toLowerCase()]!)).toBe("— USDC");
     expect(balanceText(undefined, T.USDC, {})).toBe("— 0x3600…0000");
+  });
+});
+
+describe("needsYou — what the payer has to do", () => {
+  const PAYER = "0x5955000000000000000000000000000000000017";
+  const T0 = new Date(2026, 8, 28, 14, 2).getTime(); // 14:02 local
+  const record = (txHash: string, over: Partial<RunRecord> = {}): RunRecord => ({
+    txHash, payer: PAYER, chainId: 5_042_002, runLabel: `Run ${txHash}`, seenAt: T0, itemCount: 1, ...over,
+  });
+  const FULL = { [T.USDC.toLowerCase()]: 5n, [T.EURC.toLowerCase()]: 0n, [T.cirBTC.toLowerCase()]: 0n };
+  const base = { tokens: TOKENS, usdc: T.USDC as Address, now: T0 + 60_000 };
+
+  it("says nothing until both the runs and the balances have been read", () => {
+    const records = [record("0x1")];
+    expect(needsYou({ ...base, records, reads: undefined, balances: FULL })).toBeUndefined();
+    expect(needsYou({ ...base, records, reads: [read("0x1", sum(1n))], balances: undefined })).toBeUndefined();
+  });
+
+  it("an empty list when everything settled clean (an unpaid EURC balance is not a problem)", () => {
+    expect(needsYou({ ...base, records: [record("0x1")], reads: [read("0x1", sum(1n))], balances: FULL })).toEqual([]);
+  });
+
+  it("a run that did not go through, named or unnamed", () => {
+    const items = needsYou({ ...base, records: [record("0x1"), record("0x2", { runLabel: "" })],
+      reads: [{ txHash: "0x1", state: "reverted" }, { txHash: "0x2", state: "reverted" }], balances: FULL })!;
+    expect(items.map((i) => [i.kind, i.text, i.txHash])).toEqual([
+      ["reverted", "Run 0x1 did not go through. No money moved.", "0x1"],
+      ["reverted", "An unnamed run did not go through. No money moved.", "0x2"],
+    ]);
+  });
+
+  it("a sent run with no receipt waits, then warns at exactly ten minutes", () => {
+    const records = [record("0x1", { awaitingReceipt: true })];
+    const reads: RunRead[] = [{ txHash: "0x1", state: "not_found" }];
+    expect(needsYou({ ...base, records, reads, balances: FULL, now: T0 + STALE_AFTER_MS - 1 })![0]!.text)
+      .toBe("Run 0x1 is waiting for the network (sent 14:02).");
+    expect(needsYou({ ...base, records, reads, balances: FULL, now: T0 + STALE_AFTER_MS })![0]!.text).toBe(
+      "Still no receipt for Run 0x1 after 10 minutes. Open your wallet's activity before sending this run again: " +
+      "if it is still pending there, sending again could pay twice.");
+  });
+
+  it("a browser clock behind the recorded time still reads as waiting, never negative minutes", () => {
+    const items = needsYou({ ...base, records: [record("0x1", { awaitingReceipt: true })],
+      reads: [{ txHash: "0x1", state: "not_found" }], balances: FULL, now: T0 - 5 * 60_000 })!;
+    expect(items[0]!.text).toBe("Run 0x1 is waiting for the network (sent 14:02).");
+  });
+
+  it("a missing receipt for a run not sent from here is not an item", () => {
+    expect(needsYou({ ...base, records: [record("0x1")], reads: [{ txHash: "0x1", state: "not_found" }], balances: FULL }))
+      .toEqual([]);
+  });
+
+  it("payments that need a look, in the singular and the plural", () => {
+    const items = needsYou({ ...base, records: [record("0x1"), record("0x2")], balances: FULL, reads: [
+      { txHash: "0x1", state: "attention", summary: sum(1n, 0n, 1) },
+      { txHash: "0x2", state: "attention", summary: sum(1n, 0n, 2) },
+    ] })!;
+    expect(items.map((i) => i.text)).toEqual([
+      "One payment in Run 0x1 needs a look.",
+      "2 payments in Run 0x2 need a look.",
+    ]);
+  });
+
+  it("unreadable runs make one item with their count", () => {
+    const items = needsYou({ ...base, records: [record("0x1"), record("0x2")], balances: FULL, reads: [
+      { txHash: "0x1", state: "unreadable", reason: "x" }, { txHash: "0x2", state: "unreadable", reason: "y" },
+    ] })!;
+    expect(items).toEqual([{ kind: "unreadable", key: "unreadable", text: "Couldn't reach Arc to check 2 runs." }]);
+  });
+
+  it("a balance that failed to read is not a zero: it asks for Retry, and never says No USDC", () => {
+    const noUsdc = { [T.EURC.toLowerCase()]: 0n, [T.cirBTC.toLowerCase()]: 0n };
+    const items = needsYou({ ...base, records: [record("0x1")], reads: [read("0x1", sum(1n))], balances: noUsdc })!;
+    expect(items.map((i) => i.kind)).toEqual(["balances"]);
+    expect(items[0]!.text).toBe("Couldn't read this wallet's balances.");
+  });
+
+  it("no USDC at all means no fee can be paid", () => {
+    const items = needsYou({ ...base, records: [record("0x1")], reads: [read("0x1", sum(1n))],
+      balances: { ...FULL, [T.USDC.toLowerCase()]: 0n } })!;
+    expect(items).toEqual([{ kind: "no_fee", key: "no_fee",
+      text: "No USDC left for network fees. Arc takes its fee in USDC, so no run can be sent." }]);
+  });
+
+  it("orders by kind, then keeps the history's newest-first order within a kind", () => {
+    const records = ["0x1", "0x2", "0x3", "0x4", "0x5"].map((h) => record(h, { awaitingReceipt: h === "0x3" }));
+    const items = needsYou({ ...base, records, balances: { [T.USDC.toLowerCase()]: 0n }, reads: [
+      { txHash: "0x1", state: "unreadable", reason: "x" },
+      { txHash: "0x2", state: "attention", summary: sum(1n, 0n, 1) },
+      { txHash: "0x3", state: "not_found" },
+      { txHash: "0x4", state: "reverted" },
+      { txHash: "0x5", state: "reverted" },
+    ] })!;
+    expect(items.map((i) => i.kind)).toEqual(["reverted", "reverted", "waiting", "attention", "unreadable", "balances", "no_fee"]);
+    expect(items.slice(0, 2).map((i) => i.txHash)).toEqual(["0x4", "0x5"]);
+  });
+
+  it("matches a read to its record whatever the hash's case", () => {
+    const items = needsYou({ ...base, records: [record("0xAB")], reads: [{ txHash: "0xab", state: "reverted" }], balances: FULL })!;
+    expect(items[0]!.text).toBe("Run 0xAB did not go through. No money moved.");
+  });
+});
+
+describe("feeHelp / setupSteps — getting a first run out", () => {
+  it("testnet links the faucet; mainnet has words only, since no link is verified", () => {
+    expect(feeHelp("testnet")).toEqual({ text: "Get free test USDC at", link: { text: "faucet.circle.com", href: FAUCET_URL } });
+    expect(feeHelp("mainnet")).toEqual({ text: "Add USDC to this wallet on Arc mainnet." });
+  });
+
+  const usdc = T.USDC as Address;
+  const states = (s: ReturnType<typeof setupSteps>) => s.map((x) => [x.key, x.state]);
+
+  it("four steps, in order, with the network named", () => {
+    const s = setupSteps({ wrongChain: false, balances: { [usdc.toLowerCase()]: 5n }, usdc, network: "testnet" });
+    expect(s.map((x) => x.title)).toEqual(["Wallet connected", "On Arc testnet", "USDC for network fees", "Send your first run"]);
+    expect(states(s)).toEqual([["wallet", "done"], ["network", "done"], ["fees", "done"], ["first", "todo"]]);
+  });
+
+  it("the wrong network and an empty wallet are to do", () => {
+    const s = setupSteps({ wrongChain: true, balances: { [usdc.toLowerCase()]: 0n }, usdc, network: "mainnet" });
+    expect(states(s).slice(1, 3)).toEqual([["network", "todo"], ["fees", "todo"]]);
+  });
+
+  it("fees are loading while balances are read, and unknown when USDC's read failed", () => {
+    expect(setupSteps({ wrongChain: false, balances: undefined, usdc, network: "testnet" })[2]!.state).toBe("loading");
+    expect(setupSteps({ wrongChain: false, balances: {}, usdc, network: "testnet" })[2]!.state).toBe("unknown");
   });
 });
