@@ -13,7 +13,6 @@ import { amountText } from "@/lib/token-meta";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import Verdict from "@/components/ui/Verdict";
-import SiteFooter from "@/components/ui/SiteFooter";
 
 /** Approval(address indexed owner, address indexed spender, uint256 value) */
 const APPROVAL_TOPIC =
@@ -144,10 +143,6 @@ export default function Why({
             }}>change</button>
           </div>
         </footer>
-      </Col>
-
-      <Col span={12}>
-        <SiteFooter network={net.name} />
       </Col>
     </Grid>
   );

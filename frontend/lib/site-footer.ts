@@ -11,3 +11,11 @@ export function contractLine(
   if (!net.anchor) return undefined;
   return { short: short(net.anchor), href: `${net.explorer}/address/${net.anchor}` };
 }
+
+/** The pages that end in the site footer (home polish spec §3.5): the home
+ *  page and /why. A recipient on /r needs only their receipt. */
+const FOOTER_PATHS = new Set(["/", "/why"]);
+
+export function showsSiteFooter(pathname: string | null): boolean {
+  return pathname !== null && FOOTER_PATHS.has(pathname);
+}

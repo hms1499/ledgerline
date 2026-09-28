@@ -102,7 +102,13 @@
   .proof > div { padding-left: 0; border-left: 0 !important; }
 }
 
-/* ── site footer: the end of the roll (spec §7.4) ─────────────────────── */
+/* ── site footer: the page's end, a band like the header (home polish §3.5) ── */
+.site-footer {
+  background: var(--desk-deep);
+  border-top: 1px solid var(--rule);
+  padding-block: 40px 48px;
+}
+@media (max-width: 639px) { .site-footer { padding-block: 32px 40px; } }
 .brand-inline { display: inline-flex; align-items: center; gap: 6px; }
 .site-footer-cols { display: grid; grid-template-columns: 2fr 1fr; }
 .site-footer-cols > section { min-width: 0; padding: 0 var(--tape-pad); }

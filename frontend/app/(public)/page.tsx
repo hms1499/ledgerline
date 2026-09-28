@@ -4,7 +4,6 @@ import { sampleCsvHref } from "@/lib/sample-csv";
 import { MAINNET_PROOF as P, controlComparison } from "@/lib/mainnet-proof";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
-import SiteFooter from "@/components/ui/SiteFooter";
 import DemoVideo from "@/components/ui/DemoVideo";
 
 const PAYS_IN = ["USDC", "EURC", "cirBTC"] as const;
@@ -195,10 +194,6 @@ export default function Home() {
             </span>
           </div>
         </Tape>
-      </Col>
-
-      <Col span={12}>
-        <SiteFooter network={net.name} />
       </Col>
     </Grid>
   );

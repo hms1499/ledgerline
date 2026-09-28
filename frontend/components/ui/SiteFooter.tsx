@@ -3,20 +3,19 @@
 import Link from "next/link";
 import { useState, type MouseEvent } from "react";
 import Mark from "@/components/ui/Mark";
-import Tape from "@/components/ui/Tape";
 import { contractLine } from "@/lib/site-footer";
 import { networkFor, type NetworkView } from "@/lib/chain";
 
 const RECONCILE = "pnpm reconcile <tx>";
 
 /**
- * The last tape on / and /why (spec §7.4): how to check a run without us,
- * where to read more, and the promises the recorded-lists contract keeps.
- * Not on /r — a recipient needs only their receipt.
+ * The end of / and /why (home polish spec §3.5): a full-width band like the
+ * header, its content in the same frame. PublicShell renders it after <main>,
+ * so it is the page's contentinfo landmark. Not on /r — a recipient needs
+ * only their receipt.
  *
- * Takes the network's name, not its view: the home page is a server
- * component, and viem's chain object carries functions that cannot cross
- * into a client component.
+ * Takes the network's name, not its view: viem's chain object carries
+ * functions that cannot cross from a server component into this one.
  */
 export default function SiteFooter({ network }: { network: NetworkView["name"] }) {
   const net = networkFor(network);
@@ -36,14 +35,11 @@ export default function SiteFooter({ network }: { network: NetworkView["name"] }
 
   return (
     <footer className="site-footer">
-      <Tape
-        head={
-          <>
-            <strong className="brand-inline"><Mark size={11} /> Ledgerline</strong>
-            <span>Arc {net.name} · chain {net.chain.id}</span>
-          </>
-        }
-      >
+      <div className="frame">
+        <div className="tape-head">
+          <strong className="brand-inline"><Mark size={11} /> Ledgerline</strong>
+          <span>Arc {net.name} · chain {net.chain.id}</span>
+        </div>
         <div className="site-footer-cols">
           <section>
             <h2 className="label site-footer-h">Check it without us</h2>
@@ -74,7 +70,7 @@ export default function SiteFooter({ network }: { network: NetworkView["name"] }
           <span>Never holds funds · no admin · no upgrades</span>
         </div>
         <p className="site-footer-fin" aria-hidden="true">✱ ✱ ✱</p>
-      </Tape>
+      </div>
     </footer>
   );
 }
