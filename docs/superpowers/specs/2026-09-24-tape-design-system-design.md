@@ -301,6 +301,7 @@ Tokens first; CSS only where a token cannot reach.
 ### 7.1 Home `/` — Split, then Ledger
 
 > Amended by `2026-09-28-home-polish-design.md` §3: the demo video, h2 section heads, the comparison as a list on a phone.
+> Amended 2026-09-28: "Pays in" shows coins, not chips — an ink coin per token stamped $ / € / ₿ (₿ drawn: Martian Mono has no glyph for it), the token's name beside it as data. `lib/pays-in.ts` is kept equal to `tokensForChain`.
 
 Learned from credible.finance's *structure*, not its look: one thesis per
 screen, a row that states scope right under the actions, and a row of figures
@@ -399,6 +400,7 @@ Public copy follows the plain-language rule in
 ## 8. Motion
 
 > Amended by `2026-09-28-home-polish-design.md` §4: chapters that follow the demo video, the example receipt printing in, and no count-ups.
+> Amended 2026-09-28: **coins roll in** — on every load of the home page, each "Pays in" coin rolls 72px in from beside its label (295°, rolling without slipping), settles, and its name prints in; about 1s in all. The one decorative motion, chosen by the product owner; static under reduced motion.
 
 - **Print-in**: on `/r`, the five checks appear one after another, 70ms
   apart, each fading in with a 4px upward feed (the existing `settle`
