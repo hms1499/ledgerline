@@ -7,17 +7,15 @@
 .home-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 20px; margin-top: 24px; }
 .pays-in { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; margin: 24px 0 0; }
 .pays-in .label { margin-right: 2px; }
-/* The coins: struck in ink, the token's name beside each as data, in its own
-   case. On load each rolls in from the left — 72px on a 28px coin is 0.82 of
-   a turn, 295° — settles, and its name prints beside it. A decorative
-   motion the tape spec's §8 lists by name. */
+/* The coins: each token's own icon, its name beside it as data, in its own
+   case. The icons keep their colours — the one place colour is not an
+   exception, chosen by the product owner. On load each coin rolls in from
+   beside the label — 72px on a 28px coin is 0.82 of a turn, 295° — settles,
+   and its name prints beside it. A decorative motion the tape spec's §8
+   lists by name. */
 .coin-tray { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; overflow: hidden; }
 .coin-token { display: inline-flex; align-items: center; gap: 8px; }
-.coin { display: block; flex: none; overflow: visible; }
-.coin-face { fill: var(--tape); stroke: var(--ink); stroke-width: 1.5; }
-.coin-ring { fill: none; stroke: var(--rule); stroke-width: 1; stroke-dasharray: 1.6 1.6; }
-.coin-glyph-path { fill: none; stroke: var(--ink); stroke-width: 1.9; }
-.coin-glyph { fill: var(--ink); font-family: var(--font-mono), ui-monospace, monospace; font-size: 13px; font-weight: 700; }
+.coin { display: block; flex: none; width: 28px; height: 28px; border-radius: 50%; }
 .coin-symbol { font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; font-size: 12px; font-weight: 600; }
 @media (prefers-reduced-motion: no-preference) {
   .coin-token { animation: coin-in 560ms cubic-bezier(0.22, 0.8, 0.3, 1) backwards; }

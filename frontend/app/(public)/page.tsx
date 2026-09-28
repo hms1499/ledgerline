@@ -33,9 +33,9 @@ export default function Home() {
           {/* The tray clips the roll, so a coin comes out from beside the
               label rather than across it. */}
           <span className="coin-tray">
-            {PAYS_IN.map(({ symbol, glyph }) => (
+            {PAYS_IN.map(({ symbol, icon }) => (
               <span key={symbol} className="coin-token">
-                <Coin glyph={glyph} />
+                <Coin icon={icon} />
                 <span className="coin-symbol">{symbol}</span>
               </span>
             ))}

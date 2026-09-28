@@ -301,7 +301,7 @@ Tokens first; CSS only where a token cannot reach.
 ### 7.1 Home `/` — Split, then Ledger
 
 > Amended by `2026-09-28-home-polish-design.md` §3: the demo video, h2 section heads, the comparison as a list on a phone.
-> Amended 2026-09-28: "Pays in" shows coins, not chips — an ink coin per token stamped $ / € / ₿ (₿ drawn: Martian Mono has no glyph for it), the token's name beside it as data. `lib/pays-in.ts` is kept equal to `tokensForChain`.
+> Amended 2026-09-28: "Pays in" shows coins, not chips — each token's own icon (`public/tokens/*.png`, 64px, shown at 28px), the token's name beside it as data. The icons keep their colours: the one place colour is not an exception, chosen by the product owner. `lib/pays-in.ts` is kept equal to `tokensForChain`.
 
 Learned from credible.finance's *structure*, not its look: one thesis per
 screen, a row that states scope right under the actions, and a row of figures
