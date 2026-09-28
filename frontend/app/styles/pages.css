@@ -259,7 +259,7 @@
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
   font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
 }
-.needs, .setup, .balances { list-style: none; margin: 0; padding: 0; }
+.needs, .setup { list-style: none; margin: 0; padding: 0; }
 .needs li, .setup li {
   display: flex; gap: 10px; align-items: baseline;
   padding: 8px 0; border-top: 1.5px dotted var(--rule);
@@ -279,12 +279,11 @@
 .need-actions, .setup-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; }
 .need-actions { flex: none; }
 .setup-body { display: block; margin-top: 4px; color: var(--ink-soft); }
-.balances {
-  display: flex; flex-wrap: wrap; gap: 6px 28px; margin-top: 6px;
-  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%; font-size: 17px;
+.wallet-head {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between;
 }
-.wallet-addr { margin: 0; color: var(--ink-soft); }
-.wallet-cta { margin: 18px 0 0; }
+.wallet-head .section-title { margin: 0; }
+.wallet-head .addr { margin-left: 6px; font-weight: 400; color: var(--ink-soft); letter-spacing: normal; }
 @media (max-width: 639px) {
   .needs li { flex-wrap: wrap; }
   .need-actions { flex-basis: 100%; padding-left: calc(1.2rem + 10px); }

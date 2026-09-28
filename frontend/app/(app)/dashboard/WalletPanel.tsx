@@ -2,34 +2,38 @@
 
 import Link from "next/link";
 import { Skeleton } from "antd";
-import type { Address } from "@ledgerline/core";
-import Tape from "@/components/ui/Tape";
+import { Col } from "@/components/grid/Grid";
+import StatTile from "@/components/ui/StatTile";
 import { short } from "@/lib/chain";
-import { balanceText, type TokenMeta } from "@/lib/dashboard-view";
+import type { TokenCard } from "@/lib/dashboard-view";
 
-/** What the paying wallet holds now, from balanceOf in each token's own
- *  decimals, beside the one action a payer comes back for (spec §3.3). */
-export default function WalletPanel({ address, tokens, balances, meta, newRunHref }: {
+/** What the paying wallet holds of each token, beside what it paid this
+ *  month, and the one action a payer comes back for. Grid columns: place it
+ *  directly inside a Grid. */
+export default function WalletPanel({ address, cards, newRunHref }: {
   address: string;
-  tokens: Address[];
-  /** Keyed by lowercased token; absent = could not be read. Undefined while reading. */
-  balances: Record<string, bigint> | undefined;
-  meta: Record<string, TokenMeta> | undefined;
+  cards: TokenCard[];
   newRunHref: string;
 }) {
   return (
-    <Tape title="Your wallet">
-      <p className="wallet-addr"><span className="hex addr" title={address}>{short(address)}</span></p>
-      <ul className="balances">
-        {tokens.map((t) => (
-          <li key={t}>
-            {balances && meta
-              ? balanceText(balances[t.toLowerCase()], t, meta[t.toLowerCase()] ?? {})
-              : <Skeleton.Input active size="small" />}
-          </li>
-        ))}
-      </ul>
-      <p className="wallet-cta"><Link href={newRunHref} className="button-primary">New payout run</Link></p>
-    </Tape>
+    <>
+      <Col span={12}>
+        <div className="wallet-head">
+          <h2 className="section-title">
+            Your wallet <span className="hex addr keep-case" title={address}>{short(address)}</span>
+          </h2>
+          <Link href={newRunHref} className="button-primary">New payout run</Link>
+        </div>
+      </Col>
+      {cards.map((c) => (
+        <Col key={c.token} span={4} md={12}>
+          <StatTile
+            label={<span className="keep-case">{c.label}</span>}
+            value={c.balance ?? <Skeleton.Input active />}
+            sub={c.paid === null ? undefined : c.paid ?? <Skeleton.Input active size="small" />}
+          />
+        </Col>
+      ))}
+    </>
   );
 }

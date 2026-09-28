@@ -9,10 +9,12 @@ import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import OpenRunByHash from "@/components/OpenRunByHash";
 import { runsFor, settleRun, markReverted, forgetRun, type RunRecord } from "@/lib/history";
-import { readRuns, type RunRead } from "@/lib/run-reads";
+import { readRuns, describeCoverage, type RunRead } from "@/lib/run-reads";
 import { readBalances } from "@/lib/balances";
 import { readTokenMeta } from "@/lib/token-meta";
-import { needsYou, toMarkReverted, toSettle, type TokenMeta } from "@/lib/dashboard-view";
+import {
+  coverageLine, needsYou, paidThisMonth, tokenCards, toMarkReverted, toSettle, type TokenMeta,
+} from "@/lib/dashboard-view";
 import { withNet } from "@/lib/nav";
 import { realFundsNotice } from "@/lib/network-notice";
 import NeedsYou from "./NeedsYou";
@@ -125,9 +127,22 @@ export default function Dashboard() {
     ? metaRead.meta : undefined;
   const runs = runsRead && runsRead.records === records && runsRead.attempt === attempt ? runsRead : undefined;
 
+  // This month's totals and what they stand on, once every run is read.
+  const now = runs ? new Date(runs.at) : undefined;
+  const month = runs && now ? paidThisMonth(runs.reads, tokens, now) : undefined;
+  const coverage = runs && month && now
+    ? coverageLine(describeCoverage(runs.reads), month.undated, net.name, now) : undefined;
+  const cards = tokenCards({
+    chainId: net.chain.id, tokens, balances, meta, now,
+    // A wallet with no runs has nothing paid to show beside its balances.
+    month: records.length === 0 ? null : month && coverage ? { totals: month.totals, blank: coverage.tilesBlank } : undefined,
+  });
+  const wallets = <WalletPanel address={wallet.address} cards={cards} newRunHref={withNet("/new", search)} />;
+
   if (records.length === 0) {
     return (
       <Grid>
+        {wallets}
         <Col span={12}>
           <GetStarted address={wallet.address} network={net.name} wrongChain={wrongChain} switching={switching}
             balances={balances} usdc={usdc} newRunHref={withNet("/new", search)}
@@ -148,12 +163,8 @@ export default function Dashboard() {
         <NeedsYou items={items} network={net.name} runHref={runHref}
           newRunHref={withNet("/new", search)} onRetry={retry} onRemove={remove} />
       </Col>
-      <Col span={12}>
-        <WalletPanel address={wallet.address} tokens={tokens} balances={balances} meta={meta}
-          newRunHref={withNet("/new", search)} />
-      </Col>
-      <PaidTotals reads={runs?.reads} tokens={tokens} meta={meta} network={net.name}
-        now={runs ? new Date(runs.at) : undefined} />
+      {wallets}
+      <PaidTotals reads={runs?.reads} tokens={tokens} meta={meta} coverage={coverage} />
       <Col span={12}>
         <RecentRuns records={records} reads={runs?.reads} tokens={tokens} meta={meta}
           runHref={runHref} allRunsHref={withNet("/runs", search)} />

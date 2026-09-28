@@ -4,8 +4,8 @@ import { tokensForChain, type Address, type RunSummary } from "@ledgerline/core"
 import type { RunRead } from "@/lib/run-reads";
 import {
   excludedNote, amountText, paidLine,
-  runStatus, inMonth, monthTitle, paidThisMonth, allTimeLine, coverageLine, toSettle, toMarkReverted, whenText, balanceText,
-  needsYou, feeHelp, setupSteps, STALE_AFTER_MS,
+  runStatus, inMonth, paidThisMonth, allTimeLine, coverageLine, toSettle, toMarkReverted, whenText, balanceText,
+  needsYou, feeHelp, setupSteps, tokenCards, STALE_AFTER_MS,
 } from "@/lib/dashboard-view";
 import type { RunRecord } from "@/lib/history";
 import { FAUCET_URL } from "@/lib/wallet-help";
@@ -77,7 +77,7 @@ describe("runStatus — a run's status in the payer's words", () => {
   });
 });
 
-describe("inMonth / monthTitle — the payer's own calendar month", () => {
+describe("inMonth — the payer's own calendar month", () => {
   it("the first and last second of this month count; the seconds either side do not", () => {
     expect(inMonth(at(2026, 8, 1, 0, 0, 0), NOW)).toBe(true);
     expect(inMonth(at(2026, 8, 30, 23, 59, 59), NOW)).toBe(true);
@@ -87,11 +87,6 @@ describe("inMonth / monthTitle — the payer's own calendar month", () => {
 
   it("the same month of another year does not count", () => {
     expect(inMonth(at(2025, 8, 15), NOW)).toBe(false);
-  });
-
-  it("names the month in full", () => {
-    expect(monthTitle(NOW)).toBe("September 2026");
-    expect(monthTitle(new Date(2027, 0, 1))).toBe("January 2027");
   });
 });
 
@@ -300,6 +295,64 @@ describe("needsYou — what the payer has to do", () => {
   it("matches a read to its record whatever the hash's case", () => {
     const items = needsYou({ ...base, records: [record("0xAB")], reads: [{ txHash: "0xab", state: "reverted" }], balances: FULL })!;
     expect(items[0]!.text).toBe("Run 0xAB did not go through. No money moved.");
+  });
+});
+
+describe("tokenCards — what the wallet holds, beside what it paid this month", () => {
+  const FULL = { [T.USDC.toLowerCase()]: 36_807_197n, [T.EURC.toLowerCase()]: 37_200_000n, [T.cirBTC.toLowerCase()]: 7_890n };
+  const month = (usdc: bigint, usdcPayments: number, blank = false) => ({
+    blank,
+    totals: [
+      { token: getAddress(T.USDC) as Address, value: usdc, payments: usdcPayments, runs: usdcPayments ? 1 : 0 },
+      { token: getAddress(T.EURC) as Address, value: 0n, payments: 0, runs: 0 },
+      { token: getAddress(T.cirBTC) as Address, value: 0n, payments: 0, runs: 0 },
+    ],
+  });
+  const base = { chainId: 5_042_002, tokens: TOKENS, now: NOW };
+
+  it("labels every token from Ledgerline's own list, in order, before anything is read", () => {
+    const cards = tokenCards({ ...base, balances: undefined, meta: undefined, month: undefined });
+    expect(cards.map((c) => c.label)).toEqual(["USDC", "EURC", "cirBTC"]);
+    expect(cards.every((c) => c.balance === undefined && c.paid === undefined)).toBe(true);
+  });
+
+  it("prints each balance in its token's decimals once balances and metadata are read", () => {
+    const cards = tokenCards({ ...base, balances: FULL, meta: META, month: null });
+    expect(cards.map((c) => c.balance)).toEqual(["36.807197 USDC", "37.2 EURC", "0.0000789 cirBTC"]);
+  });
+
+  it("waits for metadata too: a balance is never printed in a guessed scale", () => {
+    expect(tokenCards({ ...base, balances: FULL, meta: undefined, month: null })[2]!.balance).toBeUndefined();
+  });
+
+  it("shows — for a balance that could not be read, never 0", () => {
+    const { [T.EURC.toLowerCase()]: _, ...noEurc } = FULL;
+    expect(tokenCards({ ...base, balances: noEurc, meta: META, month: null })[1]!.balance).toBe("— EURC");
+  });
+
+  it("has no paid line for a wallet with no runs, and a pending one while runs are read", () => {
+    expect(tokenCards({ ...base, balances: FULL, meta: META, month: null }).map((c) => c.paid)).toEqual([null, null, null]);
+    expect(tokenCards({ ...base, balances: FULL, meta: META, month: undefined })[0]!.paid).toBeUndefined();
+  });
+
+  it("says what each token paid this month, or that it paid nothing", () => {
+    const cards = tokenCards({ ...base, balances: FULL, meta: META, month: month(100_000n, 1) });
+    expect(cards.map((c) => c.paid)).toEqual([
+      "Paid in September: 0.1 USDC · 1 payment",
+      "Nothing paid in September",
+      "Nothing paid in September",
+    ]);
+    expect(tokenCards({ ...base, balances: FULL, meta: META, month: month(300_000n, 3) })[0]!.paid)
+      .toBe("Paid in September: 0.3 USDC · 3 payments");
+  });
+
+  it("shows — for the month when no run could be read, rather than claim nothing was paid", () => {
+    const cards = tokenCards({ ...base, balances: FULL, meta: META, month: month(0n, 0, true) });
+    expect(cards.map((c) => c.paid)).toEqual(["Paid in September: —", "Paid in September: —", "Paid in September: —"]);
+  });
+
+  it("waits for metadata before printing a paid amount", () => {
+    expect(tokenCards({ ...base, balances: FULL, meta: undefined, month: month(100_000n, 1) })[0]!.paid).toBeUndefined();
   });
 });
 

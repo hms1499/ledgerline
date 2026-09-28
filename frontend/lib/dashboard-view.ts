@@ -1,4 +1,4 @@
-import { paidByToken, type Address, type TokenTotal } from "@ledgerline/core";
+import { knownTokenSymbol, paidByToken, type Address, type TokenTotal } from "@ledgerline/core";
 import type { Coverage, RunRead } from "@/lib/run-reads";
 import type { RunRecord } from "@/lib/history";
 import { amountText, type TokenMeta } from "@/lib/token-meta";
@@ -65,11 +65,6 @@ const MONTHS = ["January", "February", "March", "April", "May", "June", "July",
 export function inMonth(paidAt: bigint, now: Date): boolean {
   const d = new Date(Number(paidAt) * 1000);
   return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-}
-
-/** "September 2026": the heading over the month's tiles. */
-export function monthTitle(now: Date): string {
-  return `${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
 }
 
 type Counted = Extract<RunRead, { state: "read" | "attention" }>;
@@ -149,6 +144,53 @@ export function whenText(read: RunRead, record: Pick<RunRecord, "awaitingReceipt
 export function balanceText(value: bigint | undefined, token: string, meta: TokenMeta): string {
   if (value === undefined) return `— ${meta.symbol || short(token)}`;
   return amountText(value, token, meta);
+}
+
+export interface TokenCard {
+  token: Address;
+  /** From Ledgerline's own list, never the contract's symbol(), so it is there before any read. */
+  label: string;
+  /** The wallet's balance; undefined while it or the token's decimals are read. */
+  balance: string | undefined;
+  /** What it paid this month: null for no line at all, undefined while the runs are read. */
+  paid: string | null | undefined;
+}
+
+/**
+ * The wallet's tokens, each with what it holds beside what it paid this month,
+ * so a payer sees what they can spend next to what they have spent. Every
+ * token appears, in tile order. A figure waits for the token's on-chain
+ * decimals rather than print in a guessed scale.
+ */
+export function tokenCards({ chainId, tokens, balances, meta, month, now }: {
+  chainId: number;
+  tokens: Address[];
+  /** Keyed by lowercased token; a token whose read failed is absent. Undefined while reading. */
+  balances: Record<string, bigint> | undefined;
+  meta: Record<string, TokenMeta> | undefined;
+  /** This month's totals in `tokens` order; null when there are no runs, undefined while they are read.
+   *  `blank` when no run could be read, so a 0 would be a claim. */
+  month: { totals: TokenTotal[]; blank: boolean } | null | undefined;
+  now: Date | undefined;
+}): TokenCard[] {
+  const name = now ? MONTHS[now.getMonth()] : "this month";
+  return tokens.map((token, i): TokenCard => {
+    const k = token.toLowerCase();
+    const m = meta?.[k] ?? {};
+    const t = month?.totals[i];
+    let paid: string | null | undefined;
+    if (month === null) paid = null;
+    else if (!month || !meta || !t) paid = undefined;
+    else if (month.blank) paid = `Paid in ${name}: —`;
+    else if (t.value === 0n) paid = `Nothing paid in ${name}`;
+    else paid = `Paid in ${name}: ${amountText(t.value, token, m)} · ${t.payments} payment${t.payments === 1 ? "" : "s"}`;
+    return {
+      token,
+      label: knownTokenSymbol(chainId, token) ?? short(token),
+      balance: balances && meta ? balanceText(balances[k], token, m) : undefined,
+      paid,
+    };
+  });
 }
 
 /** From this age, a run with no receipt gets the wording that stops a second
