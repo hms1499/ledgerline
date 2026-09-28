@@ -85,6 +85,16 @@
 .network-badge.is-test { background: var(--highlight); color: var(--on-highlight); border-color: var(--highlight); }
 
 .only-sm { display: none; }
+.below-lg { display: none; }
+@media (max-width: 1023px) { html .below-lg { display: inline-flex; } html .lg-only { display: none; } }
+.theme-toggle { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.theme-reset {
+  min-height: 24px; padding: 0 2px; background: none; border: 0; cursor: pointer;
+  color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px;
+  font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
+  font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.theme-reset:hover { color: var(--ink); text-decoration-thickness: 2px; }
 .bottom-tabs { display: none; }
 
 /* md: the sidebar collapses to icons, and keeps the ✱. Labels are tooltips

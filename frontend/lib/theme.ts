@@ -20,6 +20,23 @@ export function resolveTheme(
   return { choice, mode: systemCookie === "dark" ? "dark" : "light" };
 }
 
+/**
+ * The phone menu's theme items. Two themes, and the way back to following
+ * the device: "system" stays the default and the state a first visit is in,
+ * but it is not offered as a third look, because on most screens it looks
+ * exactly like one of the other two. Ticked: the theme on screen, and the
+ * device setting while it is the one deciding.
+ */
+export function themeMenu(choice: ThemeChoice, mode: Mode): {
+  key: string; label: string; choice: ThemeChoice; checked: boolean;
+}[] {
+  return [
+    { key: "theme-dark", label: "Theme: dark", choice: "dark", checked: mode === "dark" },
+    { key: "theme-light", label: "Theme: light", choice: "light", checked: mode === "light" },
+    { key: "theme-system", label: "Use device setting", choice: "system", checked: choice === "system" },
+  ];
+}
+
 export function themeCookie(name: string, value: string): string {
   return `${name}=${value}; path=/; max-age=31536000; samesite=lax`;
 }

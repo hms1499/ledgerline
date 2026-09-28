@@ -4,26 +4,26 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Button, Dropdown } from "antd";
 import { useTheme } from "@/components/theme/ThemeProvider";
-import type { ThemeChoice } from "@/lib/theme";
+import { themeMenu } from "@/lib/theme";
 import { LEARN_NAV, withNet } from "@/lib/nav";
 import { useLeaveGuard } from "@/components/wallet/WalletProvider";
 
-/** Below 640px the sidebar is gone; Compare and the theme live here,
- *  whether or not a wallet is connected. */
+/** Below 1024px the sidebar has no room for the theme, and below 640px it is
+ *  gone; Compare and the theme live here, whether or not a wallet is
+ *  connected. */
 export default function MoreMenu() {
-  const { choice, setChoice } = useTheme();
+  const { choice, mode, setChoice } = useTheme();
   const search = useSearchParams();
   const guard = useLeaveGuard();
-  const theme = (c: ThemeChoice, label: string) => ({
-    key: `theme-${c}`, label: `${choice === c ? "✓ " : ""}Theme: ${label}`, onClick: () => setChoice(c),
-  });
   return (
     <Dropdown
       trigger={["click"]}
       menu={{ items: [
         { key: "why", label: <Link href={withNet(LEARN_NAV[0]!.href, search)} onClick={guard}>{LEARN_NAV[0]!.label}</Link> },
         { type: "divider" },
-        theme("dark", "dark"), theme("light", "light"), theme("system", "system"),
+        ...themeMenu(choice, mode).map((i) => ({
+          key: i.key, label: `${i.checked ? "✓ " : ""}${i.label}`, onClick: () => setChoice(i.choice),
+        })),
       ] }}
     >
       <Button className="more-menu" aria-label="More">⋯</Button>

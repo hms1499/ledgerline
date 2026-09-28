@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { theme as antd } from "antd";
-import { resolveTheme, antdTheme, BOOT_SCRIPT, themeCookie } from "@/lib/theme";
+import { resolveTheme, antdTheme, BOOT_SCRIPT, themeCookie, themeMenu } from "@/lib/theme";
 import { palettes } from "@/lib/theme-tokens";
 
 describe("resolveTheme", () => {
@@ -117,5 +117,25 @@ describe("antdTheme cuts paper square and prints in the right faces (spec §6.4)
     expect(tag.colorWarningBg).toBe(palettes.dark.highlight);
     expect(tag.colorWarning).toBe(palettes.dark.onHighlight);
     expect(tag.colorErrorBg).toBe(palettes.dark.ribbonBg);
+  });
+});
+
+describe("themeMenu", () => {
+  const checked = (items: ReturnType<typeof themeMenu>) => items.filter((i) => i.checked).map((i) => i.label);
+
+  it("offers dark, light, and a way back to the device's setting", () => {
+    expect(themeMenu("system", "light").map((i) => [i.label, i.choice])).toEqual([
+      ["Theme: dark", "dark"], ["Theme: light", "light"], ["Use device setting", "system"],
+    ]);
+  });
+
+  it("while following the device, ticks what the device shows and the device setting", () => {
+    expect(checked(themeMenu("system", "light"))).toEqual(["Theme: light", "Use device setting"]);
+    expect(checked(themeMenu("system", "dark"))).toEqual(["Theme: dark", "Use device setting"]);
+  });
+
+  it("once a theme is chosen, ticks only that theme", () => {
+    expect(checked(themeMenu("dark", "dark"))).toEqual(["Theme: dark"]);
+    expect(checked(themeMenu("light", "light"))).toEqual(["Theme: light"]);
   });
 });
