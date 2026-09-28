@@ -14,6 +14,19 @@
 .home-note { margin: 14px 0 0; font-size: 14px; max-width: var(--measure); }
 .home-note-mark { margin-right: 6px; padding: 0 6px; font-family: var(--font-mono), ui-monospace, monospace; font-weight: 700; }
 .example-caption { margin: 14px 0 0; text-align: center; }
+/* The example prints in once, on load (home polish §4.2): the checks'
+   print-in rhythm from /r, 70ms apart, then the stamp lands. Printing, not
+   checking — the tape says Example. `backwards`: a line is hidden only while
+   it waits its turn, so a browser that skips this shows the tape whole. */
+@media (prefers-reduced-motion: no-preference) {
+  .tape--example > :nth-child(n + 2):not(.stamp) { animation: print-in 260ms ease-out backwards; }
+  .tape--example > :nth-child(3) { animation-delay: 70ms; }
+  .tape--example > :nth-child(4) { animation-delay: 140ms; }
+  .tape--example > :nth-child(5) { animation-delay: 210ms; }
+  .tape--example > :nth-child(6) { animation-delay: 280ms; }
+  .tape--example > .stamp { animation: stamp-in 120ms ease-out 540ms backwards; }
+}
+@keyframes stamp-in { from { opacity: 0; transform: scale(1.06); } }
 
 /* The demo: a recording of a real testnet run (DemoVideo). The phone
    recording, 4:5, below 1024px; the desktop one, 16:9, from there up — the

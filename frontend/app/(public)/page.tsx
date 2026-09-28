@@ -53,7 +53,7 @@ export default function Home() {
 
       <Col span={4} md={12}>
         {/* Labelled so it is never read as someone's real payment. */}
-        <Tape head={<><strong>Payment advice</strong><span className="hl">Example</span></>}>
+        <Tape className="tape--example" head={<><strong>Payment advice</strong><span className="hl">Example</span></>}>
           <p className="leader">
             <span className="leader-key">Invoice</span>
             <span className="leader-dots" aria-hidden="true" />
