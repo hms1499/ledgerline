@@ -21,15 +21,23 @@ export async function readBalancesWith(
   return out;
 }
 
+/** One try each. viem's default of three retries at ten seconds held the
+ *  dashboard's Needs you for ~40 s behind a node that never answered, with
+ *  no Retry on screen until the read gave up. */
+export const BALANCE_TIMEOUT_MS = 10_000;
+
 /**
  * What `owner` holds of each token, from `balanceOf` in the token's own
  * decimals. For USDC that is the 6-decimal ERC-20 figure, never the 18-decimal
  * native balance: the two describe the same money and differ by 10^12.
  */
 export function readBalances(
-  net: NetworkView, owner: Address, tokens: Address[],
+  net: NetworkView, owner: Address, tokens: Address[], timeout = BALANCE_TIMEOUT_MS,
 ): Promise<Record<string, bigint>> {
-  const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
+  const client = createPublicClient({
+    chain: net.chain,
+    transport: http(net.defaultRpc, { timeout, retryCount: 0 }),
+  });
   return readBalancesWith(tokens, (token) => client.readContract({
     address: token, abi: balanceOfAbi, functionName: "balanceOf", args: [owner],
   }));
