@@ -76,10 +76,14 @@ export default function DemoVideo() {
   }, [clip]);
 
   /** A chapter pressed is the viewer choosing Play, as the Play button is. The
-   *  0.05s keeps the seek off the previous chapter's last frame. */
+   *  0.05s keeps the seek off the previous chapter's last frame. It is also a
+   *  request to watch, so the video comes on screen first: with it scrolled
+   *  away, the in-view rule would pause it again the moment it started. */
   const seek = (i: number) => {
     const v = video.current;
     if (!v) return;
+    v.scrollIntoView({ block: "nearest" });
+    setInView(true);
     v.currentTime = clip.chapters[i]! + 0.05;
     v.muted = true;
     void v.play().catch(() => setPlaying(false));
