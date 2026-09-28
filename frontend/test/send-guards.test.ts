@@ -26,3 +26,13 @@ describe("a payment being sent survives the payer leaving", () => {
     expect(createRun).toContain("onReverted={(txHash) => forgetRun(txHash, wallet.address, net.chain.id)}");
   });
 });
+
+describe("reconnecting never overrides a deliberate forget", () => {
+  it("restores only before the provider's first wallet, so an account change stays forgotten", () => {
+    expect(provider).toMatch(/if \(wallet\) \{ restoreTried\.current = true; return; \}\s*if \(restoreTried\.current\) return;/);
+  });
+
+  it("forgets the remembered wallet on Disconnect", () => {
+    expect(provider).toMatch(/const disconnect = useCallback\(async \(\) => \{[\s\S]*?forgetWallet\(\);/);
+  });
+});

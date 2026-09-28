@@ -1,11 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useReducer, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState } from "react";
 import {
-  connect as connectWallet, disconnect as disconnectWallet, switchChain,
+  connect as connectWallet, disconnect as disconnectWallet, reconnect, switchChain,
   watchWallet, watchWalletList, knownWallets, NoWalletError,
   type ConnectedWallet, type WalletChoice,
 } from "@/lib/wallet";
+import { findRemembered, forgetWallet, rememberWallet, rememberedWallet } from "@/lib/wallet-memory";
 import { describeError, errorCode } from "@/lib/errors";
 import { describeConnectError, type ConnectError } from "@/lib/connect-error";
 import { initialSession, leaveWarning, sessionReducer } from "@/lib/wallet-session";
@@ -69,8 +70,37 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const wallet = session.wallet;
 
   // Wallets announce themselves asynchronously; one that wakes late must
-  // still appear in the picker.
-  useEffect(() => watchWalletList(() => setChoices(knownWallets())), []);
+  // still appear in the picker. The first read also catches a wallet that
+  // only sets window.ethereum, which never announces at all.
+  useEffect(() => {
+    const stop = watchWalletList(() => setChoices(knownWallets()));
+    setChoices(knownWallets());
+    return stop;
+  }, []);
+
+  // This provider lives in the (app) layout, so a reload, or a trip through
+  // /why or the home page, starts it empty. Reattach the wallet connected
+  // last, once, without a prompt: silently or not at all. It waits for that
+  // wallet to announce, since wallets answer discovery asynchronously.
+  //
+  // Only ever before this provider's first wallet. Once one has been
+  // connected, a later empty session is a disconnect or an account change,
+  // and reattaching then would silently hand the page the new account that
+  // forgetting on an account change exists to keep out.
+  const restoreTried = useRef(false);
+  useEffect(() => {
+    if (wallet) { restoreTried.current = true; return; }
+    if (restoreTried.current) return;
+    const key = rememberedWallet();
+    if (!key) { restoreTried.current = true; return; }
+    const choice = findRemembered(choices, key);
+    if (!choice) return;
+    restoreTried.current = true;
+    setConnecting(true);
+    void reconnect(net, choice)
+      .then((w) => { if (w) dispatch({ type: "connected", wallet: w }); })
+      .finally(() => setConnecting(false));
+  }, [choices, wallet, net]);
 
   // Bound to the connected wallet, so another installed wallet's events do
   // not tear the session down.
@@ -86,7 +116,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setPicking(false);
     setError(undefined);
     setConnecting(true);
-    try { dispatch({ type: "connected", wallet: await connectWallet(net, choice) }); }
+    try {
+      const connected = await connectWallet(net, choice);
+      rememberWallet(connected.info);
+      dispatch({ type: "connected", wallet: connected });
+    }
     catch (err) {
       // No wallet is a next step, not a failure: the dialog says what to get.
       if (err instanceof NoWalletError) setNoWallet(true);
@@ -107,6 +141,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // reattaching the same account.
   const disconnect = useCallback(async () => {
     if (!session.held) await disconnectWallet(wallet);
+    forgetWallet();
     setError(undefined);
     dispatch({ type: "forget" });
   }, [wallet, session.held]);

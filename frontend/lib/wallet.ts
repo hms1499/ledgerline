@@ -154,6 +154,54 @@ export async function connect(net: NetworkView, choice?: WalletChoice): Promise<
   const accounts = (await provider.request({ method: "eth_requestAccounts" })) as Address[];
   const address = accounts[0];
   if (!address) throw new Error("The wallet returned no account.");
+  return attach(net, picked, address);
+}
+
+/** How long a silent reconnect waits for the wallet. It opens nothing, so a
+ *  wallet that has not answered by then is not going to be asked again. */
+export const SILENT_TIMEOUT_MS = 5_000;
+
+/**
+ * The account a wallet already lets this site see, asked without a prompt.
+ * `eth_accounts` never opens the wallet: it answers from the permission the
+ * payer granted on an earlier connect, and with nothing once that permission
+ * is revoked or the wallet is locked. Any other answer, or none in time, is
+ * treated as nothing, because a reconnect nobody asked for must never fail
+ * out loud.
+ */
+export async function silentAccount(
+  provider: Eip1193Provider, timeoutMs = SILENT_TIMEOUT_MS,
+): Promise<Address | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const accounts = await Promise.race([
+      provider.request({ method: "eth_accounts" }),
+      new Promise<undefined>((resolve) => { timer = setTimeout(() => resolve(undefined), timeoutMs); }),
+    ]);
+    const first = Array.isArray(accounts) ? accounts[0] : undefined;
+    return typeof first === "string" && /^0x[0-9a-fA-F]{40}$/.test(first) ? (first as Address) : undefined;
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Reattach the wallet this browser connected last, if it still lets the site
+ * see an account. The same checks as a connect, the EOA check included, and
+ * never a prompt: undefined means "stay disconnected", whatever the reason,
+ * and the Connect button then says why if the payer presses it.
+ */
+export async function reconnect(net: NetworkView, choice: WalletChoice): Promise<ConnectedWallet | undefined> {
+  const address = await silentAccount(choice.provider);
+  if (!address) return undefined;
+  try { return await attach(net, choice, address); }
+  catch { return undefined; }
+}
+
+async function attach(net: NetworkView, picked: WalletChoice, address: Address): Promise<ConnectedWallet> {
+  const provider = picked.provider;
 
   // Deliberately NOT switching the chain here. Wallets disagree about what
   // wallet_switchEthereumChain means during a connect — some prompt, some
