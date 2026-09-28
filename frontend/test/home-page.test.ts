@@ -27,4 +27,11 @@ describe("the home page", () => {
     // The table says it; the old single figure would repeat it.
     expect(src).not.toContain("Referenced by a plain batch");
   });
+  it("heads each section with an h2, so the outline never skips a level", () => {
+    for (const head of ["Watch a run", "How a run works", "Proof · Arc mainnet"]) {
+      expect(src).toContain(`<h2 className="tape-head-title">${head}</h2>`);
+    }
+    // The example is an illustration, not a section.
+    expect(src).toContain("<strong>Payment advice</strong>");
+  });
 });

@@ -78,13 +78,13 @@ export default function Home() {
 
       <Col span={12}>
         {/* A recording of a real run, labelled with the network it ran on. */}
-        <Tape head={<><strong>Watch a run</strong><span className="hl">Arc testnet</span></>}>
+        <Tape head={<><h2 className="tape-head-title">Watch a run</h2><span className="hl">Arc testnet</span></>}>
           <DemoVideo />
         </Tape>
       </Col>
 
       <Col span={12}>
-        <Tape head={<><strong>How a run works</strong><span>3 steps · one transaction</span></>}>
+        <Tape head={<><h2 className="tape-head-title">How a run works</h2><span>3 steps · one transaction</span></>}>
           <ol className="how">
             <li>
               <span className="label">1 · Upload</span>
@@ -124,7 +124,7 @@ export default function Home() {
         <Tape
           head={
             <>
-              <strong>Proof · Arc mainnet</strong>
+              <h2 className="tape-head-title">Proof · Arc mainnet</h2>
               <span>
                 <span className="sr-only">block </span><span aria-hidden="true"># </span>
                 {P.block.toLocaleString("en-US")} · {P.date}

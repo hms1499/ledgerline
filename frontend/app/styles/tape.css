@@ -46,7 +46,9 @@
   font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-soft);
 }
 .tape-head { padding-bottom: 10px; margin-bottom: 14px; border-bottom: 1.5px dashed var(--ink); }
-:is(.tape-head, .page-head) strong { color: var(--ink); font-weight: 700; letter-spacing: 0.1em; }
+:is(.tape-head, .page-head) :is(strong, .tape-head-title) { color: var(--ink); font-weight: 700; letter-spacing: 0.1em; }
+/* A section's head as a real h2, printed exactly like the <strong> heads. */
+.tape-head-title { margin: 0; font: inherit; font-weight: 700; }
 .tape-title {
   margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1.5px dashed var(--ink);
   font-family: var(--font-mono), ui-monospace, monospace; font-stretch: 87%;
