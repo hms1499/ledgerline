@@ -109,3 +109,59 @@ describe("describeCoverage — how much of the history the totals stand on", () 
     expect(c).toEqual({ total: 1, covered: 1, missing: [], attention: ["0x1"] });
   });
 });
+
+describe("readRunsWith — the date a run was paid, from its block", () => {
+  const BLOCK = 63_549_920n;
+  const withBlock: GetReceipt = async () => ({ status: "success", logs, blockNumber: BLOCK });
+  const clean = () => ({ paid: new Map(), payments: 0, identityBroken: 0 });
+
+  it("sets paidAt from the block's timestamp", async () => {
+    const [r] = await readRunsWith([rec("0xa")], PAYER, withBlock, clean, 4, 1_000,
+      async (b) => (b === BLOCK ? 1_790_145_433n : 0n));
+    expect(r).toMatchObject({ state: "read", paidAt: 1_790_145_433n });
+  });
+
+  it("dates an attention run too", async () => {
+    const [r] = await readRunsWith([rec("0xa")], PAYER, withBlock,
+      () => ({ paid: new Map(), payments: 0, identityBroken: 1 }), 4, 1_000, async () => 7n);
+    expect(r).toMatchObject({ state: "attention", paidAt: 7n });
+  });
+
+  it("a failed block read leaves the run read, with no date", async () => {
+    const [r] = await readRunsWith([rec("0xa")], PAYER, withBlock, clean, 4, 1_000,
+      async () => { throw new Error("rpc down"); });
+    expect(r!.state).toBe("read");
+    expect("paidAt" in r!).toBe(false);
+  });
+
+  it("a block read that outlives its own timeout leaves the run read, with no date", async () => {
+    const [r] = await readRunsWith([rec("0xa")], PAYER, withBlock, clean, 4, 1_000,
+      () => new Promise(() => {}), 20);
+    expect(r!.state).toBe("read");
+    expect("paidAt" in r!).toBe(false);
+  });
+
+  it("never reads a block for a reverted or missing run", async () => {
+    let blockReads = 0;
+    const getReceipt: GetReceipt = async (h) => (h === "0xr" ? { status: "reverted", logs: [], blockNumber: 1n } : null);
+    const reads = await readRunsWith([rec("0xr"), rec("0xm")], PAYER, getReceipt, clean, 4, 1_000,
+      async () => { blockReads++; return 1n; });
+    expect(reads.map((r) => r.state)).toEqual(["reverted", "not_found"]);
+    expect(blockReads).toBe(0);
+  });
+
+  it("keeps receipt and block reads together inside the pool of four", async () => {
+    let live = 0;
+    let peak = 0;
+    const slow = async <T,>(v: T): Promise<T> => {
+      live++; peak = Math.max(peak, live);
+      await new Promise((r) => setTimeout(r, 5));
+      live--;
+      return v;
+    };
+    const records = Array.from({ length: 12 }, (_, i) => rec(`0x${i.toString(16)}`));
+    await readRunsWith(records, PAYER, () => slow({ status: "success" as const, logs, blockNumber: 1n }), clean, 4, 1_000,
+      () => slow(1n));
+    expect(peak).toBe(4);
+  });
+});

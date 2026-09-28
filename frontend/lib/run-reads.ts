@@ -5,16 +5,23 @@ import type { RunRecord } from "@/lib/history";
 
 export const READ_CONCURRENCY = 4;
 export const READ_TIMEOUT_MS = 10_000;
+/** A date is a courtesy line: one try, short, like lib/paid-at.ts. */
+export const BLOCK_TIME_TIMEOUT_MS = 4_000;
 
 export type RunRead =
-  | { txHash: string; state: "read" | "attention"; summary: RunSummary }
+  | { txHash: string; state: "read" | "attention"; summary: RunSummary; paidAt?: bigint }
   | { txHash: string; state: "not_found" | "reverted" }
   | { txHash: string; state: "unreadable"; reason: string };
 
-export interface ReceiptLike { status: "success" | "reverted"; logs: RawLog[] }
+export interface ReceiptLike { status: "success" | "reverted"; logs: RawLog[]; blockNumber?: bigint }
 /** null means the node has no such transaction. */
 export type GetReceipt = (txHash: Hex) => Promise<ReceiptLike | null>;
-export interface ReadOptions { getReceipt?: GetReceipt; concurrency?: number; timeoutMs?: number }
+/** A block's timestamp, in unix seconds. */
+export type GetBlockTime = (blockNumber: bigint) => Promise<bigint>;
+export interface ReadOptions {
+  getReceipt?: GetReceipt; getBlockTime?: GetBlockTime;
+  concurrency?: number; timeoutMs?: number; blockTimeoutMs?: number;
+}
 
 type Summarize = (logs: RawLog[], payer: Address) => RunSummary;
 type Rec = Pick<RunRecord, "txHash">;
@@ -31,6 +38,7 @@ function receiptReader(net: NetworkView): GetReceipt {
       const r = await client.getTransactionReceipt({ hash });
       return {
         status: r.status,
+        blockNumber: r.blockNumber,
         logs: r.logs.map((l, i) => ({
           address: l.address as Address, topics: l.topics as Hex[], data: l.data as Hex, logIndex: l.logIndex ?? i,
         })),
@@ -40,6 +48,14 @@ function receiptReader(net: NetworkView): GetReceipt {
       throw err;
     }
   };
+}
+
+function blockTimeReader(net: NetworkView): GetBlockTime {
+  const client = createPublicClient({
+    chain: net.chain,
+    transport: http(net.defaultRpc, { timeout: BLOCK_TIME_TIMEOUT_MS, retryCount: 0 }),
+  });
+  return async (blockNumber) => (await client.getBlock({ blockNumber })).timestamp;
 }
 
 function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
@@ -55,6 +71,7 @@ function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
 export async function readRunsWith(
   records: Rec[], payer: Address, getReceipt: GetReceipt, summarize: Summarize,
   concurrency = READ_CONCURRENCY, timeoutMs = READ_TIMEOUT_MS,
+  getBlockTime?: GetBlockTime, blockTimeoutMs = BLOCK_TIME_TIMEOUT_MS,
 ): Promise<RunRead[]> {
   // history.ts dedupes on record, but a read must not trust that.
   const seen = new Set<string>();
@@ -64,6 +81,17 @@ export async function readRunsWith(
     seen.add(k);
     return true;
   });
+
+  // A run whose date cannot be read is still read: only the month figure
+  // loses it (spec §5), so this never throws.
+  const dateOf = async (blockNumber: bigint | undefined): Promise<bigint | undefined> => {
+    if (!getBlockTime || blockNumber === undefined) return undefined;
+    try {
+      return await withTimeout(getBlockTime(blockNumber), blockTimeoutMs);
+    } catch {
+      return undefined;
+    }
+  };
 
   const out: RunRead[] = new Array(unique.length);
   let next = 0;
@@ -77,7 +105,9 @@ export async function readRunsWith(
         else if (receipt.status === "reverted") out[i] = { txHash, state: "reverted" };
         else {
           const summary = summarize(receipt.logs, payer);
-          out[i] = { txHash, state: summary.identityBroken > 0 ? "attention" : "read", summary };
+          const state = summary.identityBroken > 0 ? "attention" : "read";
+          const paidAt = await dateOf(receipt.blockNumber);
+          out[i] = paidAt === undefined ? { txHash, state, summary } : { txHash, state, summary, paidAt };
         }
       } catch (err) {
         out[i] = { txHash, state: "unreadable", reason: err instanceof Error ? err.message : String(err) };
@@ -88,13 +118,14 @@ export async function readRunsWith(
   return out;
 }
 
-/** Each run's receipt, fetched by its known hash. Never searches history.
- *  `payer` is the connected wallet (spec §4.1) — the caller passes it
- *  explicitly rather than this reading it off each record. */
+/** Each run's receipt, fetched by its known hash, and its block's time.
+ *  Never searches history. `payer` is the connected wallet (spec §4.1) —
+ *  the caller passes it explicitly rather than this reading it off each record. */
 export function readRuns(records: Rec[], payer: Address, net: NetworkView, opts: ReadOptions = {}): Promise<RunRead[]> {
   return readRunsWith(
     records, payer, opts.getReceipt ?? receiptReader(net), summarizeRun,
     opts.concurrency ?? READ_CONCURRENCY, opts.timeoutMs ?? READ_TIMEOUT_MS,
+    opts.getBlockTime ?? blockTimeReader(net), opts.blockTimeoutMs ?? BLOCK_TIME_TIMEOUT_MS,
   );
 }
 
