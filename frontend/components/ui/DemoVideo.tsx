@@ -170,9 +170,14 @@ export default function DemoVideo() {
       </ol>
       <figcaption className="demo-foot">
         <button type="button" className="demo-toggle" onClick={toggle}>
-          <span aria-hidden="true">{playing ? "❚❚" : "▶"}</span>
-          {playing ? "Pause" : "Play"}
-          <span className="sr-only"> the recording</span>
+          {/* Both faces are laid out and one is hidden, so the button keeps
+              one width and the text beside it never shifts when the video
+              starts or stops. */}
+          <span className="demo-toggle-faces" aria-hidden="true">
+            <span className={playing ? undefined : "is-off"}><span>❚❚</span>Pause</span>
+            <span className={playing ? "is-off" : undefined}><span>▶</span>Play</span>
+          </span>
+          <span className="sr-only">{playing ? "Pause" : "Play"} the recording</span>
         </button>
         <span id={descId} className="because">
           Three invoices uploaded, checked against the chain, paid in one transaction, and
