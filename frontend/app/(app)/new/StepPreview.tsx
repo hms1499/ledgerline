@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Alert, Button, Modal, Popconfirm } from "antd";
-import { createPublicClient, http, type Address } from "viem";
+import type { Address } from "viem";
 import { fundingFor, tokensForChain, totalsByToken } from "@ledgerline/core";
 import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
@@ -34,31 +34,7 @@ import type { GhostColumn, GridColumn } from "@/lib/sheet-grid";
 import { inMain } from "@/lib/popup-container";
 import { ColumnHead, GhostHead } from "./ColumnHead";
 import FindReplace from "./FindReplace";
-
-const balanceOfAbi = [
-  { type: "function", name: "balanceOf", stateMutability: "view",
-    inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] },
-] as const;
-
-/**
- * Every token the run pays, plus USDC, which pays Arc's network fee even when
- * the run pays none. A token whose balance cannot be read is left out, so it
- * shows as unknown rather than as an empty wallet.
- */
-async function readBalances(
-  net: NetworkView, owner: Address, tokens: Address[],
-): Promise<Record<string, bigint>> {
-  const client = createPublicClient({ chain: net.chain, transport: http(net.defaultRpc) });
-  const out: Record<string, bigint> = {};
-  await Promise.all(tokens.map(async (token) => {
-    try {
-      out[token.toLowerCase()] = await client.readContract({
-        address: token, abi: balanceOfAbi, functionName: "balanceOf", args: [owner],
-      });
-    } catch { /* unknown, not zero */ }
-  }));
-  return out;
-}
+import { readBalances } from "@/lib/balances";
 
 /** Bring the first problem to the payer: scrolled to, its first field focused. */
 function focusFirst(id: string) {
@@ -184,7 +160,8 @@ export default function StepPreview({
   // even when the run's tokens did not change. Keying the read on the token
   // set itself — sorted, deduped, lowercased — means a recipient or amount
   // fix never clears balances or re-hits the RPC; only a token edit that
-  // actually changes what is owed does.
+  // actually changes what is owed does. Every token the run pays, plus USDC,
+  // which pays Arc's network fee even when the run pays none.
   const tokenKey = useMemo(
     () => [...new Set([usdc, ...totalsByToken(draft.rows).map((t) => t.token)].map((t) => t.toLowerCase()))]
       .sort()
