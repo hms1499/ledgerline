@@ -54,6 +54,11 @@ docs/notes/*-manifest.json
 # screenshots from browser checks are evidence for a moment, not artifacts
 *.png
 !frontend/app/**/*.png
+# ...but an image the app serves is part of the app. The token icons sat
+# here untracked: present on the machine that made them, missing from every
+# deployment built from git. test/public-assets.test.ts fails on any
+# referenced asset git would not ship.
+!frontend/public/**/*.png
 
 # visual companion mockups from brainstorming sessions
 .superpowers/
