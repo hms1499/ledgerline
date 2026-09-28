@@ -36,3 +36,14 @@ describe("reconnecting never overrides a deliberate forget", () => {
     expect(provider).toMatch(/const disconnect = useCallback\(async \(\) => \{[\s\S]*?forgetWallet\(\);/);
   });
 });
+
+describe("a disconnect the payer did not ask for is explained", () => {
+  it("says so only once the session has actually ended, which a payment being sent postpones", () => {
+    expect(provider).toMatch(/accountLost: \(next\) => \{ lost\.current = \{ next \}; dispatch\(\{ type: "forget" \}\); \}/);
+    expect(provider).toMatch(/if \(wallet \|\| !lost\.current\) return;\s*setError\(accountLostNotice\(lost\.current\.next\)\);/);
+  });
+
+  it("stays quiet about a Disconnect the payer pressed", () => {
+    expect(provider).toMatch(/const disconnect = useCallback\(async \(\) => \{[\s\S]*?lost\.current = undefined;/);
+  });
+});

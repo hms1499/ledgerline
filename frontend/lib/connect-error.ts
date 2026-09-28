@@ -1,5 +1,6 @@
 import { ArcUnreachableError, EoaRequiredError } from "@/lib/wallet";
 import { describeError, errorCode } from "@/lib/errors";
+import { short } from "@/lib/chain";
 
 /** The title and body of a connect-failure Alert. Kept together so the two
  *  can never drift apart the way a bare string once let them. */
@@ -61,4 +62,26 @@ export function describeConnectError(err: unknown): ConnectError {
     title: "Couldn't connect to your wallet",
     description: describeError(err),
   };
+}
+
+/**
+ * Why the page just disconnected on its own. A change of account ends the
+ * session rather than following it, because a run prepared here is bound to
+ * the account that signed its reference code; dropping it without a word left
+ * the payer at "Connect wallet", and on /new back at Review, with no idea why.
+ * "info", not "error": nothing is wrong with the wallet.
+ */
+export function accountLostNotice(next?: string): ConnectError {
+  const again = "If you were about to pay, the run goes back to Review and is checked again.";
+  return next
+    ? {
+      type: "info",
+      title: "Your wallet switched accounts",
+      description: `It now offers ${short(next)}, so this page disconnected rather than sign with an account you did not choose here. Connect again to use it. ${again}`,
+    }
+    : {
+      type: "info",
+      title: "Your wallet stopped sharing an account",
+      description: `It locked, or no longer lets this page see an account, so this page disconnected. Connect again to continue. ${again}`,
+    };
 }

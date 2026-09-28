@@ -3,7 +3,7 @@ import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { networkFor } from "@/lib/chain";
 import { assertEoa, ArcUnreachableError, EoaRequiredError } from "@/lib/wallet";
-import { describeConnectError } from "@/lib/connect-error";
+import { accountLostNotice, describeConnectError } from "@/lib/connect-error";
 
 const A = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
 
@@ -65,5 +65,27 @@ describe("describeConnectError", () => {
       description: "Your wallet answered, but this page could not reach Arc mainnet to check your account. Nothing was signed. Try again in a moment.",
       detail: "https://rpc.mainnet.arc.io: HTTP 503",
     });
+  });
+});
+
+describe("accountLostNotice — why the page disconnected on its own", () => {
+  it("names the account the wallet switched to, and says the page did not follow it", () => {
+    const n = accountLostNotice("0x2222222222222222222222222222222222222222");
+    expect(n.type).toBe("info");
+    expect(n.title).toBe("Your wallet switched accounts");
+    expect(n.description).toContain("0x2222…2222");
+    expect(n.description).toMatch(/Connect again/);
+  });
+
+  it("says the wallet stopped sharing an account when it offers none", () => {
+    const n = accountLostNotice();
+    expect(n.type).toBe("info");
+    expect(n.title).toBe("Your wallet stopped sharing an account");
+  });
+
+  it("tells a payer mid-run where the run went", () => {
+    for (const n of [accountLostNotice(), accountLostNotice("0x2222222222222222222222222222222222222222")]) {
+      expect(n.description).toContain("the run goes back to Review and is checked again");
+    }
   });
 });

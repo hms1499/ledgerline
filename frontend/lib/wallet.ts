@@ -378,7 +378,12 @@ export async function assertEoa(net: NetworkView, address: Address): Promise<voi
  */
 export function watchWallet(
   wallet: ConnectedWallet,
-  on: { accountLost: () => void; chainChanged: (chainId: number) => void },
+  on: {
+    /** `next` is the account the wallet offers now, or undefined when it
+     *  offers none: locked, or no longer sharing an account with the site. */
+    accountLost: (next?: Address) => void;
+    chainChanged: (chainId: number) => void;
+  },
 ): () => void {
   const provider = wallet.provider;
   if (!provider.on || !provider.removeListener) return () => {};
@@ -388,7 +393,8 @@ export function watchWallet(
     // An empty list is the wallet revoking this site. A list still holding
     // our address is confirmation of the connect, not a change.
     const mine = accounts.some((a) => a?.toLowerCase() === wallet.address.toLowerCase());
-    if (!mine) on.accountLost();
+    const next = accounts.find((a) => typeof a === "string" && /^0x[0-9a-fA-F]{40}$/.test(a));
+    if (!mine) on.accountLost(next as Address | undefined);
   };
 
   const onChain = (...args: unknown[]) => {

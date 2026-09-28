@@ -8,7 +8,7 @@ import {
 } from "@/lib/wallet";
 import { findRemembered, forgetWallet, rememberWallet, rememberedWallet } from "@/lib/wallet-memory";
 import { describeError, errorCode } from "@/lib/errors";
-import { describeConnectError, type ConnectError } from "@/lib/connect-error";
+import { accountLostNotice, describeConnectError, type ConnectError } from "@/lib/connect-error";
 import { initialSession, leaveWarning, sessionReducer } from "@/lib/wallet-session";
 import { useNetwork } from "@/lib/use-network";
 import { chainName, type NetworkView } from "@/lib/chain";
@@ -103,11 +103,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, [choices, wallet, net]);
 
   // Bound to the connected wallet, so another installed wallet's events do
-  // not tear the session down.
+  // not tear the session down. An account change is remembered until the
+  // session actually ends, which a payment being sent postpones, and only
+  // then said: the notice must not claim a disconnect that is still waiting.
+  const lost = useRef<{ next?: string }>(undefined);
+  useEffect(() => {
+    if (wallet || !lost.current) return;
+    setError(accountLostNotice(lost.current.next));
+    lost.current = undefined;
+  }, [wallet]);
+
   useEffect(() => {
     if (!wallet) return;
     return watchWallet(wallet, {
-      accountLost: () => dispatch({ type: "forget" }),
+      accountLost: (next) => { lost.current = { next }; dispatch({ type: "forget" }); },
       chainChanged: (chainId) => { setSwitchError(undefined); dispatch({ type: "chain", chainId }); },
     });
   }, [wallet]);
@@ -141,6 +150,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   // reattaching the same account.
   const disconnect = useCallback(async () => {
     if (!session.held) await disconnectWallet(wallet);
+    lost.current = undefined;
     forgetWallet();
     setError(undefined);
     dispatch({ type: "forget" });
