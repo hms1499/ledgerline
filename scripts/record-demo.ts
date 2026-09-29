@@ -35,6 +35,7 @@ import { SAMPLE_CSV } from "../frontend/lib/sample-csv.js";
 import { buildTimeline } from "./lib/timeline.js";
 import { demoWallet, defaultRpc, WALLET_ANNOUNCE } from "./lib/demo-wallet.js";
 import { startCapture, type Frame } from "./lib/screencast.js";
+import { waitForStill } from "./lib/still.js";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 
@@ -218,6 +219,7 @@ async function record(layout: Layout, theme: "light" | "dark") {
   await scrollTo(page.getByRole("heading", { name: "Every payment would go through" }));
   await pause(1100);
   // The poster: the payer's side, every payment checked (home polish §3.1).
+  await waitForStill(page);
   marks.push({ label: "poster", at: Date.now() / 1000 });
   await pause(1100);
   await shot("3-check");

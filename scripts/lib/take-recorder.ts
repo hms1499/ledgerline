@@ -9,6 +9,7 @@ import type { Rect } from "./camera.js";
 import { centre, captionHtml, OVERLAY_CSS, titleHtml } from "./overlay.js";
 import { unionRect, visibleRect, type TakeEvents } from "./take.js";
 import { CAPTIONS, type CaptionKey } from "./walkthrough.js";
+import { waitForStill } from "./still.js";
 
 export const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 const now = () => Date.now() / 1000;
@@ -23,15 +24,18 @@ export class TakeRecorder {
   private pointer = { x: -100, y: -100 };
   constructor(private page: Page, readonly events: TakeEvents) {}
 
-  /** Waits for smooth scrolling to stop, so the box logged is the box shown. */
+  /** Waits for smooth scrolling to stop, then for page-in, stagger and any
+   *  count to finish, so the box logged is the box shown: a block still
+   *  rising would be logged 12px low. */
   private async settle() {
     let last = await this.page.evaluate(() => window.scrollY);
     for (let i = 0; i < 20; i++) {
       await pause(100);
       const y = await this.page.evaluate(() => window.scrollY);
-      if (y === last) return;
+      if (y === last) break;
       last = y;
     }
+    await waitForStill(this.page);
   }
 
   async focus(target: Locator | Locator[], label: string, zoom?: number) {
