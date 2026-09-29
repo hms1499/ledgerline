@@ -38,6 +38,27 @@ describe("renderPlan", () => {
   });
 });
 
+describe("where the caption sits", () => {
+  // A caption 82 px tall, 56 px above the bottom of a 1080 px frame.
+  const band = { from: 1 - 138 / 1080, to: 1 - 56 / 1080 };
+  const settled = (p: ReturnType<typeof renderPlan>) => p.frames[Math.round((1 + 1 + 0.8) * O.fps)]!;
+
+  it("stays at the bottom when the focused element is clear of it", () => {
+    expect(settled(renderPlan(take, { ...O, captionBand: band }))).toMatchObject({ kind: "shot", captionTop: false });
+  });
+
+  it("moves to the top when the focused element would sit under it", () => {
+    // Near the viewport's bottom edge: no crop can lift it above the caption.
+    const low = { ...take, focuses: [{ at: 101, rect: { x: 800, y: 1000, width: 320, height: 60 }, label: "low" }] };
+    expect(settled(renderPlan(low, { ...O, captionBand: band }))).toMatchObject({ kind: "shot", captionTop: true });
+  });
+
+  it("stays at the bottom on a wide shot", () => {
+    const wide = { ...take, focuses: [{ at: 101, rect: null, label: "wide" }] };
+    expect(settled(renderPlan(wide, { ...O, captionBand: band }))).toMatchObject({ kind: "shot", captionTop: false });
+  });
+});
+
 describe("maxZoomFor", () => {
   it("never zooms past the frame's own pixels", () => {
     expect([maxZoomFor(2), maxZoomFor(1.5), maxZoomFor(3)]).toEqual([2, 1.5, 2]);

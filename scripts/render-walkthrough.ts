@@ -27,17 +27,22 @@ const got = await sharp(join(dir, take.frames[0]!.file)).metadata();
 if (got.width !== want.width || got.height !== want.height) {
   throw new Error(`the take's frames are ${got.width}x${got.height}, but it says ${want.width}x${want.height}; re-record it`);
 }
-const plan = renderPlan(take, { fps: FPS, titleSeconds: 4, waitSpeed: 4 });
-// Before any frame: a missing music file stops here, not after minutes of rendering.
-const audio = audioArgs(music, plan.seconds, existsSync);
-
-const title = await sharp(join(dir, take.title)).resize(W, H).removeAlpha().raw().toBuffer();
+const MARGIN = 56;
 const captions = await Promise.all(take.captions.map(async (c) => {
   if (!c.image) throw new Error(`caption "${c.text}" has no image`);
   const file = join(dir, c.image);
   const { width = 0, height = 0 } = await sharp(file).metadata();
-  return { input: file, left: Math.round((W - width) / 2), top: H - 56 - height };
+  return { input: file, left: Math.round((W - width) / 2), height };
 }));
+const tallest = Math.max(0, ...captions.map((c) => c.height));
+const plan = renderPlan(take, {
+  fps: FPS, titleSeconds: 4, waitSpeed: 4,
+  captionBand: { from: (H - MARGIN - tallest) / H, to: (H - MARGIN) / H },
+});
+// Before any frame: a missing music file stops here, not after minutes of rendering.
+const audio = audioArgs(music, plan.seconds, existsSync);
+
+const title = await sharp(join(dir, take.title)).resize(W, H).removeAlpha().raw().toBuffer();
 
 mkdirSync("video", { recursive: true });
 const out = "video/ledgerline-walkthrough.mp4";
@@ -51,7 +56,10 @@ const ff = spawn("ffmpeg", [
 ], { stdio: ["pipe", "inherit", "inherit"] });
 const done = new Promise<void>((ok, fail) => ff.on("close", (code) => (code === 0 ? ok() : fail(new Error(`ffmpeg exited ${code}`)))));
 
-const keyOf = (f: Planned) => (f.kind === "title" ? "title" : `${f.source}:${f.crop.left},${f.crop.top},${f.crop.width}:${f.caption ?? "-"}`);
+const keyOf = (f: Planned) => (f.kind === "title" ? "title" : `${f.source}:${f.crop.left},${f.crop.top},${f.crop.width}:${f.caption ?? "-"}:${f.captionTop}`);
+/** At the bottom, or at the top when the focused element would sit under it. */
+const captionAt = (c: (typeof captions)[number], top: boolean) =>
+  ({ input: c.input, left: c.left, top: top ? MARGIN : H - MARGIN - c.height });
 let lastKey = "";
 let last = title;
 const sheetFrames = new Map<number, Buffer>();
@@ -61,7 +69,7 @@ for (let k = 0; k < plan.frames.length; k++) {
   if (key !== lastKey) {
     last = f.kind === "title" ? title : await sharp(join(dir, take.frames[f.source]!.file))
       .extract(f.crop).resize(W, H, { kernel: "lanczos3" })
-      .composite(f.caption === undefined ? [] : [captions[f.caption]!])
+      .composite(f.caption === undefined ? [] : [captionAt(captions[f.caption]!, f.captionTop)])
       .removeAlpha().raw().toBuffer();
     lastKey = key;
   }

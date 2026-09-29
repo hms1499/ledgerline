@@ -5,13 +5,19 @@
  * page changes, so a zoom over a still page has one frame to work with.
  */
 import { buildTimeline } from "./timeline.js";
-import { cameraAt, cropFor, MOVE, type Crop } from "./camera.js";
+import { cameraAt, cropFor, framing, MOVE, type Crop, type Rect, type View } from "./camera.js";
 import type { TakeEvents } from "./take.js";
 
-export interface RenderOptions { fps: number; titleSeconds: number; waitSpeed: number }
+/** `captionBand`: the rows a caption covers at the bottom of the frame, as
+ *  fractions of its height; the same band mirrored at the top is its other
+ *  place. Without it every caption sits at the bottom. */
+export interface RenderOptions {
+  fps: number; titleSeconds: number; waitSpeed: number;
+  captionBand?: { from: number; to: number };
+}
 export type Planned =
   | { kind: "title" }
-  | { kind: "shot"; source: number; crop: Crop; caption: number | undefined };
+  | { kind: "shot"; source: number; crop: Crop; caption: number | undefined; captionTop: boolean };
 
 /** A zoom past the frame's own device pixels would only blur. */
 export const maxZoomFor = (scale: number) => Math.min(2, scale);
@@ -22,6 +28,22 @@ export function renderPlan(take: TakeEvents, o: RenderOptions) {
   const maxZoom = maxZoomFor(take.view.scale);
   const focuses = take.focuses.map((f) => ({ at: tl.outputTime(f.at), rect: f.rect, zoom: f.zoom }));
   const captionsAt = take.captions.map((c) => tl.outputTime(c.at));
+  const band = o.captionBand;
+
+  /** A caption goes to the top when, once the camera has framed the focus,
+   *  the element would sit under it at the bottom and less under it at the
+   *  top. An element near the viewport's bottom edge cannot be framed above
+   *  the caption by any crop, so the caption moves instead. */
+  const captionTopFor = (rect: Rect | null, zoom: number | undefined, v: View) => {
+    if (!band || !rect) return false;
+    const cam = framing(rect, v, maxZoom, zoom);
+    const top = cam.cy - v.height / (2 * cam.scale);
+    const y0 = ((rect.y - top) * cam.scale) / v.height;
+    const y1 = ((rect.y + rect.height - top) * cam.scale) / v.height;
+    const under = (from: number, to: number) => Math.max(0, Math.min(y1, to) - Math.max(y0, from));
+    return under(1 - band.to, 1 - band.from) < under(band.from, band.to);
+  };
+  const tops = focuses.map((f) => captionTopFor(f.rect, f.zoom, view));
 
   const seconds = o.titleSeconds + tl.total;
   const count = Math.round(seconds * o.fps);
@@ -32,11 +54,14 @@ export function renderPlan(take: TakeEvents, o: RenderOptions) {
     const t = T - o.titleSeconds;
     let caption: number | undefined;
     captionsAt.forEach((at, i) => { if (at <= t) caption = i; });
+    let focus = -1;
+    focuses.forEach((f, i) => { if (f.at <= t) focus = i; });
     frames.push({
       kind: "shot",
       source: tl.frameAt(t),
       crop: cropFor(cameraAt(t, focuses, view, maxZoom), view, take.view.scale),
       caption,
+      captionTop: focus >= 0 && tops[focus]!,
     });
   }
   const sheet = focuses
