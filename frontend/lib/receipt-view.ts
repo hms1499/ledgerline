@@ -76,5 +76,8 @@ export function paidAtText(seconds: bigint | number, timeZone?: string): string 
       hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZoneName: "shortOffset",
     }).formatToParts(new Date(Number(seconds) * 1000)).map((p) => [p.type, p.value]),
   );
-  return `${Number(parts.day)} ${MONTHS[Number(parts.month) - 1]} ${parts.year}, ${parts.hour}:${parts.minute} ${parts.timeZoneName}`;
+  // CLDR 48 (ICU 78, from Node 22.23) names a zero offset "GMT+0" where CLDR
+  // 47 said "GMT", so the same receipt read differently by runtime. [measured]
+  const zone = /^GMT[+\-−]0(?::00)?$/.test(parts.timeZoneName ?? "") ? "GMT" : parts.timeZoneName;
+  return `${Number(parts.day)} ${MONTHS[Number(parts.month) - 1]} ${parts.year}, ${parts.hour}:${parts.minute} ${zone}`;
 }
