@@ -6,7 +6,8 @@
  *   (cd frontend && pnpm exec next start -p 3100)
  *   pnpm exec tsx scripts/record-demo.ts                       # every layout and theme
  *   pnpm exec tsx scripts/record-demo.ts --layout wide --theme dark
- *   (--keep-frames keeps the raw frames, to debug a take)
+ *   (--keep-frames keeps the raw frames, to debug a take;
+ *    --out <dir> writes somewhere other than frontend/public/demo)
  *
  * Writes frontend/public/demo/run-<layout>-<theme>.mp4 and .jpg, and prints
  * each run's transaction, chapter starts and poster time for
@@ -23,8 +24,7 @@
  * one the chain sees — and a fee under it is refused here rather than sent to
  * be silently dropped.
  */
-import { createPublicClient, createWalletClient, http, parseGwei, toHex, type Hex } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
+import { type Hex } from "viem";
 import { arcTestnet } from "viem/chains";
 import { chromium, type Locator, type Page } from "playwright";
 import { execFileSync } from "node:child_process";
@@ -33,6 +33,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SAMPLE_CSV } from "../frontend/lib/sample-csv.js";
 import { buildTimeline } from "./lib/timeline.js";
+import { demoWallet, defaultRpc, WALLET_ANNOUNCE } from "./lib/demo-wallet.js";
+import { startCapture, type Frame } from "./lib/screencast.js";
 
 if (existsSync(".env")) process.loadEnvFile(".env");
 
@@ -46,7 +48,7 @@ if (picked !== undefined && picked !== "light" && picked !== "dark") {
   throw new Error(`--theme must be "light" or "dark", got "${picked}"`);
 }
 const THEMES: ("light" | "dark")[] = picked ? [picked] : ["light", "dark"];
-const OUT = "frontend/public/demo";
+const OUT = arg("--out") ?? "frontend/public/demo";
 
 interface Shape { view: { width: number; height: number }; scale: number }
 /**
@@ -66,89 +68,18 @@ if (layoutArg !== undefined && !(layoutArg in SHAPES)) {
   throw new Error(`--layout must be "wide" or "phone", got "${layoutArg}"`);
 }
 const LAYOUTS = (layoutArg ? [layoutArg] : Object.keys(SHAPES)) as Layout[];
-/** Execute.ts floors at 25 Gwei; under 20 the mempool drops a transaction
- *  without a word. Anything under the floor means something upstream broke. */
-const FEE_FLOOR = parseGwei("25");
-
 const key = process.env.PRIVATE_KEY as Hex | undefined;
 if (!key) throw new Error("PRIVATE_KEY is not set in .env");
-const account = privateKeyToAccount(key);
-const rpc = http(process.env.ARC_TESTNET_RPC || "https://arc-testnet.drpc.org");
-const chainClient = createPublicClient({ chain: arcTestnet, transport: rpc });
-const signer = createWalletClient({ account, chain: arcTestnet, transport: rpc });
-
-const sent: Hex[] = [];
-
-type TxRequest = {
-  from?: Hex; to?: Hex; data?: Hex; value?: Hex; gas?: Hex; nonce?: Hex;
-  maxFeePerGas?: Hex; maxPriorityFeePerGas?: Hex; gasPrice?: Hex;
-};
-
-/** The wallet side of every EIP-1193 request the page makes. */
-async function answer(method: string, params: unknown[]): Promise<unknown> {
-  switch (method) {
-    case "eth_requestAccounts":
-    case "eth_accounts":
-      return [account.address];
-    case "eth_chainId":
-      return toHex(arcTestnet.id);
-    case "wallet_switchEthereumChain": {
-      const want = Number((params[0] as { chainId: string }).chainId);
-      if (want !== arcTestnet.id) throw new Error(`Demo wallet is on Arc testnet only, asked for ${want}`);
-      return null;
-    }
-    case "wallet_revokePermissions":
-      return null;
-    case "personal_sign":
-      return account.signMessage({ message: { raw: params[0] as Hex } });
-    case "eth_sendTransaction": {
-      const tx = params[0] as TxRequest;
-      if (tx.from && tx.from.toLowerCase() !== account.address.toLowerCase()) {
-        throw new Error(`asked to send from ${tx.from}, but the demo wallet is ${account.address}`);
-      }
-      const maxFee = tx.maxFeePerGas ?? tx.gasPrice;
-      if (!maxFee || BigInt(maxFee) < FEE_FLOOR) {
-        throw new Error(`refusing a fee of ${maxFee ?? "none"}: under 25 Gwei Arc drops it silently`);
-      }
-      const hash = await signer.sendTransaction({
-        to: tx.to,
-        data: tx.data,
-        value: tx.value ? BigInt(tx.value) : undefined,
-        gas: tx.gas ? BigInt(tx.gas) : undefined,
-        nonce: tx.nonce ? Number(tx.nonce) : undefined,
-        maxFeePerGas: BigInt(maxFee),
-        maxPriorityFeePerGas: tx.maxPriorityFeePerGas ? BigInt(tx.maxPriorityFeePerGas) : undefined,
-      });
-      sent.push(hash);
-      return hash;
-    }
-    default:
-      return chainClient.request({ method, params } as never);
-  }
-}
+const wallet = demoWallet("testnet", key, defaultRpc("testnet"));
+const chainClient = wallet.client;
+const sent = wallet.sent;
 
 /**
- * Runs in the page: announces the Demo wallet and hosts the caption strip.
- * Plain JavaScript in a string, because tsx rewrites a function body with
- * helpers (`__name`) that do not exist in the page.
+ * Runs in the page: the caption strip burned into the home demo. Plain
+ * JavaScript in a string, because tsx rewrites a function body with helpers
+ * (`__name`) that do not exist in the page. The wallet is WALLET_ANNOUNCE.
  */
 const PAGE_SETUP = String.raw`(() => {
-  const provider = {
-    request: ({ method, params }) => window.__demoWallet(method, params ?? []),
-    on() {},
-    removeListener() {},
-  };
-  const icon = "data:image/svg+xml," + encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" fill="#161616"/>' +
-    '<text x="16" y="23" font-size="20" text-anchor="middle" fill="#FDFDFA">✱</text></svg>');
-  const detail = Object.freeze({
-    info: { uuid: "3f1c6e2a-demo-wallet", name: "Demo wallet", rdns: "local.ledgerline.demo", icon },
-    provider,
-  });
-  const announce = () => window.dispatchEvent(new CustomEvent("eip6963:announceProvider", { detail }));
-  window.addEventListener("eip6963:requestProvider", announce);
-  announce();
-
   window.__caption = (step, text) => {
     let bar = document.getElementById("demo-caption");
     if (!bar) {
@@ -178,30 +109,6 @@ const PAGE_SETUP = String.raw`(() => {
   };
 })();`;
 
-interface Frame { file: string; at: number }
-
-/** CDP screencast, not Playwright's recordVideo: that one encodes realtime
- *  VP8 at 1 Mbit/s, which smears 13px table figures. These are the page's own
- *  device pixels, timed by the browser, encoded once at the end. */
-async function startCapture(page: Page, dir: string, { view, scale }: Shape) {
-  const frames: Frame[] = [];
-  const cdp = await page.context().newCDPSession(page);
-  cdp.on("Page.screencastFrame", async ({ data, metadata, sessionId }) => {
-    const file = join(dir, `f${String(frames.length).padStart(5, "0")}.jpg`);
-    writeFileSync(file, Buffer.from(data, "base64"));
-    frames.push({ file, at: metadata.timestamp ?? Date.now() / 1000 });
-    await cdp.send("Page.screencastFrameAck", { sessionId }).catch(() => {});
-  });
-  await cdp.send("Page.startScreencast", {
-    format: "jpeg", quality: 95,
-    maxWidth: view.width * scale, maxHeight: view.height * scale, everyNthFrame: 1,
-  });
-  return {
-    frames,
-    stop: () => cdp.send("Page.stopScreencast"),
-  };
-}
-
 /** Time spent waiting on the network, played back faster than it happened. */
 const fastForward: { from: number; to: number }[] = [];
 async function waiting<T>(work: Promise<T>): Promise<T> {
@@ -230,7 +137,8 @@ async function record(layout: Layout, theme: "light" | "dark") {
   });
   const host = new URL(BASE).hostname;
   await context.addCookies([{ name: "theme", value: theme, domain: host, path: "/" }]);
-  await context.exposeFunction("__demoWallet", answer);
+  await context.exposeFunction("__demoWallet", wallet.answer);
+  await context.addInitScript({ content: WALLET_ANNOUNCE });
   await context.addInitScript({ content: PAGE_SETUP });
   const page = await context.newPage();
   const errors: string[] = [];
@@ -251,7 +159,7 @@ async function record(layout: Layout, theme: "light" | "dark") {
   await page.getByRole("button", { name: /Connect|Demo wallet/ }).first().waitFor();
   await caption("1 · Upload", "A list of invoices, one line per payment");
   await pause(300);
-  const capture = await startCapture(page, work, shape);
+  const capture = await startCapture(page, work, { ...shape.view, scale: shape.scale });
   const begin = Date.now() / 1000;
 
   // ── Upload ──────────────────────────────────────────────────────────────
