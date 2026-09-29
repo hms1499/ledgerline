@@ -407,7 +407,7 @@ export async function assertEoa(net: NetworkView, address: Address, timeout = EO
   if (code.toLowerCase().startsWith("0xef0100")) return;
 
   throw new EoaRequiredError(
-    "This address is a smart-contract wallet. Arc requires the payer to sign the transaction directly, so Safe, ERC-4337 and similar wallets cannot sign a Ledgerline run. Connect an ordinary EOA instead.",
+    "This address is a smart-contract wallet. Arc requires the payer to sign the transaction directly, so Safe, ERC-4337 and similar wallets cannot sign a Ledgerline run. To pay from a Safe, send what the run needs to an ordinary wallet and connect that one.",
   );
 }
 

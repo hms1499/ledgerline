@@ -23,7 +23,7 @@ export function noWalletHelp(network: "mainnet" | "testnet"): {
       ? "Get free test tokens at"
       : "Your wallet also needs USDC on Arc mainnet: it pays each run's network fee.",
     fundsLink: network === "testnet" ? { text: "faucet.circle.com", href: FAUCET_URL } : undefined,
-    kind: "Use an ordinary wallet account. Multisig and smart-contract wallets, like Safe, cannot sign these payments.",
+    kind: "Use an ordinary wallet account. Multisig and smart-contract wallets, like Safe, cannot sign these payments, but can fund an ordinary account that does.",
   };
 }
 

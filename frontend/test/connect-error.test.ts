@@ -42,6 +42,11 @@ describe("assertEoa", () => {
     await expect(assertEoa(on(await node({ status: 200, code: "0x6080" })), A)).rejects.toBeInstanceOf(EoaRequiredError);
   });
 
+  it("tells a Safe how it can still pay: by funding an ordinary wallet", async () => {
+    await expect(assertEoa(on(await node({ status: 200, code: "0x6080" })), A))
+      .rejects.toThrow(/To pay from a Safe, send what the run needs to an ordinary wallet and connect that one/);
+  });
+
   it("says Arc's node could not be read, and keeps the status, when the node fails", async () => {
     const err = await assertEoa(on(await node({ status: 503 })), A).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ArcUnreachableError);

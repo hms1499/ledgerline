@@ -23,7 +23,7 @@ import { NO_EDITS, changesText, correctionReminder, headerWarning } from "@/lib/
 import { NOTHING_CHANGED } from "@/lib/changes-view";
 import { DRAFT_REFUSED, DRAFT_SAVED, draftPrompt } from "@/lib/draft-store";
 import { noWalletHelp, phoneWalletHelp } from "@/lib/wallet-help";
-import { topUpHint, treasuryTopUp } from "@/lib/funding-view";
+import { EOA_ONLY_NOTE, topUpHint, treasuryTopUp } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
 import { TX_HASH_HINT } from "@/lib/tx-hash";
 import { spreadsheetRefusal } from "@/lib/run-file";
@@ -260,6 +260,7 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       });
       plain(t?.text); plain(t?.fee);
     }
+    plain(EOA_ONLY_NOTE);
     Object.values(BLOCKED_COPY).forEach(plain);
     plain(CANCELLED.message.title); plain(CANCELLED.payment.title); plain(CANCELLED.payment.body);
     plain(FEE_ADVICE); plain(CHECK_FAILED); plain(RUN_FILE_COPY); plain(TX_HASH_HINT);

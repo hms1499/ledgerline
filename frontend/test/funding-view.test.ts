@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { fundingFor, type Address } from "@ledgerline/core";
-import { fundingView, treasuryTopUp } from "@/lib/funding-view";
+import { EOA_ONLY_NOTE, fundingView, treasuryTopUp } from "@/lib/funding-view";
 
 const USDC = "0x3600000000000000000000000000000000000000" as Address;
 const EURC = "0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1" as Address;
@@ -111,3 +111,13 @@ describe("treasuryTopUp — what to send a short wallet from a Safe or another w
   });
 });
 
+describe("EOA_ONLY_NOTE — the Review step's word on who can pay", () => {
+  it("says how to pay from a Safe, not only that a Safe cannot sign", () => {
+    expect(EOA_ONLY_NOTE).toMatch(/Safe/);
+    expect(EOA_ONLY_NOTE).toMatch(/To pay from a Safe, send what this run needs to an ordinary wallet/);
+  });
+
+  it("owns the trade-off: recipients see the ordinary wallet as the payer", () => {
+    expect(EOA_ONLY_NOTE).toMatch(/Recipients will see that wallet as the payer/);
+  });
+});

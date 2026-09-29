@@ -8,7 +8,7 @@ import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
-import { fundingView, topUpHint, treasuryTopUp } from "@/lib/funding-view";
+import { EOA_ONLY_NOTE, fundingView, topUpHint, treasuryTopUp } from "@/lib/funding-view";
 import { fixList } from "@/lib/fix-list";
 import { changeCounts, changeTotal, fileChanged, type SheetEdits } from "@/lib/sheet-edits";
 import { correctedFile } from "@/lib/corrected-file";
@@ -374,8 +374,7 @@ export default function StepPreview({
       </div>
 
       <p className="because" style={{ marginTop: 18 }}>
-        Arc requires the payer to sign directly, so Safe, ERC-4337 and
-        other smart-contract wallets are not supported. Nothing has been signed or sent yet.
+        {EOA_ONLY_NOTE} Nothing has been signed or sent yet.
       </p>
     </>
   );

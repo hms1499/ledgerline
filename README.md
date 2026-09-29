@@ -133,6 +133,25 @@ Keep the run file: it holds your invoice ids, and the chain proves it has not
 been changed. If you lose the receipt links, the run's page rebuilds them from
 the run name and the invoice references once you sign the run name again.
 
+### Paying from a Safe treasury
+
+Arc's `Memo` accepts only a payer that signs the transaction itself. A Safe never
+does: an owner signs, and the Safe contract makes the call. Arc rejects that
+payment with `sender spoofing requires tx.origin as sender`, which was measured
+with a real transaction ([testnet findings](docs/notes/2026-09-21-testnet-findings.md)).
+A treasury held in a Safe pays through an ordinary wallet it funds:
+
+1. Keep a payout wallet: an ordinary EOA used for nothing else.
+2. Upload the CSV with that wallet connected. If it is short, the Review step
+   lists what to send it, token by token, and copies the address and amounts.
+3. Propose that transfer from the Safe. Its owners approve it as usual.
+4. When it lands, press **Check balances again**, then pay the run.
+
+The Safe's owners approve the money leaving the treasury, and the payout wallet
+holds it only until the run is paid. The trade-off: recipients see the payout
+wallet as the payer, not the Safe. The Safe's transfer is on chain for anyone to
+see, but nothing on chain ties it to the run's list.
+
 ### CSV format
 
 ```csv
@@ -307,7 +326,9 @@ public issue.
 ## Limitations
 
 - **EOA wallets only.** Arc's `Memo` requires a direct EOA caller, so Safe,
-  ERC-4337 and other smart-contract wallets cannot pay this way.
+  ERC-4337 and other smart-contract wallets cannot pay directly. A Safe treasury
+  pays through an ordinary wallet it funds; see
+  [Paying from a Safe treasury](#paying-from-a-safe-treasury).
 - **ERC-20 `transfer` payments only.** Native value sends are out of scope.
 - **At most 400 payments per run.**
 - **Not a payroll or accounting system.** There are no user accounts, approvals,
@@ -324,7 +345,7 @@ was measured on Arc and is handled in `packages/core`.
 | A transaction with `maxFeePerGas` under 20 Gwei is dropped silently, with no receipt and no error | Floors fees at 25 Gwei, checks the fee the wallet actually broadcast, and never reports a payment without a receipt |
 | One USDC transfer emits two `Transfer` logs: 6-decimal from the token and 18-decimal from the system emitter. EURC and cirBTC emit one | Ignores the system emitter `0xffff…fFfE` entirely, so no token is double-counted or halved |
 | USDC is 18-decimal as native value and 6-decimal through `balanceOf` | Reads decimals from each token contract. An amount whose decimals cannot be read is shown unscaled, never in a guessed scale |
-| `Memo` requires a direct EOA caller | The app says up front that Safe, ERC-4337 and other smart-contract wallets cannot pay this way |
+| `Memo` requires a direct EOA caller | The app says up front that Safe, ERC-4337 and other smart-contract wallets cannot pay directly, and shows a Safe treasury what to send an ordinary payout wallet instead |
 | `eth_call` forces `msg.sender == tx.origin`, so simulation cannot test the anti-spoofing rule | The caller rules were established with real testnet transactions, not simulation |
 | The public RPC caps `eth_getLogs` at 2,000 results / ~10k blocks | No flow searches history. Everything reads a known transaction or a storage slot |
 

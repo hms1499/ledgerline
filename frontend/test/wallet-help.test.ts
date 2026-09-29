@@ -22,6 +22,7 @@ describe("noWalletHelp", () => {
     expect(m.funds).toBe("Your wallet also needs USDC on Arc mainnet: it pays each run's network fee.");
     expect(m.fundsLink).toBeUndefined();
     expect(m.kind).toMatch(/like Safe/);
+    expect(m.kind).toMatch(/can fund an ordinary account that does/);
   });
 });
 

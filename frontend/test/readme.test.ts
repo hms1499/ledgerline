@@ -18,4 +18,10 @@ describe("the README", () => {
   it("opens the mainnet proof run in that app, where no wallet is needed", () => {
     expect(README).toContain(`${LIVE}run/0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0?n=mainnet`);
   });
+
+  it("tells a Safe treasury how it can pay, and links there from the EOA limitation", () => {
+    expect(README).toContain("### Paying from a Safe treasury");
+    const limitations = README.slice(README.indexOf("## Limitations"));
+    expect(limitations).toContain("(#paying-from-a-safe-treasury)");
+  });
 });

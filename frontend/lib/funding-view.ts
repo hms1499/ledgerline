@@ -60,6 +60,13 @@ export function fundingView({
   return { rows, short: rows.filter((r) => r.state === "short").length, feeWarning };
 }
 
+/** Who can pay, and how a Safe still can. Arc's `Memo` requires the payer to
+ *  be the transaction's signer, which a smart-contract wallet never is. */
+export const EOA_ONLY_NOTE =
+  "Arc requires the payer to sign directly, so a Safe or other smart-contract wallet cannot be the payer. " +
+  "To pay from a Safe, send what this run needs to an ordinary wallet and pay from that one. " +
+  "Recipients will see that wallet as the payer.";
+
 export interface TreasuryTopUp {
   /** One per short token, by what it is short: "1.5 EURC". */
   sends: string[];
