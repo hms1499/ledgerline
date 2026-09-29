@@ -60,14 +60,16 @@ the CDP screencast sends 1920×1080 frames whatever the context's
 
 | File | Frame | Length | Size | Audio |
 |---|---|---|---|---|
-| `video/ledgerline-walkthrough.mp4` | 1920×1080, 30 fps, H.264 CRF 18 yuv420p | 132.4 s (3972 frames, a 4 s title card first) | 23.9 MB | AAC, silent: −70.0 LUFS integrated |
+| `video/ledgerline-walkthrough.mp4` | 1920×1080, 30 fps, H.264 CRF 18 yuv420p | 132.4 s (3972 frames, a 4 s title card first) | 24.0 MB | AAC, silent: −70.0 LUFS integrated |
 | `video/ledgerline-walkthrough-sheet.jpg` | 29 tiles, one per focus, 1 s after each move starts | | | |
 
 Rendered without music. `--music <file>` re-renders from the same take, the
 track looped to length, faded in 1 s and out 2 s, and normalised to −14 LUFS.
 
 The camera frames what each caption talks about, eases over 0.7 s, and never
-zooms past 2×, so no frame is upscaled. Waits on the network play at 4×. The
+zooms past 2×, so no frame is upscaled. A caption sits at the bottom unless the
+element in focus would sit under it; then it moves to the top. Three focuses
+do: the file as a table, the Safe treasury block, and every token covered. Waits on the network play at 4×. The
 title card reads "Recorded on Arc mainnet · 29 Sep 2026".
 
 `video/` is gitignored: the mp4, its contact sheet and the take stay on the
