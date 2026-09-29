@@ -22,6 +22,11 @@ const music = i >= 0 ? process.argv[i + 1] : undefined;
 const take = assertTake(JSON.parse(readFileSync(join(dir, "events.json"), "utf8")));
 if (!take.title) throw new Error("the take has no title card; it was not recorded to the end");
 const W = 1920, H = 1080, FPS = 30;
+const want = { width: Math.round(take.view.width * take.view.scale), height: Math.round(take.view.height * take.view.scale) };
+const got = await sharp(join(dir, take.frames[0]!.file)).metadata();
+if (got.width !== want.width || got.height !== want.height) {
+  throw new Error(`the take's frames are ${got.width}x${got.height}, but it says ${want.width}x${want.height}; re-record it`);
+}
 const plan = renderPlan(take, { fps: FPS, titleSeconds: 4, waitSpeed: 4 });
 // Before any frame: a missing music file stops here, not after minutes of rendering.
 const audio = audioArgs(music, plan.seconds, existsSync);
