@@ -14,7 +14,7 @@ import OpenRunByHash from "@/components/OpenRunByHash";
 import Verdict from "@/components/ui/Verdict";
 
 export default function RunHistory() {
-  const { net, wallet, connect } = useWallet();
+  const { net, wallet, connect, connecting } = useWallet();
   const search = useSearchParams();
   const [rows, setRows] = useState<RunRecord[]>([]);
 
@@ -65,7 +65,7 @@ export default function RunHistory() {
           <Tape>
             <Verdict title="Runs you sent from this browser"
               body="Connect the wallet that paid them. This list lives in this browser only — Ledgerline has no account and no server that remembers you." />
-            <Button type="primary" style={{ marginTop: 24 }} onClick={connect}>Connect a wallet</Button>
+            <Button type="primary" style={{ marginTop: 24 }} loading={connecting} onClick={connect}>Connect a wallet</Button>
             <OpenRunByHash network={net.name} />
           </Tape>
         </Col>

@@ -33,7 +33,7 @@ interface BalancesRead { owner: string; chainId: number; attempt: number; balanc
 interface MetaRead { chainId: number; attempt: number; meta: Record<string, TokenMeta> }
 
 export default function Dashboard() {
-  const { net, wallet, connect, wrongChain, switching, switchToArc } = useWallet();
+  const { net, wallet, connect, connecting, wrongChain, switching, switchToArc } = useWallet();
   const search = useSearchParams();
   const [attempt, setAttempt] = useState(0);
   // Bumped by Remove, so the history is read again without a reload.
@@ -109,7 +109,7 @@ export default function Dashboard() {
             <p style={{ marginTop: 12, marginBottom: 0 }}>
               You need a browser wallet (MetaMask or Rabby) and a little USDC on Arc for network fees.
             </p>
-            <Button type="primary" style={{ marginTop: 20 }} onClick={connect}>Connect a wallet</Button>
+            <Button type="primary" style={{ marginTop: 20 }} loading={connecting} onClick={connect}>Connect a wallet</Button>
             <OpenRunByHash network={net.name} />
           </Tape>
         </Col>

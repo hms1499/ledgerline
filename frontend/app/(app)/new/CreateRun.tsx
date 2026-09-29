@@ -97,7 +97,7 @@ export default function CreateRun() {
   }, [base, edits]);
   const [prepared, setPrepared] = useState<PreparedRun>();
   const [outcome, setOutcome] = useState<Extract<RunOutcome, { state: "confirmed" }>>();
-  const { net, wallet, wrongChain, held, error: walletError, switchError, connect, setHold } = useWallet();
+  const { net, wallet, wrongChain, held, error: walletError, switchError, connect, connecting, setHold } = useWallet();
   // Owned here, so "Choose another file" returns to a filled field. Set after
   // mount: the server's clock and time zone are not the payer's.
   const [runLabel, setRunLabel] = useState("");
@@ -206,7 +206,7 @@ export default function CreateRun() {
                 // asked nothing about it, and the file brings the offer back.
                 onBack={() => { if (!drafted?.offer) forgetDraft(); setStep(0); }}
                 onNext={() => setStep(2)}
-                wallet={wallet} walletError={walletError} onConnect={connect}
+                wallet={wallet} walletError={walletError} onConnect={connect} connecting={connecting}
                 wrongChain={wrongChain}
               />
             )}

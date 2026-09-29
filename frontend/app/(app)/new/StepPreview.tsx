@@ -45,13 +45,13 @@ function focusFirst(id: string) {
 }
 
 export default function StepPreview({
-  draft, net, onEdits, onBack, onNext, wallet, walletError, onConnect, wrongChain,
+  draft, net, onEdits, onBack, onNext, wallet, walletError, onConnect, connecting, wrongChain,
   onUndo, onRedo, offer, onContinue, onStartOver, draftStatus,
 }: {
   draft: RunDraft; net: NetworkView;
   onEdits: (edits: SheetEdits) => void;
   onBack: () => void; onNext: () => void;
-  wallet?: ConnectedWallet; walletError?: ConnectError; onConnect: () => void;
+  wallet?: ConnectedWallet; walletError?: ConnectError; onConnect: () => void; connecting?: boolean;
   /** Connected, but not on Arc. The banner above carries the fix. */
   wrongChain?: boolean;
   onUndo?: () => void;
@@ -369,7 +369,7 @@ export default function StepPreview({
                   : "Check it against the chain"}
           </Button>
         ) : (
-          <Button type="primary" onClick={onConnect}>Connect a wallet to continue</Button>
+          <Button type="primary" loading={connecting} onClick={onConnect}>Connect a wallet to continue</Button>
         )}
       </div>
 
