@@ -31,6 +31,14 @@ describe("the pointer", () => {
     expect(POINTER_SETUP).not.toMatch(/metamask|rabby|coinbase|phantom/i);
   });
 
+  it("keeps a still page sending frames, so its last change is never lost", () => {
+    // The screencast drops frames drawn while it waits for an ack; a page that
+    // then stays still never sends its final state. A 1px heartbeat redraws
+    // five times a second.
+    expect(POINTER_SETUP).toMatch(/vid-heartbeat/);
+    expect(POINTER_SETUP).toMatch(/steps\(1\)/);
+  });
+
   it("aims at the middle of a box", () => {
     expect(centre({ x: 10, y: 20, width: 100, height: 40 })).toEqual({ x: 60, y: 40 });
   });

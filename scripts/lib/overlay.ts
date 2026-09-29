@@ -78,4 +78,22 @@ export const POINTER_SETUP = String.raw`(() => {
     document.body.append(r);
     setTimeout(() => r.remove(), 600);
   };
+  // The screencast drops frames drawn while it waits for an ack, and a page
+  // that then stays still never sends its final state: the rehearsal lost a
+  // run page's loaded table that way. An invisible 1px heartbeat redraws five
+  // times a second, so the newest state is always on a frame within 200 ms.
+  // Added after load, so it never meets React's hydration.
+  const heartbeat = () => {
+    if (document.getElementById("vid-heartbeat")) return;
+    const h = document.createElement("div");
+    h.id = "vid-heartbeat";
+    h.setAttribute("aria-hidden", "true");
+    const style = document.createElement("style");
+    style.textContent = "#vid-heartbeat{position:fixed;left:0;bottom:0;width:1px;height:1px;z-index:2147483644;pointer-events:none;background:#000;opacity:.004;animation:vid-beat .4s steps(1) infinite}"
+      + "@keyframes vid-beat{50%{opacity:.008}}";
+    document.head.append(style);
+    document.body.append(h);
+  };
+  if (document.readyState === "complete") setTimeout(heartbeat, 0);
+  else window.addEventListener("load", () => setTimeout(heartbeat, 0));
 })();`;
