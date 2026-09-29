@@ -142,9 +142,13 @@ pnpm exec tsx scripts/record-walkthrough.ts --network mainnet --confirm-mainnet
   Next, pinned as a root devDependency); raw frames stream into ffmpeg's stdin
   and out as H.264 (libx264, CRF 18, yuv420p). No per-frame files are written.
 - **Captions after the camera.** A lower third in the tape style — a mono
-  step chip and one line of text — drawn as SVG and composited after the crop,
-  so zooming never scales it. The title card is drawn the same way. The local
-  ffmpeg has no `drawtext` filter `[measured]`, and SVG keeps the site's fonts.
+  step chip and one line of text — composited after the crop, so zooming
+  never scales it. Each caption, and the title card, is rendered by Chromium
+  at the end of the take from a page of the running app, so it uses the
+  site's own fonts and tokens, and saved as a PNG in the take. The site's
+  fonts come from `next/font` and are not installed on the machine
+  `[measured]`, so SVG rasterised by sharp would fall back to system fonts;
+  the local ffmpeg has no `drawtext` filter `[measured]`.
 - **Music.** Trimmed to the video, faded in over 1s and out over 2s, and
   normalised to −14 LUFS with `loudnorm`, AAC. Without `--music`, a silent AAC
   track, so every upload has the same shape.
