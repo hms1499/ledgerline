@@ -238,6 +238,11 @@
 .funding .mark { width: 1.2rem; flex: none; text-align: center; font-family: var(--font-mono), ui-monospace, monospace; }
 .funding-short .mark, .funding-short strong:last-child { color: var(--ribbon); }
 .funding-unknown .mark { background: var(--highlight); color: var(--on-highlight); }
+.treasury-topup { margin-top: 14px; padding: 12px 14px; background: var(--tape-shade); font-size: 14px; }
+.treasury-topup p { margin: 0 0 6px; }
+.treasury-topup .sends { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; }
+.treasury-topup .sends .hex { font-size: 14px; font-weight: 700; }
+.treasury-topup .because { margin: 0 0 10px; }
 
 /* ── wallet picker ────────────────────────────────────────────────────── */
 .wallet-list { list-style: none; margin: 1.1rem 0 0; padding: 0; display: grid; gap: 0.5rem; }

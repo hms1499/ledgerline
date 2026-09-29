@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import { Alert, Button, Modal, Popconfirm } from "antd";
 import type { Address } from "viem";
 import { fundingFor, tokensForChain, totalsByToken } from "@ledgerline/core";
@@ -8,7 +8,7 @@ import type { NetworkView } from "@/lib/chain";
 import type { ConnectedWallet } from "@/lib/wallet";
 import type { RunDraft } from "./CreateRun";
 import type { ConnectError } from "@/lib/connect-error";
-import { fundingView, topUpHint } from "@/lib/funding-view";
+import { fundingView, topUpHint, treasuryTopUp } from "@/lib/funding-view";
 import { fixList } from "@/lib/fix-list";
 import { changeCounts, changeTotal, fileChanged, type SheetEdits } from "@/lib/sheet-edits";
 import { correctedFile } from "@/lib/corrected-file";
@@ -177,11 +177,18 @@ export default function StepPreview({
     return () => { current = false; };
   }, [owner, net, tokenKey, reads]);
 
-  const funding = balances && fundingView({
-    lines: fundingFor(draft.rows, balances),
+  const fundingLines = balances && fundingFor(draft.rows, balances);
+  const funding = fundingLines && fundingView({
+    lines: fundingLines,
     usdc, usdcHold: balances[usdc.toLowerCase()],
     decimals: draft.decimals, symbols: draft.symbols,
   });
+  const topUp = fundingLines && owner && treasuryTopUp({
+    lines: fundingLines, wallet: owner, network: net.name,
+    decimals: draft.decimals, symbols: draft.symbols,
+  });
+  const [copiedTopUp, setCopiedTopUp] = useState(false);
+  useEffect(() => setCopiedTopUp(false), [topUp?.text]);
   const checkingFunds = !!owner && !balances;
   const shortTokens = funding?.short ?? 0;
 
@@ -285,6 +292,24 @@ export default function StepPreview({
                   </li>
                 ))}
               </ul>
+              {topUp && (
+                <div className="treasury-topup">
+                  <p><strong>Funding this wallet from a Safe or another wallet?</strong> Send it at least:</p>
+                  <p className="sends">
+                    {topUp.sends.map((s, i) => (
+                      <Fragment key={s}>{i > 0 && <span aria-hidden>·</span>}<span className="hex">{s}</span></Fragment>
+                    ))}
+                    <span><span aria-hidden>→ </span><span className="hex">{owner}</span></span>
+                  </p>
+                  <p className="because">{topUp.fee}</p>
+                  <Button size="small" onClick={() => {
+                    void navigator.clipboard.writeText(topUp.text);
+                    setCopiedTopUp(true);
+                  }}>
+                    {copiedTopUp ? "Copied" : "Copy the address and amounts"}
+                  </Button>
+                </div>
+              )}
               <Button size="small" style={{ marginTop: 10 }} onClick={() => setReads((n) => n + 1)}>
                 Check balances again
               </Button>

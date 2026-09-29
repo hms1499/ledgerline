@@ -23,7 +23,7 @@ import { NO_EDITS, changesText, correctionReminder, headerWarning } from "@/lib/
 import { NOTHING_CHANGED } from "@/lib/changes-view";
 import { DRAFT_REFUSED, DRAFT_SAVED, draftPrompt } from "@/lib/draft-store";
 import { noWalletHelp, phoneWalletHelp } from "@/lib/wallet-help";
-import { topUpHint } from "@/lib/funding-view";
+import { topUpHint, treasuryTopUp } from "@/lib/funding-view";
 import { BLOCKED_COPY, CANCELLED, FEE_ADVICE, CHECK_FAILED, RUN_FILE_COPY } from "@/lib/pay-copy";
 import { TX_HASH_HINT } from "@/lib/tx-hash";
 import { spreadsheetRefusal } from "@/lib/run-file";
@@ -254,6 +254,11 @@ describe("copy a payer or recipient reads is free of protocol jargon", () => {
       const p = phoneWalletHelp(n);
       plain(p.title); plain(p.body); plain(p.metamask); plain(p.metamaskMissing); plain(p.others);
       plain(topUpHint("USDC", n).text); plain(topUpHint("cirBTC", n).text);
+      const t = treasuryTopUp({
+        lines: [{ token: TOKENS.EURC, need: 2n, hold: 1n, short: 1n }],
+        wallet: A, network: n, decimals: DECIMALS, symbols: { [TOKENS.EURC.toLowerCase()]: "EURC" },
+      });
+      plain(t?.text); plain(t?.fee);
     }
     Object.values(BLOCKED_COPY).forEach(plain);
     plain(CANCELLED.message.title); plain(CANCELLED.payment.title); plain(CANCELLED.payment.body);

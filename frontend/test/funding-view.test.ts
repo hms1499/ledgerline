@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { fundingFor, type Address } from "@ledgerline/core";
-import { fundingView } from "@/lib/funding-view";
+import { fundingView, treasuryTopUp } from "@/lib/funding-view";
 
 const USDC = "0x3600000000000000000000000000000000000000" as Address;
 const EURC = "0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1" as Address;
@@ -65,3 +65,49 @@ describe("fundingView — the preview's balance check", () => {
     expect(v.rows[0]).toMatchObject({ need: "12345678 (0x171a…baa0)", hold: "1 (0x171a…baa0)" });
   });
 });
+
+describe("treasuryTopUp — what to send a short wallet from a Safe or another wallet", () => {
+  const W = "0x595558B91DFAA97840F2F00bF6728A74B8E6de17" as Address;
+  const topUp = (items: { token: Address; amount: bigint }[], balances: Record<string, bigint | undefined>) =>
+    treasuryTopUp({
+      lines: fundingFor(items.map((i) => ({ ...i, to: R })), balances),
+      wallet: W, network: "mainnet", decimals, symbols,
+    });
+
+  it("lists only the short tokens, each by what it is short, in its own decimals", () => {
+    const t = topUp(
+      [{ token: USDC, amount: 1_000_000n }, { token: EURC, amount: 2_500_000n }],
+      { [USDC.toLowerCase()]: 5_000_000n, [EURC.toLowerCase()]: 1_000_000n },
+    );
+    expect(t?.sends).toEqual(["1.5 EURC"]);
+  });
+
+  it("gives the clipboard the full address, the network and one send per line", () => {
+    const t = topUp(
+      [{ token: USDC, amount: 3_000_000n }, { token: EURC, amount: 2_500_000n }],
+      { [USDC.toLowerCase()]: 1_000_000n, [EURC.toLowerCase()]: 0n },
+    );
+    expect(t?.text).toBe(`Send to ${W} on Arc mainnet:\n2 USDC\n2.5 EURC`);
+  });
+
+  it("offers nothing when the wallet already covers the run", () => {
+    expect(topUp([{ token: EURC, amount: 1n }], { [EURC.toLowerCase()]: 1n })).toBeUndefined();
+  });
+
+  it("offers nothing to copy when a short token's decimals are unknown", () => {
+    // A raw integer pasted into a Safe's send form reads as whole tokens.
+    const CIRBTC = "0x171a4217b86a807a64eb94757db6849fb4bdbaa0" as Address;
+    const t = treasuryTopUp({
+      lines: fundingFor([{ token: CIRBTC, amount: 12_345_678n }], { [CIRBTC.toLowerCase()]: 1n }),
+      wallet: W, network: "mainnet", decimals: {}, symbols: {},
+    });
+    expect(t).toBeUndefined();
+  });
+
+  it("reminds that the network fee is paid in USDC on top", () => {
+    const t = topUp([{ token: EURC, amount: 2n }], { [EURC.toLowerCase()]: 1n });
+    expect(t?.fee).toMatch(/network fee/i);
+    expect(t?.fee).toMatch(/USDC/);
+  });
+});
+

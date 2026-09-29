@@ -1,5 +1,5 @@
 import type { Address, FundingLine } from "@ledgerline/core";
-import { short } from "@/lib/chain";
+import { formatAmount, short } from "@/lib/chain";
 import { amountFigure } from "@/lib/token-meta";
 import { FAUCET_URL } from "@/lib/wallet-help";
 
@@ -58,6 +58,48 @@ export function fundingView({
   }
 
   return { rows, short: rows.filter((r) => r.state === "short").length, feeWarning };
+}
+
+export interface TreasuryTopUp {
+  /** One per short token, by what it is short: "1.5 EURC". */
+  sends: string[];
+  /** For the clipboard: the full address and network, then one send per line. */
+  text: string;
+  fee: string;
+}
+
+/**
+ * What to send a short wallet from a Safe or another wallet. Arc's `Memo`
+ * refuses a smart-contract payer, so a treasury in a Safe pays through an
+ * ordinary wallet it funds. The shortfall, not the run's total: a payout
+ * wallet may hold what an earlier run left over.
+ *
+ * Nothing is offered when a short token's decimals are unknown — the only
+ * figure left is a raw integer, and pasted into a Safe's send form it reads
+ * as whole tokens.
+ */
+export function treasuryTopUp({
+  lines, wallet, network, decimals, symbols,
+}: {
+  lines: FundingLine[];
+  wallet: Address;
+  network: "mainnet" | "testnet";
+  decimals: Record<string, number>;
+  symbols: Record<string, string>;
+}): TreasuryTopUp | undefined {
+  const lacking = lines.filter((l) => l.short > 0n);
+  if (lacking.length === 0) return undefined;
+  const sends: string[] = [];
+  for (const l of lacking) {
+    const key = l.token.toLowerCase();
+    if (decimals[key] === undefined) return undefined;
+    sends.push(`${formatAmount(l.short, decimals[key])} ${symbols[key] || short(l.token)}`);
+  }
+  return {
+    sends,
+    text: [`Send to ${wallet} on Arc ${network}:`, ...sends].join("\n"),
+    fee: "Arc takes the network fee in USDC too, so leave a little more USDC in this wallet than the payouts need.",
+  };
 }
 
 /** What a payer short of one token can do next. The faucet is linked for
