@@ -95,7 +95,7 @@ export default function Result({
     {
       title: "Paid", dataIndex: "amount", width: 150,
       render: (a: bigint, r) => (
-        <span className="hex">
+        <span className="hex amt">
           {amountText(a, r.token, metaFor(r.token, draft.decimals, draft.symbols))}
         </span>
       ),

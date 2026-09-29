@@ -380,7 +380,7 @@ function Ready({
                     <ul className="totals totals--tight">
                       {tokenTotals.map(({ token: t, total }) => (
                         <li key={t}>
-                          <span className="hex">{amountText(total, t, tokens.get(t.toLowerCase()) ?? {})}</span>
+                          <span className="hex amt">{amountText(total, t, tokens.get(t.toLowerCase()) ?? {})}</span>
                         </li>
                       ))}
                     </ul>
