@@ -191,7 +191,7 @@ clickable and say nothing. They take `loading={connecting}`, as the top bar's
 
 ## 8. Unknowns
 
-| Question | How it is settled |
+| Question | Answer |
 |---|---|
-| Does a route-level `template.tsx` in Next 16.3.5 remount on a search-param change (the `?n=` network), replaying page-in? `[unverified]` | Measured during implementation; either answer is acceptable, and the plan records which |
-| Does the home page's coin roll read well while the page is still rising? | Looked at in the browser; if the two fight, the hero skips page-in and the rest of the page staggers as specified |
+| Does a route-level `template.tsx` remount on a search-param change (the `?n=` network)? | No. "Navigations within deeper segments or changes to search parameters do not trigger remounts of higher-level templates" (Next 16.2.9 docs, `template.mdx`) `[docs]`; on `next start`, `router.push("/dashboard?n=testnet")` from `/dashboard` kept the same `.page-in` element and played no second page-in `[measured]`. A route change remounts it: a sidebar click and Back each played page-in on `next start` `[measured]` |
+| Does the home page's coin roll read well while the page is still rising? | Yes: at 240 ms the coins are mid-roll and legible, so the hero keeps page-in `[measured]` |
