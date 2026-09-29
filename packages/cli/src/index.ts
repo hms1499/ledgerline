@@ -1,4 +1,3 @@
-#!/usr/bin/env -S npx tsx
 import { createPublicClient, http, TransactionReceiptNotFoundError, type Address } from "viem";
 import { arc, arcTestnet } from "viem/chains";
 import { readFileSync } from "node:fs";

@@ -1,20 +1,51 @@
 {
-  "name": "@ledgerline/cli",
+  "name": "arc-reconcile",
   "version": "0.1.0",
+  "description": "Rebuild a Ledgerline payout run's reconciliation table on Arc from its transaction hash and an RPC alone.",
+  "keywords": [
+    "arc",
+    "reconciliation",
+    "stablecoin",
+    "usdc",
+    "eurc",
+    "invoice",
+    "memo",
+    "ledgerline"
+  ],
+  "license": "MIT",
+  "author": "hms1499",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hms1499/ledgerline.git",
+    "directory": "packages/cli"
+  },
+  "homepage": "https://github.com/hms1499/ledgerline#reconciling-a-run",
+  "bugs": {
+    "url": "https://github.com/hms1499/ledgerline/issues"
+  },
   "type": "module",
   "bin": {
-    "arc-reconcile": "./src/index.ts"
+    "arc-reconcile": "dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
-    "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "build": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --external:viem --banner:js=\"#!/usr/bin/env node\" --outfile=dist/index.js",
+    "test": "pnpm run build && vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm run build && vitest run"
   },
   "dependencies": {
-    "@ledgerline/core": "workspace:*",
     "viem": "^2.56.0"
   },
   "devDependencies": {
+    "@ledgerline/core": "workspace:*",
     "@types/node": "^26.6.2",
+    "esbuild": "^0.28.2",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^2.1.0"

@@ -390,3 +390,8 @@ What is specific to Arc:
 
 Built for Arc Microgrants on DoraHacks, on Arc's `Memo` and `Multicall3From`
 predeploys.
+
+## License
+
+[MIT](LICENSE). `PayoutAnchor.sol` carries the same SPDX identifier in the
+source verified on chain.

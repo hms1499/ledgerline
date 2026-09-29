@@ -31,4 +31,13 @@ describe("the README", () => {
     expect(badge).toBeGreaterThan(-1);
     expect(badge).toBeLessThan(README.indexOf(LIVE));
   });
+
+  it("says the code is MIT, as the LICENSE file and every package do", () => {
+    const at = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
+    expect(at("../../LICENSE")).toMatch(/^MIT License/);
+    expect(README).toMatch(/## License\n\n[^#]*\[MIT\]\(LICENSE\)/);
+    for (const pkg of ["../../package.json", "../../packages/core/package.json", "../../packages/cli/package.json"]) {
+      expect(JSON.parse(at(pkg)).license, pkg).toBe("MIT");
+    }
+  });
 });

@@ -1,6 +1,7 @@
 {
   "name": "ledgerline",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "test": "pnpm --filter @ledgerline/core build && pnpm -r test && vitest run --dir scripts",
