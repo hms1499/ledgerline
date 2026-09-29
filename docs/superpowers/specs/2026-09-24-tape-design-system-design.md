@@ -401,6 +401,7 @@ Public copy follows the plain-language rule in
 
 > Amended by `2026-09-28-home-polish-design.md` §4: chapters that follow the demo video, the example receipt printing in, and no count-ups.
 > Amended 2026-09-28: **coins roll in** — on every load of the home page, each "Pays in" coin rolls 72px in from beside its label (295°, rolling without slipping), settles, and its name prints in; about 1s in all. The one decorative motion, chosen by the product owner; static under reduced motion.
+> Amended by `2026-09-29-motion-polish-design.md` §2: page-in and stagger (not on `/r`), a 1px hover lift on primary and default buttons, and count-ups on counts — never on amounts. "Nothing else" below is replaced by that list.
 
 - **Print-in**: on `/r`, the six checks appear one after another, 70ms
   apart, each fading in with a 4px upward feed (the existing `settle`

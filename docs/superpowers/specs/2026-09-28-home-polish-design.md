@@ -133,6 +133,8 @@ The footer becomes the page's end, mirroring the header:
 
 ## 4. Motion (amends §8)
 
+> Amended by `2026-09-29-motion-polish-design.md` §2: "no count-ups" narrows to "no amount is rolled"; counts count up, and page transitions and hover lifts on buttons are in.
+
 Two additions. Everything else in §8 stands — no hover lifts, no page
 transitions, no scroll reveals — and one rule is added: **no count-ups**. A
 measured figure is printed, not rolled.
