@@ -53,6 +53,12 @@ const STEP_TITLES = ["Upload", "Review", "Check", "Pay", "Receipts"];
 
 export default function CreateRun() {
   const [step, setStep] = useState(0);
+  // The step the page opened on arrives with the page (page-in); every step
+  // after it enters on its own (spec 2026-09-29 §2.1). Set during render, so
+  // the new step's first frame already carries the class.
+  const [openedOn] = useState(step);
+  const [stepMoved, setStepMoved] = useState(false);
+  if (!stepMoved && step !== openedOn) setStepMoved(true);
   const [base, setBase] = useState<RunBase>();
   const [hist, dispatch] = useReducer(history, START);
   const edits = hist.now;
@@ -178,73 +184,75 @@ export default function CreateRun() {
             as a blank band. */}
         {/* The whole flow is a tape still feeding; the Result tears it off (spec §6.1). */}
         <Tape state={step === 4 ? "torn" : "feeding"} title={step === 1 ? "Payments in this run" : undefined}>
-          {step === 0 && (
-            <StepUpload net={net} runLabel={runLabel} onRunLabel={setRunLabel}
-              onReady={(b) => { setBase(b); dispatch({ type: "reset" }); setStep(1); }} />
-          )}
-          {step === 1 && draft && (
-            <StepPreview
-              draft={draft} net={net}
-              onEdits={(e) => dispatch({ type: "set", edits: e })}
-              onUndo={hist.past.length > 0 ? () => dispatch({ type: "undo" }) : undefined}
-              onRedo={hist.future.length > 0 ? () => dispatch({ type: "redo" }) : undefined}
-              offer={drafted?.offer}
-              onContinue={() => {
-                if (drafted?.offer) dispatch({ type: "reset", edits: drafted.offer.edits });
-                setDrafted((d) => d && { key: d.key });
-              }}
-              onStartOver={() => { forgetDraft(); setDrafted((d) => d && { key: d.key }); }}
-              draftStatus={draftStatus}
-              // A draft not yet answered is not this session's to drop: leaving
-              // asked nothing about it, and the file brings the offer back.
-              onBack={() => { if (!drafted?.offer) forgetDraft(); setStep(0); }}
-              onNext={() => setStep(2)}
-              wallet={wallet} walletError={walletError} onConnect={connect}
-              wrongChain={wrongChain}
-            />
-          )}
-          {step === 2 && draft && wallet && !wrongChain && (
-            <StepPreflight
-              draft={draft} net={net} wallet={wallet}
-              onBack={() => setStep(1)}
-              onReady={(p) => { setPrepared(p); setStep(3); }}
-            />
-          )}
-          {step === 3 && prepared && wallet && sendStaysOnScreen({ wrongChain, held }) && (
-            <StepSend
-              prepared={prepared} net={net} wallet={wallet}
-              // Recorded the moment the wallet returns a hash, marked as
-              // awaiting its receipt. A reload, Back or a closed tab during the
-              // wait for a receipt would otherwise lose the only handle on
-              // money that may have moved, and a payer who cannot find a run
-              // re-sends it under a new name, which nothing on chain refuses.
-              // The list never calls such a run paid; the chain decides when
-              // the run is opened.
-              onSent={(txHash) => recordRun({
-                txHash, payer: wallet.address, chainId: net.chain.id,
-                runLabel: draft?.runLabel ?? "", seenAt: Date.now(),
-                itemCount: prepared.manifest.items.length, awaitingReceipt: true,
-              })}
-              // A reverted run moved nothing and is safe to send again, so it
-              // leaves the list, as it never entered it before.
-              onReverted={(txHash) => forgetRun(txHash, wallet.address, net.chain.id)}
-              onDone={(o) => {
-                if (o.state !== "confirmed") return;
-                setOutcome(o);
-                setStep(4);
-                forgetDraft();
-                recordRun({
-                  txHash: o.txHash, payer: wallet.address, chainId: net.chain.id,
+          <div key={step} className={stepMoved ? "step-in" : undefined}>
+            {step === 0 && (
+              <StepUpload net={net} runLabel={runLabel} onRunLabel={setRunLabel}
+                onReady={(b) => { setBase(b); dispatch({ type: "reset" }); setStep(1); }} />
+            )}
+            {step === 1 && draft && (
+              <StepPreview
+                draft={draft} net={net}
+                onEdits={(e) => dispatch({ type: "set", edits: e })}
+                onUndo={hist.past.length > 0 ? () => dispatch({ type: "undo" }) : undefined}
+                onRedo={hist.future.length > 0 ? () => dispatch({ type: "redo" }) : undefined}
+                offer={drafted?.offer}
+                onContinue={() => {
+                  if (drafted?.offer) dispatch({ type: "reset", edits: drafted.offer.edits });
+                  setDrafted((d) => d && { key: d.key });
+                }}
+                onStartOver={() => { forgetDraft(); setDrafted((d) => d && { key: d.key }); }}
+                draftStatus={draftStatus}
+                // A draft not yet answered is not this session's to drop: leaving
+                // asked nothing about it, and the file brings the offer back.
+                onBack={() => { if (!drafted?.offer) forgetDraft(); setStep(0); }}
+                onNext={() => setStep(2)}
+                wallet={wallet} walletError={walletError} onConnect={connect}
+                wrongChain={wrongChain}
+              />
+            )}
+            {step === 2 && draft && wallet && !wrongChain && (
+              <StepPreflight
+                draft={draft} net={net} wallet={wallet}
+                onBack={() => setStep(1)}
+                onReady={(p) => { setPrepared(p); setStep(3); }}
+              />
+            )}
+            {step === 3 && prepared && wallet && sendStaysOnScreen({ wrongChain, held }) && (
+              <StepSend
+                prepared={prepared} net={net} wallet={wallet}
+                // Recorded the moment the wallet returns a hash, marked as
+                // awaiting its receipt. A reload, Back or a closed tab during the
+                // wait for a receipt would otherwise lose the only handle on
+                // money that may have moved, and a payer who cannot find a run
+                // re-sends it under a new name, which nothing on chain refuses.
+                // The list never calls such a run paid; the chain decides when
+                // the run is opened.
+                onSent={(txHash) => recordRun({
+                  txHash, payer: wallet.address, chainId: net.chain.id,
                   runLabel: draft?.runLabel ?? "", seenAt: Date.now(),
-                  itemCount: prepared.manifest.items.length,
-                });
-              }}
-              onBusy={setHold}
-            />
-          )}
-          {step === 4 && outcome && prepared && draft && (
-            <Result outcome={outcome} prepared={prepared} draft={draft} net={net} />
-          )}
+                  itemCount: prepared.manifest.items.length, awaitingReceipt: true,
+                })}
+                // A reverted run moved nothing and is safe to send again, so it
+                // leaves the list, as it never entered it before.
+                onReverted={(txHash) => forgetRun(txHash, wallet.address, net.chain.id)}
+                onDone={(o) => {
+                  if (o.state !== "confirmed") return;
+                  setOutcome(o);
+                  setStep(4);
+                  forgetDraft();
+                  recordRun({
+                    txHash: o.txHash, payer: wallet.address, chainId: net.chain.id,
+                    runLabel: draft?.runLabel ?? "", seenAt: Date.now(),
+                    itemCount: prepared.manifest.items.length,
+                  });
+                }}
+                onBusy={setHold}
+              />
+            )}
+            {step === 4 && outcome && prepared && draft && (
+              <Result outcome={outcome} prepared={prepared} draft={draft} net={net} />
+            )}
+          </div>
         </Tape>
       </Col>
 

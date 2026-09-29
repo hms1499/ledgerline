@@ -70,3 +70,24 @@ describe("page-in and stagger (spec §2.1–2.2)", () => {
     expect(delays).toEqual([["2", 80], ["3", 160], ["4", 240], ["5", 320], ["n + 6", 400]]);
   });
 });
+
+describe("New's steps enter (spec §2.1)", () => {
+  it("each step after the first remounts in a step-in wrapper; the step the page opened on arrives with the page", () => {
+    const text = source("app/(app)/new/CreateRun.tsx");
+    expect(text).toMatch(/const \[openedOn\] = useState\(step\);/);
+    expect(text).toMatch(/if \(!stepMoved && step !== openedOn\) setStepMoved\(true\);/);
+    expect(text).toMatch(/<div key=\{step\} className=\{stepMoved \? "step-in" : undefined\}>/);
+  });
+
+  it("a verdict opening a step still sits flush with the tape's top, one div deeper", () => {
+    // The wrapper has no class on the step the page opened on, so the rule
+    // reaches through any first-child wrapper but the tape's own head.
+    expect(css("tape.css")).toMatch(
+      /\.tape > \.verdict:first-child,\s*\.tape > :not\(\.tape-head\):first-child > \.verdict:first-child\s*\{\s*padding-top:\s*0;\s*\}/);
+  });
+
+  it("plays like page-in, where motion is allowed", () => {
+    expect(css("shell.css")).toMatch(/\.step-in\s*\{\s*animation:\s*page-in 350ms ease-out backwards;\s*\}/);
+    for (const p of preludesUsing(/\.step-in\s*\{/)) expect(p).toMatch(/prefers-reduced-motion:\s*no-preference/);
+  });
+});

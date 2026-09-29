@@ -153,5 +153,6 @@
   .page-in > .grid > .col:nth-child(4) { animation-delay: 240ms; }
   .page-in > .grid > .col:nth-child(5) { animation-delay: 320ms; }
   .page-in > .grid > .col:nth-child(n + 6) { animation-delay: 400ms; }
+  .step-in { animation: page-in 350ms ease-out backwards; }
 }
 @keyframes page-in { from { opacity: 0; transform: translateY(12px); } }

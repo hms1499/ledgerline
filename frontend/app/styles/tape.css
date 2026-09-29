@@ -55,7 +55,9 @@
   font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink);
 }
 .tape-head + .tape-title { border-bottom: 0; padding-bottom: 0; }
-.tape > .verdict:first-child { padding-top: 0; }
+/* New's step sits in a wrapper keyed by the step (motion polish §2.1). */
+.tape > .verdict:first-child,
+.tape > :not(.tape-head):first-child > .verdict:first-child { padding-top: 0; }
 .rule-dashed { height: 0; border-top: 1.5px dashed var(--ink); margin: 14px 0; }
 
 /* ── key marks: ◇ subtotal, ✱ total, # non-add (spec §6.2) ───────────── */
