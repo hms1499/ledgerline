@@ -8,6 +8,7 @@ import {
   type BatchAssessment, type PaymentRecord, type RawLog, type Hex,
 } from "@ledgerline/core";
 import { networkFor, short, type NetworkView } from "@/lib/chain";
+import { publishedReceipt } from "@/lib/mainnet-proof";
 import { describeError } from "@/lib/errors";
 import { amountText } from "@/lib/token-meta";
 import { Grid, Col } from "@/components/grid/Grid";
@@ -168,6 +169,9 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
   const naiveTxCount = approve ? 2 : 1;
   const naiveGas = naive.gasUsed + (approve?.gasUsed ?? 0n);
   const reverted = [ours, naive].filter((s) => s.reverted);
+  // A receipt link without its salt and proof opens as "incomplete"; only a
+  // run whose file is published can have a whole one.
+  const receipt = publishedReceipt(ours.hash, net.name);
 
   const rows: ClaimRow[] = [
     {
@@ -318,7 +322,7 @@ function Comparison({ data, net }: { data: Loaded; net: NetworkView }) {
           <p className="because" style={{ marginTop: "0.9rem" }}>
             The reference is salted, so the chain shows a reference exists without
             revealing which invoice it names. Only someone holding the run salt can read
-            it — which is what the <a href={`/r/${ours.hash}?n=${net.name}`}>receipt page</a> does.
+            it — which is what the {receipt ? <a href={receipt}>receipt page</a> : "receipt page"} does.
           </p>
         </TxCard>
       </Col>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { networkFor } from "@/lib/chain";
 import { withNet } from "@/lib/nav";
 import { sampleCsvHref } from "@/lib/sample-csv";
-import { MAINNET_PROOF as P, controlComparison } from "@/lib/mainnet-proof";
+import { MAINNET_PROOF as P, controlComparison, publishedReceipt } from "@/lib/mainnet-proof";
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import DemoVideo from "@/components/ui/DemoVideo";
@@ -219,6 +219,7 @@ export default async function Home({
             <span className="proof-links">
               <a href={`https://explorer.arc.io/tx/${P.txHash}`} target="_blank" rel="noreferrer">View on explorer ↗</a>
               <Link href={`/run/${P.txHash}?n=mainnet`}>Open the run here</Link>
+              <Link href={publishedReceipt(P.txHash, "mainnet")!}>Open a receipt</Link>
               <Link href="/why?n=mainnet">Check the comparison live</Link>
             </span>
           </div>

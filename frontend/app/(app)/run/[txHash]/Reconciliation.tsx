@@ -12,6 +12,7 @@ import {
 } from "@ledgerline/core";
 import { networkFor, otherNetwork, short, receiptUrl, type NetworkView } from "@/lib/chain";
 import { settleRun } from "@/lib/history";
+import { publishedRunFile } from "@/lib/mainnet-proof";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { recoverGate, wrongWalletText } from "@/lib/recover-view";
 import { describeError } from "@/lib/errors";
@@ -160,6 +161,9 @@ function Ready({
   onManifest: (m: Manifest, name: string) => void;
 }) {
   const { result, completeness, tokens } = data;
+  // Only the public proof run has one. It goes through onManifest like an
+  // uploaded file, so it is checked against the anchored root all the same.
+  const proofFile = publishedRunFile(txHash, net.name);
 
   const counts = useMemo(() => {
     const c = new Map<ReconcileStatus, number>();
@@ -304,6 +308,14 @@ function Ready({
                   <button className="linkish">Load the run file</button>
                 </Upload>{" "}
                 to compare what was owed with what was paid. It is read in your browser and never uploaded.
+                {proofFile && (
+                  <>
+                    {" "}This is the public proof run, so its file is published:{" "}
+                    <button className="linkish" onClick={() => onManifest(proofFile, "mainnet-run.json, the published proof run file")}>
+                      Load this proof run&apos;s published file
+                    </button>.
+                  </>
+                )}
               </>
             }
           />

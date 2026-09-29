@@ -130,3 +130,23 @@ describe("publishedReceipt — a receipt link that opens as verified, never as i
     expect(README).toContain(`https://ledgerline-chi-sandy.vercel.app${link}`);
   });
 });
+
+describe("every page that points at the proof opens something complete", () => {
+  it("/why links a receipt only when it can link a whole one", () => {
+    const why = read("../app/(public)/why/Why.tsx");
+    expect(why).not.toContain("href={`/r/${ours.hash}?n=${net.name}`}");
+    expect(why).toContain("publishedReceipt(ours.hash, net.name)");
+  });
+
+  it("the home page's proof links a receipt that verifies", () => {
+    const home = read("../app/(public)/page.tsx");
+    expect(home).toContain('publishedReceipt(P.txHash, "mainnet")');
+    expect(home).toContain("Open a receipt");
+  });
+
+  it("the proof run's page offers its published file", () => {
+    const run = read("../app/(app)/run/[txHash]/Reconciliation.tsx");
+    expect(run).toContain("publishedRunFile(txHash, net.name)");
+    expect(run).toMatch(/Load this proof run(&apos;|')s published file/);
+  });
+});
