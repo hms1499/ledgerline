@@ -38,8 +38,25 @@ describe("page-in and stagger (spec §2.1–2.2)", () => {
     for (const f of ["app/(app)/template.tsx", "app/(public)/template.tsx"]) {
       const text = source(f);
       expect(text, f).toMatch(/pageMotion\(usePathname\(\)\)/);
-      expect(text, f).toMatch(/<div className="page-in">\{children\}<\/div>/);
+      expect(text, f).toMatch(/<PageIn>\{children\}<\/PageIn>/);
     }
+  });
+
+  it("the page arrives once: the wrapper marks itself arrived when its own page-in has settled", () => {
+    // Content a chain read swaps in later (a skeleton's replacement, the Run
+    // summary) must appear at once, not fade out and stagger in again.
+    const text = source("components/shell/PageIn.tsx");
+    expect(text).toMatch(/className="page-in" data-arrived=\{arrived \? "" : undefined\}/);
+    expect(text).toMatch(/getAnimations\(\{ subtree: true \}\)/);
+    expect(text).toMatch(/animationName === "page-in"/);
+    expect(text).toMatch(/Promise\.allSettled/);
+  });
+
+  it("the entrance applies only before the page has arrived", () => {
+    const media = blocks(css("shell.css")).find(([p, b]) => /no-preference/.test(p) && /page-in/.test(b))?.[1] ?? "";
+    const rules = [...media.matchAll(/([^{}]+)\{[^}]*\}/g)].map((m) => m[1]!.trim()).filter((s) => s.includes(".page-in"));
+    expect(rules.length).toBeGreaterThan(0);
+    for (const r of rules) for (const s of r.split(",")) expect(s.trim(), s).toMatch(/^\.page-in:not\(\[data-arrived\]\) > /);
   });
 
   it("plays only where motion is allowed", () => {
@@ -66,7 +83,7 @@ describe("page-in and stagger (spec §2.1–2.2)", () => {
   });
 
   it("staggers 80 ms a step, so a long page has every block started by 400 ms", () => {
-    const delays = [...css("shell.css").matchAll(/\.page-in > \.grid > \.col:nth-child\(([^)]+)\)\s*\{\s*animation-delay:\s*(\d+)ms/g)]
+    const delays = [...css("shell.css").matchAll(/\.page-in:not\(\[data-arrived\]\) > \.grid > \.col:nth-child\(([^)]+)\)\s*\{\s*animation-delay:\s*(\d+)ms/g)]
       .map((m) => [m[1], Number(m[2])]);
     expect(delays).toEqual([["2", 80], ["3", 160], ["4", 240], ["5", 320], ["n + 6", 400]]);
   });

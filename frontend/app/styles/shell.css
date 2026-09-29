@@ -145,14 +145,16 @@
 
 /* ── a page arrives (spec 2026-09-29 §2.1–2.2): its blocks in reading order,
    80 ms apart, every one started by 400 ms. Backwards only: a browser that
-   skips the animation shows the page, and nothing is left transformed. ─── */
+   skips the animation shows the page, and nothing is left transformed. Only
+   until the page has arrived (PageIn sets data-arrived): a block swapped in
+   later appears as it is, not faded out and staggered in again. ─────────── */
 @media (prefers-reduced-motion: no-preference) {
-  .page-in > .grid > .col, .page-in > :not(.grid) { animation: page-in 350ms ease-out backwards; }
-  .page-in > .grid > .col:nth-child(2) { animation-delay: 80ms; }
-  .page-in > .grid > .col:nth-child(3) { animation-delay: 160ms; }
-  .page-in > .grid > .col:nth-child(4) { animation-delay: 240ms; }
-  .page-in > .grid > .col:nth-child(5) { animation-delay: 320ms; }
-  .page-in > .grid > .col:nth-child(n + 6) { animation-delay: 400ms; }
+  .page-in:not([data-arrived]) > .grid > .col, .page-in:not([data-arrived]) > :not(.grid) { animation: page-in 350ms ease-out backwards; }
+  .page-in:not([data-arrived]) > .grid > .col:nth-child(2) { animation-delay: 80ms; }
+  .page-in:not([data-arrived]) > .grid > .col:nth-child(3) { animation-delay: 160ms; }
+  .page-in:not([data-arrived]) > .grid > .col:nth-child(4) { animation-delay: 240ms; }
+  .page-in:not([data-arrived]) > .grid > .col:nth-child(5) { animation-delay: 320ms; }
+  .page-in:not([data-arrived]) > .grid > .col:nth-child(n + 6) { animation-delay: 400ms; }
   .step-in { animation: page-in 350ms ease-out backwards; }
 }
 @keyframes page-in { from { opacity: 0; transform: translateY(12px); } }

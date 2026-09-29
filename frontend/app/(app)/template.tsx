@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { pageMotion } from "@/lib/motion";
+import PageIn from "@/components/shell/PageIn";
 
 /**
  * A template, not a layout: Next mounts a new one for each page, so every
@@ -10,5 +11,5 @@ import { pageMotion } from "@/lib/motion";
  */
 export default function AppTemplate({ children }: { children: React.ReactNode }) {
   if (!pageMotion(usePathname())) return children;
-  return <div className="page-in">{children}</div>;
+  return <PageIn>{children}</PageIn>;
 }

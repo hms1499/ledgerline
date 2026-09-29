@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { pageMotion } from "@/lib/motion";
+import PageIn from "@/components/shell/PageIn";
 
 /**
  * Every public page arrives with page-in, except the receipt: `/r` keeps only
@@ -9,5 +10,5 @@ import { pageMotion } from "@/lib/motion";
  */
 export default function PublicTemplate({ children }: { children: React.ReactNode }) {
   if (!pageMotion(usePathname())) return children;
-  return <div className="page-in">{children}</div>;
+  return <PageIn>{children}</PageIn>;
 }
