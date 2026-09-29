@@ -24,6 +24,7 @@ import {
 import { Grid, Col } from "@/components/grid/Grid";
 import Tape from "@/components/ui/Tape";
 import StatTile from "@/components/ui/StatTile";
+import CountUp from "@/components/ui/CountUp";
 import Totals from "@/components/ui/Totals";
 import Verdict from "@/components/ui/Verdict";
 
@@ -265,7 +266,7 @@ function Ready({
       {stats.map((s) => (
         <Col key={s.key} span={3} md={6}>
           <StatTile
-            label={s.label} tone={s.tone} value={s.value}
+            label={s.label} tone={s.tone} value={s.count === undefined ? s.value : <CountUp value={s.count} />}
             sub={s.key === "recorded"
               ? <a href={`${net.explorer}/tx/${txHash}`} target="_blank" rel="noreferrer">View on explorer</a>
               : s.key === "payments" && s.sub.length

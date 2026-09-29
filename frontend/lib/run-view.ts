@@ -45,6 +45,9 @@ export interface StatView {
   key: "payments" | "completeness" | "review" | "recorded";
   label: string;
   value: string;
+  /** A whole count, for a figure that counts up (spec 2026-09-29 §2.4). Only
+   *  Payments has one: every other tile is a word, an amount or a block. */
+  count?: number;
   tone?: StatTone;
   sub: string[];
 }
@@ -104,7 +107,7 @@ export function runStatsView({
 
   return [
     {
-      key: "payments", label: STAT_LABELS[0], value: String(payments.length),
+      key: "payments", label: STAT_LABELS[0], value: String(payments.length), count: payments.length,
       sub: totals.map(({ token, total }) => amountText(total, token, meta.get(token.toLowerCase()) ?? {})),
     },
     { key: "completeness", label: STAT_LABELS[1], ...completeness[c.verdict], sub: [] },

@@ -83,6 +83,11 @@ describe("runStatsView — the run page's four tiles", () => {
       .toEqual(["5 (0xbEf5…21c1)"]);
   });
 
+  it("Payments: carries the count as a number, the only tile that counts up", () => {
+    expect(stats()[0]).toMatchObject({ value: "3", count: 3 });
+    expect(stats().slice(1).map((s) => s.count)).toEqual([undefined, undefined, undefined]);
+  });
+
   it("Completeness: each verdict has a word and a tone", () => {
     expect(stats({ completeness: comp("complete") })[1]).toMatchObject({ value: "Complete", tone: "success" });
     expect(stats({ completeness: comp("incomplete", { missing: 2 }) })[1]).toMatchObject({ value: "2 missing", tone: "danger" });

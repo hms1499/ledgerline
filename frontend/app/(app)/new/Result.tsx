@@ -13,6 +13,7 @@ import { RUN_FILE_COPY } from "@/lib/pay-copy";
 import { saveFile } from "@/lib/save-file";
 import { changeCounts, correctionReminder } from "@/lib/sheet-edits";
 import { correctedFile } from "@/lib/corrected-file";
+import CountUp from "@/components/ui/CountUp";
 
 interface LinkRow {
   key: string;
@@ -119,7 +120,7 @@ export default function Result({
       <section className="line line--summary">
         <div>
           <p className="amount">
-            {rows.length}<span className="unit">paid</span>
+            <CountUp value={rows.length} /><span className="unit">paid</span>
           </p>
           <p className="payee">Recorded in block {outcome.receipt.blockNumber.toLocaleString("en-US")}</p>
         </div>

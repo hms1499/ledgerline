@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { join, relative } from "node:path";
 import { pageMotion } from "@/lib/motion";
 
 const STYLES = fileURLToPath(new URL("../app/styles/", import.meta.url));
@@ -115,5 +116,20 @@ describe("buttons lift (spec §2.3)", () => {
     expect(body()).toMatch(/transition-timing-function:\s*ease-out/);
     expect(body()).toMatch(/box-shadow:\s*0 3px 8px -4px rgb\(0 0 0 \/ 0\.35\)/);
     expect(body()).toMatch(/\.button-primary:active\s*\{\s*transform:\s*translateY\(1px\);\s*box-shadow:\s*none;\s*\}/);
+  });
+});
+
+describe("counts that count (spec §2.4)", () => {
+  const ROOT = fileURLToPath(new URL("..", import.meta.url));
+  const tsx = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((d) =>
+    d.isDirectory() ? tsx(join(dir, d.name)) : d.name.endsWith(".tsx") ? [join(dir, d.name)] : []);
+
+  it("only New's paid count and the Run page's Payments figure — never an amount", () => {
+    const uses = ["app", "components"].flatMap((d) => tsx(join(ROOT, d))).flatMap((f) =>
+      [...readFileSync(f, "utf8").matchAll(/<CountUp value=\{([^}]+)\} \/>/g)].map((m) => `${relative(ROOT, f)}: ${m[1]}`));
+    expect(uses.sort()).toEqual([
+      "app/(app)/new/Result.tsx: rows.length",
+      "app/(app)/run/[txHash]/Reconciliation.tsx: s.count",
+    ]);
   });
 });
