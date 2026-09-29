@@ -1,3 +1,7 @@
+import type { Address, Hex, Manifest } from "@ledgerline/core";
+import { receiptUrl } from "@/lib/chain";
+import proofRun from "@/public/proof/mainnet-run.json";
+
 /**
  * The mainnet proof, measured on 2026-09-24 and recorded in
  * docs/notes/2026-09-24-mainnet-proof.md. Facts about one transaction, shown
@@ -56,4 +60,47 @@ export function controlComparison(): ComparisonRow[] {
     { key: "sender", claim: "Sender the recipient sees", ours: "The payer", ordinary: "The payer", same: true },
     { key: "gas", claim: "Gas per payment", ours: gas(P.gasUsed / n), ordinary: gas(C.gasUsed / C.payments) },
   ];
+}
+
+/**
+ * The proof run's run file, served at /proof/mainnet-run.json. It carries the
+ * run's salt, which every other run file keeps secret (.gitignore says why);
+ * this one is published on purpose, because its invoices are samples and a
+ * reviewer needs it to see the run's invoices and a receipt verify on
+ * mainnet. The page still checks it against the root recorded on chain.
+ */
+const PROOF_RUN_FILE: Manifest = {
+  clientRunId: proofRun.clientRunId as Hex,
+  payer: proofRun.payer as Address,
+  chainId: proofRun.chainId,
+  runSalt: proofRun.runSalt as Hex,
+  items: proofRun.items.map((i) => ({
+    invoiceId: i.invoiceId, token: i.token as Address, to: i.to as Address, amount: BigInt(i.amount),
+  })),
+};
+
+const isProofRun = (txHash: string, network: "mainnet" | "testnet") =>
+  network === "mainnet" && txHash.toLowerCase() === MAINNET_PROOF.txHash;
+
+/** The published run file for this run, or undefined: only the proof run has one. */
+export function publishedRunFile(txHash: string, network: "mainnet" | "testnet"): Manifest | undefined {
+  return isProofRun(txHash, network) ? PROOF_RUN_FILE : undefined;
+}
+
+/**
+ * A complete receipt link for the proof run's first invoice, or undefined for
+ * any other run: a link without its salt and proof opens as "incomplete", so
+ * none is better than that one.
+ */
+export function publishedReceipt(txHash: string, network: "mainnet" | "testnet"): string | undefined {
+  const [item] = PROOF_RUN_FILE.items;
+  const [proof] = proofRun.proofs;
+  if (!isProofRun(txHash, network) || !item || !proof) return undefined;
+  return receiptUrl({
+    txHash: MAINNET_PROOF.txHash,
+    invoiceId: item.invoiceId,
+    runSalt: PROOF_RUN_FILE.runSalt,
+    proof: proof as Hex[],
+    network,
+  });
 }

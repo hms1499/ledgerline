@@ -266,6 +266,14 @@ Arc mainnet:
 | One transaction, three tokens, three invoices | [`0xaf3e6194…e738e4c0`](https://explorer.arc.io/tx/0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0): 0.10 USDC · 0.10 EURC · 0.00001 cirBTC |
 | Standard `Multicall3`, for comparison | [approve](https://explorer.arc.io/tx/0x75663aaf2d6b41ffa656ad63f0e98739de59c24826deedfa6e0f5cdf52896c34), then [batch](https://explorer.arc.io/tx/0x08c578c541dc40cd23d181e0f637a760e3ef7f71286fdc945196c434caed5905) |
 
+[Open a receipt from that run](https://ledgerline-chi-sandy.vercel.app/r/0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0?i=INV-US-001&s=0x86ff8de07206f686a6293d2eade2a0081a6ea2a716a46efc4af98bd7c44b9bf5&p=DxvXpL35nEG9EQin23uXwWy_jwN-9Y6lEb9RgQ89XXVS1_8SK3nk--V5G54CpQS5RSUOGMyICNSVJ9vltp76GA&n=mainnet): it reads **Verified**, six checks
+against Arc mainnet in your browser. The run's file is published at
+[`/proof/mainnet-run.json`](https://ledgerline-chi-sandy.vercel.app/proof/mainnet-run.json). Load it on the
+[run page](https://ledgerline-chi-sandy.vercel.app/run/0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0?n=mainnet),
+or pass it to the CLI with `--manifest`, and every row reads `matched` with its
+invoice id. It is the one run file whose salt is public, on purpose: its
+invoices are samples.
+
 Rebuilt from a public RPC:
 
 ```console

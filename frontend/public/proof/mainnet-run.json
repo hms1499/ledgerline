@@ -1,0 +1,49 @@
+{
+  "clientRunId": "0x6bd637e2c7962e125c211da4548058acf1797566cb4f97a930f069fbdcf7e1b5",
+  "payer": "0x595558B91DFAA97840F2F00bF6728A74B8E6de17",
+  "chainId": 5042,
+  "runSalt": "0x86ff8de07206f686a6293d2eade2a0081a6ea2a716a46efc4af98bd7c44b9bf5",
+  "items": [
+    {
+      "invoiceId": "INV-US-001",
+      "token": "0x3600000000000000000000000000000000000000",
+      "to": "0xe48A096B9E74f064b13c17734af29F85E02d732a",
+      "amount": "100000"
+    },
+    {
+      "invoiceId": "INV-EU-002",
+      "token": "0xbEf5f6d51CB62b58e6A8f77868681825C6fe21c1",
+      "to": "0xe48A096B9E74f064b13c17734af29F85E02d732a",
+      "amount": "100000"
+    },
+    {
+      "invoiceId": "INV-BTC-003",
+      "token": "0x171a4217b86a807a64eb94757db6849fb4bdbaa0",
+      "to": "0xe48A096B9E74f064b13c17734af29F85E02d732a",
+      "amount": "1000"
+    }
+  ],
+  "runLabel": "mainnet-2026-09",
+  "txHash": "0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0",
+  "anchor": "0xd4838881EcBa8320d456B8B65A07A0ac167F0890",
+  "runId": "0x8b0747a1f7c24cf617bddb55e2fc392cc8039e33d3793b9fefd31be535f24fcb",
+  "root": "0xdfe5aad26ab564dce2decea868eefa5ea7a6144d7f1fdabf660a4961bab3f330",
+  "memoIds": [
+    "0x710b8f62acec850c8b44b905c1923012687f5381b8195c8590bf4b3f13766ed3",
+    "0xa170c665f54ec8f107e27f3dcc195d9029c741390faa93119c483f653d62409e",
+    "0xffb22d00bf9c24145948d649dae3434d1c1716f82122bb73b0de93f35260a286"
+  ],
+  "proofs": [
+    [
+      "0x0f1bd7a4bdf99c41bd1108a7db7b97c16cbf8f037ef58ea511bf51810f3d5d75",
+      "0x52d7ff122b79e4fbe5791b9e02a504b945250e18cc8808d49527dbe5b69efa18"
+    ],
+    [
+      "0x0f5684a2f2f2bfe825f689e88f9aaf869ce3ba25fd6b80858c06689d4e48de6c",
+      "0x52d7ff122b79e4fbe5791b9e02a504b945250e18cc8808d49527dbe5b69efa18"
+    ],
+    [
+      "0x380c7895d3424d5b2be21b555bba3799bc513c35a75512775943e0d08c166d2d"
+    ]
+  ]
+}

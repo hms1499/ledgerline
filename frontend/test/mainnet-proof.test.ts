@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { verifyReceipt } from "@ledgerline/core";
-import { MAINNET_PROOF as P, controlComparison } from "@/lib/mainnet-proof";
+import { buildTree, checkManifestAgainstRoot, leafFor, memoIdFor, verifyReceipt, type Hex } from "@ledgerline/core";
+import { MAINNET_PROOF as P, controlComparison, publishedReceipt, publishedRunFile } from "@/lib/mainnet-proof";
+import { decodeProof } from "@/lib/chain";
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
 const NOTE = read("../../docs/notes/2026-09-24-mainnet-proof.md");
@@ -70,5 +71,62 @@ describe("controlComparison", () => {
     // The control disproved the claim that an ordinary batch hides the payer.
     expect(row("sender").same).toBe(true);
     expect(rows.filter((r) => r.same).map((r) => r.key)).toEqual(["sender"]);
+  });
+});
+
+describe("the proof run's published run file", () => {
+  const PUBLISHED = JSON.parse(read("../public/proof/mainnet-run.json"));
+  const file = publishedRunFile(P.txHash, "mainnet")!;
+  // Read from PayoutAnchor.runs(runId) on Arc mainnet, 2026-09-29: this root,
+  // payer 0x5955…de17, 3 items. [measured]
+  const ANCHORED_ROOT = "0xdfe5aad26ab564dce2decea868eefa5ea7a6144d7f1fdabf660a4961bab3f330";
+
+  it("is the file the app serves, for the proof transaction", () => {
+    expect(PUBLISHED.txHash).toBe(P.txHash);
+    expect(file.runSalt).toBe(PUBLISHED.runSalt);
+    expect(file.items.every((i) => typeof i.amount === "bigint")).toBe(true);
+  });
+
+  it("says why its salt is public, where the rule against that is written", () => {
+    expect(read("../../.gitignore")).toContain("frontend/public/proof/mainnet-run.json");
+    expect(NOTE).toContain("/proof/mainnet-run.json");
+  });
+
+  it("is the list anchored on chain for the proof run", () => {
+    expect(file.items.map((i) => i.invoiceId)).toEqual(["INV-US-001", "INV-EU-002", "INV-BTC-003"]);
+    expect(checkManifestAgainstRoot(file, ANCHORED_ROOT).matches).toBe(true);
+  });
+
+  it("belongs to that run on mainnet only, whatever the hash's case", () => {
+    expect(publishedRunFile(P.txHash.toUpperCase().replace("0X", "0x"), "mainnet")).toBeDefined();
+    expect(publishedRunFile(P.txHash, "testnet")).toBeUndefined();
+    expect(publishedRunFile(P.control.batchTx, "mainnet")).toBeUndefined();
+  });
+});
+
+describe("publishedReceipt — a receipt link that opens as verified, never as incomplete", () => {
+  const link = publishedReceipt(P.txHash, "mainnet")!;
+  const q = new URL(link, "https://x.test").searchParams;
+  const file = publishedRunFile(P.txHash, "mainnet")!;
+
+  it("carries the invoice, the salt, the proof and the network", () => {
+    expect(link.startsWith(`/r/${P.txHash}?`)).toBe(true);
+    expect(q.get("i")).toBe("INV-US-001");
+    expect(q.get("s")).toBe(file.runSalt);
+    expect(q.get("n")).toBe("mainnet");
+  });
+
+  it("carries the proof that leads that invoice's line to the anchored root", () => {
+    const leaves = file.items.map((i) => leafFor(memoIdFor(file.runSalt, i.invoiceId), i.token, i.to, i.amount));
+    expect(decodeProof(q.get("p"))).toEqual(buildTree(leaves as Hex[]).proofFor(0));
+  });
+
+  it("offers no link for a run whose file is not published", () => {
+    expect(publishedReceipt(P.txHash, "testnet")).toBeUndefined();
+    expect(publishedReceipt(P.control.batchTx, "mainnet")).toBeUndefined();
+  });
+
+  it("is the receipt the README sends a reviewer to", () => {
+    expect(README).toContain(`https://ledgerline-chi-sandy.vercel.app${link}`);
   });
 });

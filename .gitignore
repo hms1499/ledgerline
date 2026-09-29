@@ -50,6 +50,12 @@ scratch/
 # never goes into git even though the rest of docs/notes/ (the hand-written
 # evidence notes) does.
 docs/notes/*-manifest.json
+# One run file is published on purpose: the mainnet proof run's, at
+# frontend/public/proof/mainnet-run.json. Its invoices are samples, and a
+# reviewer needs its salt to see the run's invoices and a receipt verify on
+# mainnet. The salt comes from the payer signing the run name, so never pay a
+# real list from 0x5955…de17 on mainnet under the run name "mainnet-2026-09":
+# it would share this salt. docs/notes/2026-09-24-mainnet-proof.md has more.
 
 # screenshots from browser checks are evidence for a moment, not artifacts
 *.png

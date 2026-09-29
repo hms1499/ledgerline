@@ -33,6 +33,18 @@ With `--manifest docs/notes/mainnet-manifest.json` all three rows read
 `matched` with their invoice ids, and the run file matches the anchored root.
 The run file itself is gitignored: it carries the run salt.
 
+**Published on 2026-09-29.** A reviewer following the proof met two dead ends:
+the run page could show no invoice ids, and `/why` linked a receipt with no
+salt, which opens as incomplete. Every complete receipt link carries the salt,
+so showing one that verifies on mainnet means publishing it. This run's
+invoices are samples, so its file is now served at `/proof/mainnet-run.json`
+(`frontend/public/proof/mainnet-run.json`), unchanged; every other run file
+stays out of git. Its root was re-read from `PayoutAnchor.runs(runId)` that
+day and matches the file: `0xdfe5aad2…b3f330`, payer `0x5955…de17`, 3 items.
+[measured] The salt is the payer's signature over
+`ledgerline-run-salt:v1:5042:mainnet-2026-09`, so that wallet must never pay a
+real list on mainnet under the same run name.
+
 In a browser, against `next start` with the mainnet env:
 - `/r/<tx>?i=INV-BTC-003&…&n=mainnet` reads **Verified**, 5 of 5 checks ✓,
   amount `0.00001 cirBTC` (8 decimals, read from the token).
