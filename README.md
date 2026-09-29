@@ -97,7 +97,9 @@ payer EOA
 rejects sender spoofing, so a contract that called `Memo` on the payer's behalf
 would revert. The anchor is a sibling subcall, and every `Transfer.from` is the
 payer. It holds no funds and takes no approvals. It has no owner and cannot be
-upgraded. If it failed, money would still move.
+upgraded, so it cannot move or lock funds on its own. The anchor call is
+mandatory inside the batch: if it fails, the whole transaction reverts and no
+payment moves.
 
 ### What a recipient can verify
 

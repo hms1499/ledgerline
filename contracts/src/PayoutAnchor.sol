@@ -9,8 +9,10 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
  *         prove their own line was part of it, and so payments present on chain
  *         but absent from the manifest are detectable.
  *
- * @dev Holds no funds, has no owner, is not upgradeable, and cannot block a
- *      payment. It is an evidence layer only.
+ * @dev Holds no funds, has no owner, is not upgradeable, and cannot move or
+ *      lock funds on its own. It is an evidence layer only. The caller includes
+ *      `commit` as a mandatory subcall, so a failed commitment reverts the
+ *      entire payout batch and no payment moves.
  *
  *      Called as a sibling subcall inside Multicall3From.aggregate3, where
  *      Arc's CallFrom precompile preserves the payer EOA as msg.sender — which
