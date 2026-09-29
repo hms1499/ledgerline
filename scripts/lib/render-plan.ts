@@ -17,8 +17,7 @@ export type Planned =
 export const maxZoomFor = (scale: number) => Math.min(2, scale);
 
 export function renderPlan(take: TakeEvents, o: RenderOptions) {
-  const inWait = (t: number) => take.waits.some((w) => t >= w.from && t < w.to);
-  const tl = buildTimeline(take.frames, take.end, (t) => (inWait(t) ? o.waitSpeed : 1));
+  const tl = buildTimeline(take.frames, take.end, { waits: take.waits, factor: o.waitSpeed });
   const view = { width: take.view.width, height: take.view.height };
   const maxZoom = maxZoomFor(take.view.scale);
   const focuses = take.focuses.map((f) => ({ at: tl.outputTime(f.at), rect: f.rect, zoom: f.zoom }));

@@ -282,8 +282,7 @@ function encode(
   marks: { label: string; at: number }[],
 ) {
   const kept = frames.filter((f) => f.at >= begin - 0.05);
-  const inWait = (t: number) => fastForward.some((w) => t >= w.from && t < w.to);
-  const timeline = buildTimeline(kept, end, (t) => (inWait(t) ? WAIT_SPEED : 1));
+  const timeline = buildTimeline(kept, end, { waits: fastForward, factor: WAIT_SPEED });
   const lines: string[] = [];
   kept.forEach((f, i) => lines.push(`file '${f.file}'`, `duration ${timeline.durations[i]!.toFixed(4)}`));
   // The concat demuxer ignores the last duration unless the file repeats.
