@@ -20,14 +20,15 @@ const figure = (v: bigint, d: number) => {
   return `${v / base}${frac ? `.${frac}` : ""}`;
 };
 
-/** `USD` is an unknown token the Review step offers to fix; `25` EURC is
- *  more than the wallet holds, which brings up the Safe treasury block. */
+/** `USD` is an unknown token the Review step offers to fix; `1000` EURC is
+ *  more than the demo wallet holds on either network (testnet held 37.2
+ *  EURC on 2026-09-29), which brings up the Safe treasury block. */
 export function walkthroughCsv(recipient: string): string {
   return [
     "invoiceId,token,to,amount",
     `INV-V-001,USDC,${recipient},0.01`,
     `INV-V-002,USD,${recipient},0.01`,
-    `INV-V-003,EURC,${recipient},25`,
+    `INV-V-003,EURC,${recipient},1000`,
     `INV-V-004,cirBTC,${recipient},0.0000001`,
   ].join("\n") + "\n";
 }
@@ -39,13 +40,17 @@ export function shortfalls(held: Record<Symbol, bigint>): string[] {
     .map((s) => `${s}: holds ${figure(held[s], DECIMALS[s])}, needs ${figure(need[s], DECIMALS[s])}${s === "USDC" ? " including fees" : ""}`);
 }
 
-export function nextRunName(date: string, taken: readonly string[]): string {
-  const prefix = `video-${date}-t`;
-  const used = taken
-    .filter((n) => n.startsWith(prefix))
-    .map((n) => Number(n.slice(prefix.length)))
-    .filter(Number.isFinite);
-  return `${prefix}${Math.max(0, ...used) + 1}`;
+/**
+ * A take's run name: its UTC day and minute. Each run name gives the run its
+ * own salt and its own run id, so a name used twice with the same list is
+ * refused on chain (RunExists). Numbering takes from the folders on disk
+ * brought a paid name back once its folder was deleted; the clock cannot.
+ */
+export function runNameAt(now: Date, taken: readonly string[]): string {
+  const iso = now.toISOString();
+  const name = `video-${iso.slice(0, 10)}-${iso.slice(11, 13)}${iso.slice(14, 16)}`;
+  if (taken.includes(name)) throw new Error(`a take named ${name} already exists; wait a minute and record again`);
+  return name;
 }
 
 const CHAIN: Record<DemoNetwork, number> = { mainnet: 5042, testnet: 5042002 };
@@ -70,6 +75,7 @@ export const CAPTIONS = {
   paid: ["5 · Pay", "Paid, with a receipt link for each recipient"],
   receipt: ["6 · Receipt", "The recipient's browser checks the payment against the chain"],
   checks: ["6 · Receipt", "Six checks. None of them asks Ledgerline anything"],
+  withoutFile: ["7 · Reconcile", "Without the payer's file, the run still reads from the chain"],
   run: ["7 · Reconcile", "The payer's saved file matches what was recorded on chain"],
   matched: ["7 · Reconcile", "Every invoice matched to the payment that settled it"],
   dashboard: ["8 · Dashboard", "What needs you, and what each token paid this month"],

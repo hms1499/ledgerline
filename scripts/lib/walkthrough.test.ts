@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { assertChain, CAPTIONS, FEE_BUFFER_USDC, nextRunName, shortfalls, SPEND, walkthroughCsv } from "./walkthrough.js";
+import { assertChain, CAPTIONS, FEE_BUFFER_USDC, runNameAt, shortfalls, SPEND, walkthroughCsv } from "./walkthrough.js";
 
 const R = "0xe48A096B9E74f064b13c17734af29F85E02d732a";
 
@@ -9,7 +9,7 @@ describe("walkthroughCsv", () => {
       "invoiceId,token,to,amount",
       `INV-V-001,USDC,${R},0.01`,
       `INV-V-002,USD,${R},0.01`,
-      `INV-V-003,EURC,${R},25`,
+      `INV-V-003,EURC,${R},1000`,
       `INV-V-004,cirBTC,${R},0.0000001`,
     ].join("\n") + "\n");
     expect(SPEND).toEqual({ USDC: 20_000n, EURC: 10_000n, cirBTC: 10n });
@@ -25,11 +25,13 @@ describe("shortfalls", () => {
   });
 });
 
-describe("nextRunName", () => {
-  it("numbers the day's takes, never reusing a name", () => {
-    expect(nextRunName("2026-09-29", [])).toBe("video-2026-09-29-t1");
-    expect(nextRunName("2026-09-29", ["video-2026-09-29-t1", "video-2026-09-29-t3", "video-2026-09-28-t7"]))
-      .toBe("video-2026-09-29-t4");
+describe("runNameAt", () => {
+  it("names a take by its UTC day and minute, so deleting old takes can never bring a name back", () => {
+    expect(runNameAt(new Date("2026-09-29T11:47:05Z"), [])).toBe("video-2026-09-29-1147");
+  });
+
+  it("refuses a name a kept take already has", () => {
+    expect(() => runNameAt(new Date("2026-09-29T11:47:59Z"), ["video-2026-09-29-1147"])).toThrow(/already/);
   });
 });
 
