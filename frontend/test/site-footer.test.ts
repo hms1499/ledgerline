@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { contractLine, showsSiteFooter } from "@/lib/site-footer";
 
 describe("contractLine", () => {
@@ -24,5 +26,23 @@ describe("showsSiteFooter", () => {
     for (const p of ["/r/0xabc", "/new", "/dashboard", "/runs", "/run/0xabc", "/whyever", null]) {
       expect(showsSiteFooter(p), String(p)).toBe(false);
     }
+  });
+});
+
+describe("the footer's way to check a run without us", () => {
+  const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), "utf8");
+
+  it("is a command anyone can run without cloning: the published arc-reconcile", () => {
+    expect(read("../components/ui/SiteFooter.tsx")).toContain('const RECONCILE = "npx arc-reconcile <tx>";');
+    const cli = JSON.parse(read("../../packages/cli/package.json"));
+    expect(cli.name).toBe("arc-reconcile");
+    expect(Object.keys(cli.bin)).toEqual(["arc-reconcile"]);
+  });
+
+  it("is the one the README leads with, for the proof run too", () => {
+    const readme = read("../../README.md");
+    const section = readme.slice(readme.indexOf("### Reconciling a run"), readme.indexOf("## Development"));
+    expect(section.indexOf("npx arc-reconcile <txHash>")).toBeGreaterThan(-1);
+    expect(readme).toContain("$ npx arc-reconcile 0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0");
   });
 });

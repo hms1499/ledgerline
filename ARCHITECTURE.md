@@ -123,7 +123,8 @@ and decides nothing that `reconcile()` depends on.
 
 ### `packages/cli`
 
-`arc-reconcile`, run as `pnpm reconcile <txHash>`. It reads the receipt,
+`arc-reconcile`, published on npm and run as `npx arc-reconcile <txHash>`
+(`pnpm reconcile <txHash>` from a clone). It reads the receipt,
 calls `reconcile()`, reads token decimals and symbols, and reads
 `PayoutAnchor.runs(runId)` for completeness. With `--manifest` it also checks
 the run file against the anchored root.

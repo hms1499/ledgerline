@@ -179,14 +179,18 @@ INV-BTC-003,cirBTC,0xe48A096B9E74f064b13c17734af29F85E02d732a,0.00001
 
 ### Reconciling a run
 
-Anyone can rebuild a run's reconciliation table from its transaction hash:
+Anyone can rebuild a run's reconciliation table from its transaction hash,
+with [`arc-reconcile`](https://www.npmjs.com/package/arc-reconcile) and Node 20
+or later. Nothing to clone:
 
 ```bash
-pnpm reconcile <txHash>                              # Arc mainnet
-pnpm reconcile <txHash> --network testnet
-pnpm reconcile <txHash> --manifest <run file>.json   # adds invoice ids, checks the file against the anchored root
-pnpm reconcile <txHash> --rpc <your own node>
+npx arc-reconcile <txHash>                              # Arc mainnet
+npx arc-reconcile <txHash> --network testnet
+npx arc-reconcile <txHash> --manifest <run file>.json   # adds invoice ids, checks the file against the anchored root
+npx arc-reconcile <txHash> --rpc <your own node>
 ```
+
+From a clone of this repository, `pnpm reconcile` runs the same command from source.
 
 Without the run file every payment reads `paid`, and completeness is checked
 against the anchor. With it, each row is matched to its invoice.
@@ -279,7 +283,7 @@ invoices are samples.
 Rebuilt from a public RPC:
 
 ```console
-$ pnpm reconcile 0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0
+$ npx arc-reconcile 0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0
 
   Ledgerline reconciliation — 0xaf3e61940847555a93ac9880a44c3f16e08a4ea80d2f43c69a28a949e738e4c0
   Arc mainnet   RPC: https://rpc.mainnet.arc.io   block 22453870

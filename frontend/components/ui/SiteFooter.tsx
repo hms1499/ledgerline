@@ -6,7 +6,7 @@ import Mark from "@/components/ui/Mark";
 import { contractLine } from "@/lib/site-footer";
 import { networkFor, type NetworkView } from "@/lib/chain";
 
-const RECONCILE = "pnpm reconcile <tx>";
+const RECONCILE = "npx arc-reconcile <tx>";
 
 /**
  * The end of / and /why (home polish spec §3.5): a full-width band like the
