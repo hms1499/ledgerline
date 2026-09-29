@@ -71,3 +71,6 @@ docs/notes/*-manifest.json
 
 # ── agent worktrees ─────────────────────────────────────
 .claude/worktrees/
+
+# ── walkthrough takes and renders (large, local) ─────────
+video/
