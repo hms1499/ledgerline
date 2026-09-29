@@ -91,3 +91,29 @@ describe("New's steps enter (spec §2.1)", () => {
     for (const p of preludesUsing(/\.step-in\s*\{/)) expect(p).toMatch(/prefers-reduced-motion:\s*no-preference/);
   });
 });
+
+describe("buttons lift (spec §2.3)", () => {
+  const lifts = () => blocks(allCss()).filter(([, body]) => /translateY\(-1px\)/.test(body));
+  const body = () => lifts().map(([, b]) => b).join("\n");
+
+  it("only where motion is allowed and the pointer can hover", () => {
+    expect(lifts().length).toBeGreaterThan(0);
+    for (const [p] of lifts()) {
+      expect(p).toMatch(/prefers-reduced-motion:\s*no-preference/);
+      expect(p).toMatch(/\(hover:\s*hover\)/);
+    }
+  });
+
+  it("lifts solid and outlined buttons and .button-primary — never a disabled, loading, text or link one", () => {
+    expect(body()).toMatch(/:is\(\.ant-btn-variant-solid, \.ant-btn-variant-outlined\):not\(:disabled, \.ant-btn-disabled, \.ant-btn-loading\):hover/);
+    expect(body()).toMatch(/\.button-primary:hover/);
+    expect(body()).not.toMatch(/variant-(link|text)/);
+  });
+
+  it("rises over 150 ms with the one shadow that is not a popup's, and presses 1px below rest", () => {
+    expect(body()).toMatch(/transition-duration:\s*150ms/);
+    expect(body()).toMatch(/transition-timing-function:\s*ease-out/);
+    expect(body()).toMatch(/box-shadow:\s*0 3px 8px -4px rgb\(0 0 0 \/ 0\.35\)/);
+    expect(body()).toMatch(/\.button-primary:active\s*\{\s*transform:\s*translateY\(1px\);\s*box-shadow:\s*none;\s*\}/);
+  });
+});

@@ -27,6 +27,28 @@ html .ant-btn {
 @media (prefers-reduced-motion: no-preference) {
   .ant-btn:not(:disabled):active { transform: translateY(1px); }
 }
+/* Motion polish §2.3: under a hovering pointer a button rises 1px and casts
+   the one shadow that is not a popup's; pressed, it drops below rest again.
+   Text and link buttons stay flat: they read as words, not keys. A disabled
+   or loading button does not rise, and a touch screen never sees a stuck lift. */
+@media (prefers-reduced-motion: no-preference) and (hover: hover) {
+  :is(.ant-btn-variant-solid, .ant-btn-variant-outlined):not(:disabled, .ant-btn-disabled, .ant-btn-loading),
+  .button-primary {
+    transition-property: color, background-color, border-color, transform, box-shadow;
+    transition-duration: 150ms;
+    transition-timing-function: ease-out;
+  }
+  :is(.ant-btn-variant-solid, .ant-btn-variant-outlined):not(:disabled, .ant-btn-disabled, .ant-btn-loading):hover,
+  .button-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px -4px rgb(0 0 0 / 0.35);
+  }
+  :is(.ant-btn-variant-solid, .ant-btn-variant-outlined):not(:disabled, .ant-btn-disabled, .ant-btn-loading):active,
+  .button-primary:active {
+    transform: translateY(1px);
+    box-shadow: none;
+  }
+}
 /* The wallet chip shows an address: data never changes case (spec §3.6).
    antd switches a Button's text to colorPrimaryHover on hover and keeps it
    while a Dropdown stays open; the address stays ink in every state. */
