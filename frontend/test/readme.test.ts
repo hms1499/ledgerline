@@ -24,4 +24,11 @@ describe("the README", () => {
     const limitations = README.slice(README.indexOf("## Limitations"));
     expect(limitations).toContain("(#paying-from-a-safe-treasury)");
   });
+
+  it("shows the CI badge under the title, linked to the runs behind it", () => {
+    const actions = "https://github.com/hms1499/ledgerline/actions/workflows/ci.yml";
+    const badge = README.indexOf(`[![CI](${actions}/badge.svg)](${actions})`);
+    expect(badge).toBeGreaterThan(-1);
+    expect(badge).toBeLessThan(README.indexOf(LIVE));
+  });
 });

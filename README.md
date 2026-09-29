@@ -1,5 +1,7 @@
 # Ledgerline
 
+[![CI](https://github.com/hms1499/ledgerline/actions/workflows/ci.yml/badge.svg)](https://github.com/hms1499/ledgerline/actions/workflows/ci.yml)
+
 **Batched stablecoin payouts on Arc where every payment carries its own invoice
 reference on chain, so the payer and the recipient can each reconcile it
 without trusting the other, or us.**
