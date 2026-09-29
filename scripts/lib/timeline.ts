@@ -9,7 +9,7 @@ export function buildTimeline(
   frames: { at: number }[],
   end: number,
   speedAt: (t: number) => number,
-): { durations: number[]; outputTime(t: number): number } {
+): { durations: number[]; total: number; outputTime(t: number): number; frameAt(t: number): number } {
   const durations: number[] = [];
   const starts: number[] = [];
   let clock = 0;
@@ -29,6 +29,14 @@ export function buildTimeline(
       const next = frames[i + 1]?.at ?? end;
       const share = Math.min(1, (t - frames[i]!.at) / Math.max(next - frames[i]!.at, 0.001));
       return starts[i]! + share * durations[i]!;
+    },
+    total: clock,
+    /** The frame on screen at output time `t`: 0 before the start, the last
+     *  one after the end. */
+    frameAt(t) {
+      let i = 0;
+      for (let j = 0; j < starts.length; j++) if (starts[j]! <= t) i = j;
+      return i;
     },
   };
 }

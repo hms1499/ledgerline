@@ -23,3 +23,26 @@ describe("buildTimeline", () => {
     expect(buildTimeline(frames, 13, () => 1).outputTime(3)).toBe(0);
   });
 });
+
+describe("frameAt — the frame on screen at a moment of the video", () => {
+  const at = [{ at: 0 }, { at: 1 }, { at: 2 }];
+
+  it("holds each frame until the next one's start", () => {
+    const tl = buildTimeline(at, 3, () => 1);
+    expect(tl.total).toBe(3);
+    expect([tl.frameAt(0), tl.frameAt(0.5), tl.frameAt(1), tl.frameAt(2.9)]).toEqual([0, 0, 1, 2]);
+  });
+
+  it("clamps outside the video", () => {
+    const tl = buildTimeline(at, 3, () => 1);
+    expect(tl.frameAt(-1)).toBe(0);
+    expect(tl.frameAt(99)).toBe(2);
+  });
+
+  it("follows a wait played faster", () => {
+    const tl = buildTimeline(at, 3, (t) => (t >= 1 && t < 2 ? 4 : 1));
+    expect(tl.total).toBeCloseTo(2.25);
+    expect(tl.frameAt(1.1)).toBe(1);
+    expect(tl.frameAt(1.3)).toBe(2);
+  });
+});
