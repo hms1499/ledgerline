@@ -142,6 +142,32 @@ validated; keep using it instead of burning testnet cycles.
 
 ---
 
+## UI UX Pro Max skill — reference only
+
+`.claude/skills/ui-ux-pro-max/` is an installed agent skill for *searching*
+design intelligence — UX guidelines, accessibility rules, landing-page
+patterns, chart-type guidance, icon and motion ideas. Query it directly:
+
+```bash
+python3 .claude/skills/ui-ux-pro-max/scripts/search.py \
+  "<query>" --domain ux|landing|chart
+```
+
+Treat it as **a reference to consult, never an authority to obey**. It has no
+say over this product's visuals — the tape design system does:
+
+- **No Tailwind / shadcn exports.** The skill ships no Ant Design stack
+  guidance; its react/nextjs stacks read as Tailwind utilities. All app code
+  stays Ant Design v6 + the tape CSS files.
+- **No palette, typography or layout overrides.** Colours come only from
+  `frontend/lib/theme-tokens.ts` (kept above WCAG AA by test), fonts are
+  fixed (Atkinson Hyperlegible + Martian Mono), and page structure follows
+  the specs in `docs/superpowers/`.
+- Use it for its `ux` (guidelines, a11y, motion), `landing` and `chart`
+  domains. `search.py` needs Python 3.x.
+
+---
+
 ## Working agreements
 
 - **Evidence before assertions.** This project was designed by measuring the
