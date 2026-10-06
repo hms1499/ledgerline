@@ -2,7 +2,7 @@ import { afterEach, describe, it, expect } from "vitest";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { Address } from "viem";
-import { readBalances, readBalancesWith } from "@/lib/balances";
+import { readBalances, readBalancesWith, balancesFromResults } from "@/lib/balances";
 import { networkFor } from "@/lib/chain";
 
 const A = "0x3600000000000000000000000000000000000000" as Address;
@@ -24,6 +24,21 @@ describe("readBalancesWith — what the wallet holds, per token", () => {
   });
 });
 
+describe("balancesFromResults — one Multicall3 answer maps to the token list", () => {
+  it("keeps successful calls in order and leaves failed calls out", () => {
+    const got = balancesFromResults([A, B], [
+      { status: "success", result: 5n },
+      { status: "failure" },
+    ]);
+    expect(got).toEqual({ [A.toLowerCase()]: 5n });
+  });
+
+  it("is keyed by the lowercased token address, like the one-token reads", () => {
+    expect(balancesFromResults([B], [{ status: "success", result: 7n }]))
+      .toEqual({ [B.toLowerCase()]: 7n });
+  });
+});
+
 // A node that never answers, counting what reaches it, so a retry cannot hide.
 let server: Server | undefined;
 afterEach(async () => {
@@ -33,7 +48,7 @@ afterEach(async () => {
 });
 
 describe("readBalances — a node that never answers", () => {
-  it("asks once per token and gives up at the timeout, so the dashboard is not held for ~40 s", async () => {
+  it("asks once for the whole batch and gives up at the timeout, so the dashboard is not held for ~40 s", async () => {
     let hits = 0;
     server = createServer((req) => { req.on("data", () => {}); req.on("end", () => { hits++; }); });
     await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
@@ -42,6 +57,7 @@ describe("readBalances — a node that never answers", () => {
     const got = await readBalances(net, "0x1111111111111111111111111111111111111111", [A, B], 300);
     expect(got).toEqual({});
     expect(Date.now() - started).toBeLessThan(2_000);
-    expect(hits).toBe(2);
+    // One Multicall3 round-trip, not one balanceOf per token.
+    expect(hits).toBe(1);
   });
 });

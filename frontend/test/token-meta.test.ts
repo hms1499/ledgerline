@@ -1,5 +1,8 @@
-import { describe, it, expect } from "vitest";
-import { amountFigure, amountText, metaFor } from "@/lib/token-meta";
+import { afterEach, describe, it, expect } from "vitest";
+import { createServer, type Server } from "node:http";
+import type { AddressInfo } from "node:net";
+import { arcTestnet } from "viem/chains";
+import { amountFigure, amountText, metaFor, readTokenMeta } from "@/lib/token-meta";
 
 const CIRBTC = "0x171a4217b86a807a64eb94757db6849fb4bdbaa0";
 const USDC = "0x3600000000000000000000000000000000000000";
@@ -34,5 +37,27 @@ describe("metaFor — one token's entry from the address-keyed records", () => {
   });
   it("leaves decimals undefined when none were read", () => {
     expect(metaFor(USDC, {}, {})).toEqual({ decimals: undefined, symbol: undefined });
+  });
+});
+
+describe("readTokenMeta — one round-trip for the whole token set", () => {
+  let server: Server | undefined;
+  afterEach(async () => {
+    server?.closeAllConnections();
+    await new Promise<void>((r) => (server ? server.close(() => r()) : r()));
+    server = undefined;
+  });
+
+  it("asks the node once, then rejects: a run must not interpret an amount whose decimals it could not confirm", async () => {
+    let hits = 0;
+    server = createServer((req) => { req.on("data", () => {}); req.on("end", () => { hits++; }); });
+    await new Promise<void>((r) => server!.listen(0, "127.0.0.1", r));
+    const started = Date.now();
+    await expect(
+      readTokenMeta(`http://127.0.0.1:${(server.address() as AddressInfo).port}`, arcTestnet, arcTestnet.id, 200),
+    ).rejects.toThrow();
+    // One batch for decimals and symbols, not one call per function per token.
+    expect(hits).toBe(1);
+    expect(Date.now() - started).toBeLessThan(2_000);
   });
 });
