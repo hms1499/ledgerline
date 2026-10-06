@@ -17,8 +17,23 @@ const sans = Atkinson_Hyperlegible({ subsets: ["latin"], weight: ["400", "700"],
 const mono = Martian_Mono({ subsets: ["latin"], axes: ["wdth"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ledgerline-chi-sandy.vercel.app"),
   title: "Ledgerline",
   description: "Verify a stablecoin payout on Arc without trusting the payer.",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    siteName: "Ledgerline",
+    title: "Ledgerline — a stablecoin payout that carries its own invoice",
+    description:
+      "Pay a list of invoices in one transaction on Arc. Each payment records which invoice it settles, on chain, so the payer and the person paid can each check it without trusting us.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Ledgerline — a stablecoin payout that carries its own invoice",
+    description:
+      "Pay a list of invoices in one transaction on Arc, each payment carrying its own invoice reference on chain.",
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
