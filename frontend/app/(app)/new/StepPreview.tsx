@@ -21,7 +21,8 @@ import ChangesList from "./ChangesList";
 import ReviewTabs, { type ReviewTab } from "./ReviewTabs";
 import type { ColumnId } from "@ledgerline/core";
 import {
-  addLine, deleteLine, droppedByHeader, editCells, headerWarning, leaveOut, putBack, restoreLine, useAsHeader,
+  addLine, deleteLine, droppedByHeader, editCells, headerWarning, leaveOut, putBack, restoreLine,
+  useAsHeader as asHeader,
 } from "@/lib/sheet-edits";
 import { sheetGrid } from "@/lib/sheet-grid";
 import SheetGrid, { type CellPos } from "./SheetGrid";
@@ -103,7 +104,7 @@ export default function StepPreview({
   const [focusSeq, setFocusSeq] = useState<number>();
   const [askHeader, setAskHeader] = useState<number>();
   const onEdit = (line: number, col: ColumnId, text: string) => onEdits(editCells(draft.edits, [{ line, col, text }]));
-  const toHeader = (line: number) => { onEdits(useAsHeader(draft.edits, line)); setFocusSeq(Date.now()); };
+  const toHeader = (line: number) => { onEdits(asHeader(draft.edits, line)); setFocusSeq(Date.now()); };
   const onLine = (line: number, action: LineAction) => {
     const e = draft.edits;
     if (action === "leave-out") onEdits(leaveOut(e, line));

@@ -6,6 +6,7 @@
   "scripts": {
     "test": "pnpm --filter @ledgerline/core build && pnpm -r test && vitest run --dir scripts",
     "typecheck": "pnpm -r typecheck",
+    "lint": "pnpm --filter @ledgerline/web lint",
     "build": "pnpm --filter @ledgerline/web build",
     "reconcile": "pnpm --silent --filter @ledgerline/core build && tsx packages/cli/src/index.ts"
   },

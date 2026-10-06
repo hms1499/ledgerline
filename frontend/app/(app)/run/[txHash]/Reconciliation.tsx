@@ -364,7 +364,7 @@ function Ready({
               columnTitle: <span className="sr-only">Details</span>,
               rowExpandable: (r) => r.status !== "matched",
               expandedRowRender: (r) => (
-                <RowDetail row={r} net={net} tokens={tokens} receipt={receiptFor(r)}
+                <RowDetail row={r} tokens={tokens} receipt={receiptFor(r)}
                   note={statusView(r.status, hasManifest).note ?? r.note} />
               ),
             }}
@@ -433,9 +433,9 @@ function Amount({ row, tokens }: { row: ReconcileRow; tokens: Map<string, TokenM
 }
 
 function RowDetail({
-  row, net, tokens, note, receipt,
+  row, tokens, note, receipt,
 }: {
-  row: ReconcileRow; net: NetworkView; tokens: Map<string, TokenMeta>;
+  row: ReconcileRow; tokens: Map<string, TokenMeta>;
   note?: string;
   receipt?: string;
 }) {

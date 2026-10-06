@@ -20,8 +20,8 @@ describe("the CI workflow", () => {
     expect(ci).toMatch(/forge test/);
   });
 
-  it("installs exactly the locked dependencies, then tests, typechecks and builds", () => {
-    const steps = ["pnpm install --frozen-lockfile", "pnpm test", "pnpm typecheck", "pnpm build"];
+  it("installs exactly the locked dependencies, then tests, typechecks, lints and builds", () => {
+    const steps = ["pnpm install --frozen-lockfile", "pnpm test", "pnpm typecheck", "pnpm lint", "pnpm build"];
     const at = steps.map((s) => ci.indexOf(s));
     expect(at.every((i) => i > -1), steps.filter((_, i) => at[i] === -1).join(", ")).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);

@@ -213,6 +213,7 @@ pnpm install
 ```bash
 pnpm test                  # core, cli and web (vitest)
 pnpm typecheck
+pnpm lint                  # web eslint (next/core-web-vitals + typescript)
 cd contracts && forge test
 ```
 
